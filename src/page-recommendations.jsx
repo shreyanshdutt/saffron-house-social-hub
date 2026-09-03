@@ -19,7 +19,10 @@ function RecommendationsPage({ role, onNavigate }) {
   const { theme } = React.useContext(AppCtx);
   const toast = useToast();
 
-  const all = React.useMemo(() => generateRecommendations(), []);
+  // Keyed on the sync version so recommendations regenerate against freshly
+  // pulled competitor data rather than a stale snapshot.
+  const all = React.useMemo(() => generateRecommendations(), [SYNC_VERSION.value]);
+  const syncState = syncStateLoad();
   const [state, setState] = React.useState(() => recsLoad());
   const [kind, setKind] = React.useState('all');
   const [status, setStatus] = React.useState('open');
@@ -75,7 +78,10 @@ function RecommendationsPage({ role, onNavigate }) {
           <p className="text-sm text-saf-muted mt-1">
             Computed from this week's reviews, menu conversation, listening signals and channel
             performance. Ranked by expected value. Nothing here posts for you — these get done in
-            the kitchen, on a partner dashboard, or in the composer.
+            the kitchen, on the Google listing, or in the composer.
+            {syncState.lastSyncedAt
+              ? <> Competitor data last synced {relTime(syncState.lastSyncedAt)}.</>
+              : <> Competitor data has never been synced — run a sync from the Competitors tab.</>}
           </p>
         </div>
         <Button

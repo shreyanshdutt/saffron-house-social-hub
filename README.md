@@ -114,6 +114,15 @@ over:
   those), and *cannot track* (no Google listing, common for delivery-only
   kitchens). Marking an establishment here drives both the Competitors screen
   and the recommendation engine.
+- **Sync** (`syncCompetitors()` in `src/mock.jsx`, button on Competitors) runs
+  one pass over the tracked set: a Places Details call per establishment, plus
+  a Business Discovery call per readable Instagram account. Personal and
+  private accounts are skipped rather than called, since the call would return
+  nothing and still spend quota. The report names every call and its outcome —
+  a sync that silently half-works is worse than one that fails loudly. A
+  completed sync bumps `SYNC_VERSION`, which the Competitors table and the
+  recommendation engine key their caches on, so a refresh propagates without a
+  page reload.
 - **Composer previews** (`src/page-compose.jsx`) are genuinely different per
   channel. A Google post renders inside a business listing with its rating and
   Book/Directions buttons; a marketplace post renders above an order button; a

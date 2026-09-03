@@ -55,8 +55,11 @@ function CompetitorsScreen({ theme }) {
   const [sort, setSort] = React.useState({ field: 'engagement', dir: 'desc' });
 
   // Driven by what is marked on the Establishments screen, so one choice
-  // controls both this table and the recommendation engine.
-  const tracked = React.useMemo(() => trackedCompetitors(), []);
+  // controls both this table and the recommendation engine. Keyed on the sync
+  // version so a refresh propagates without a page reload.
+  const [syncTick, setSyncTick] = React.useState(0);
+  const [report, setReport] = React.useState(null);
+  const tracked = React.useMemo(() => trackedCompetitors(), [syncTick]);
 
   const sortedRows = React.useMemo(() => {
     const col = COMPETITOR_COLUMNS.find(c => c.id === sort.field);
@@ -81,8 +84,12 @@ function CompetitorsScreen({ theme }) {
 
   return (
     <div id="listening-competitors" role="tabpanel" className="space-y-4">
-      <CatchmentHeader tracked={tracked} />
-      <PendingSyncNote />
+      <CatchmentHeader
+        tracked={tracked}
+        onSynced={(r) => { setReport(r); setSyncTick(n => n + 1); }}
+      />
+      {report && <SyncReport report={report} onDismiss={() => setReport(null)} />}
+      <PendingSyncNote key={syncTick} />
       {tracked.length > 0
         ? <CompetitorInsights theme={theme} peers={tracked} />
         : <EmptyCatchment />}
@@ -97,7 +104,7 @@ function CompetitorsScreen({ theme }) {
 
 // Names the catchment, because a competitor set without a boundary is just a
 // list of restaurants. Google Places nearby search seeds it; a human curates.
-function CatchmentHeader({ tracked }) {
+function CatchmentHeader({ tracked, onSynced }) {
   const c = COMPETITOR_CATCHMENT;
   return (
     <div className="flex items-start gap-2.5">
@@ -121,11 +128,13 @@ function CatchmentHeader({ tracked }) {
         </div>
         {c.isSampleData && (
           <p className="text-[11.5px] text-amber-700 mt-1 leading-relaxed">
-            These six restaurants are invented and the handles resolve to nothing. Replace them with
-            real establishments from Places Nearby Search before showing this to anyone outside the team.
+            These establishments are invented and the handles resolve to nothing. Replace them with
+            real ones from Places Nearby Search before showing this to anyone outside the team.
           </p>
         )}
       </div>
+
+      <SyncButton onSynced={onSynced} />
     </div>
   );
 }
@@ -259,6 +268,143 @@ function CompetitorInsights({ theme, peers }) {
   );
 }
 
+
+// --- Sync ---------------------------------------------------------------------
+// A refresh is not instant and should not pretend to be: each tracked
+// establishment is one or two API calls against a shared rate limit. The
+// button paces the run so a person can watch which call is happening, and the
+// report afterwards names every one — a sync that silently half-worked is
+// worse than one that fails loudly.
+function SyncButton({ onSynced }) {
+  const toast = useToast();
+  const [busy, setBusy] = React.useState(false);
+  const [current, setCurrent] = React.useState('');
+  const [state, setState] = React.useState(() => syncStateLoad());
+
+  const run = async () => {
+    if (busy) return;
+    setBusy(true);
+    const targets = ESTABLISHMENTS.filter(e => new Set(trackedLoad()).has(e.id));
+    try {
+      // Walk the targets on screen before applying, so the pacing reflects
+      // the real per-establishment call pattern rather than a fake spinner.
+      for (const e of targets) {
+        setCurrent(e.name);
+        await new Promise(r => setTimeout(r, 260));
+      }
+      setCurrent('Applying');
+      const report = syncCompetitors();
+      setState(syncStateLoad());
+      onSynced && onSynced(report);
+      toast.push({
+        title: `Synced ${targets.length} establishment${targets.length === 1 ? '' : 's'}`,
+        desc: `${report.totalCalls} API calls${report.newlySynced ? ` · ${report.newlySynced} pulled for the first time` : ''}`,
+        kind: 'success',
+      });
+    } catch (err) {
+      toast.push({ title: 'Sync failed', desc: String(err && err.message || err), kind: 'error' });
+    } finally {
+      setBusy(false);
+      setCurrent('');
+    }
+  };
+
+  return (
+    <div className="ms-auto shrink-0 text-end">
+      <Button
+        variant="secondary"
+        leadingIcon={busy ? null : 'RefreshCw'}
+        loading={busy}
+        onClick={run}
+      >
+        {busy ? 'Syncing…' : 'Sync now'}
+      </Button>
+      <div className="text-[11px] text-saf-muted mt-1" aria-live="polite">
+        {busy
+          ? (current ? `Fetching ${current}…` : 'Working…')
+          : state.lastSyncedAt
+            ? `Last synced ${relTime(state.lastSyncedAt)}`
+            : 'Never synced'}
+      </div>
+    </div>
+  );
+}
+
+// The per-call account of what just happened. Failures and skips are shown
+// with the same weight as successes, because "we skipped this and why" is the
+// part that changes what you do next.
+function SyncReport({ report, onDismiss }) {
+  const failed = report.steps.filter(s => !s.ok).length;
+  return (
+    <Card padding="p-4">
+      <div className="flex items-start gap-3">
+        <span className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 grid place-items-center shrink-0">
+          <Icon name="CheckCircle2" size={16} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-[14px] font-semibold text-saf-text">Sync complete</span>
+            <span className="text-[12px] text-saf-muted">
+              {report.totalCalls} API calls — {report.placesCalls} Places, {report.discoveryCalls} Business Discovery
+            </span>
+            {failed > 0 && (
+              <span className="px-2 h-5 inline-flex items-center rounded-full bg-amber-50 text-amber-700 text-[11px] font-semibold">
+                {failed} skipped
+              </span>
+            )}
+            <button
+              onClick={onDismiss}
+              className="ms-auto text-[12px] text-saf-muted hover:text-saf-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saf-primary rounded px-1"
+            >
+              Dismiss
+            </button>
+          </div>
+
+          {!report.state.velocityComparable && (
+            <p className="text-[11.5px] text-saf-muted mt-1.5 leading-relaxed">
+              Review velocity needs two pulls on different days to mean anything — it is the delta
+              between review counts, so the first sync can only establish a baseline.
+            </p>
+          )}
+
+          <div className="mt-3 rounded-lg border border-saf-border overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[520px] text-[12.5px]">
+                <caption className="sr-only">Every API call made during this sync and its outcome</caption>
+                <thead>
+                  <tr className="bg-saf-surface text-[11px] uppercase tracking-wider text-saf-muted">
+                    <th scope="col" className="text-start font-medium px-3 py-2">Establishment</th>
+                    <th scope="col" className="text-start font-medium px-3 py-2 w-[150px]">Call</th>
+                    <th scope="col" className="text-start font-medium px-3 py-2">Result</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-saf-border">
+                  {report.steps.map((st, i) => (
+                    <tr key={i}>
+                      <th scope="row" className="text-start font-normal px-3 py-2 text-saf-text">{st.establishment}</th>
+                      <td className="px-3 py-2 text-saf-muted">{st.api}</td>
+                      <td className="px-3 py-2">
+                        <span className="inline-flex items-start gap-1.5">
+                          <Icon
+                            name={st.ok ? 'Check' : 'Minus'}
+                            size={12}
+                            className={`mt-0.5 shrink-0 ${st.ok ? 'text-emerald-700' : 'text-saf-muted'}`}
+                          />
+                          <span className={st.ok ? 'text-saf-text' : 'text-saf-muted'}>{st.detail}</span>
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
 // Tracked and readable, but no content pulled yet. Saying so beats a silent
 // omission that reads as the feature being broken.
 function PendingSyncNote() {
@@ -271,8 +417,11 @@ function PendingSyncNote() {
         <span className="font-semibold">
           {pending.length} tracked establishment{pending.length > 1 ? 's have' : ' has'} not synced yet
         </span>{' '}
-        — {pending.map(p => p.name).join(', ')}. Their Instagram accounts are readable, so their
-        posts and cadence will appear here after the next Business Discovery fetch.
+        — {pending.map(p => p.name).join(', ')}.{' '}
+        {pending.length > 1
+          ? 'Their Instagram accounts are readable, so their posts and cadence will appear here'
+          : 'Their Instagram account is readable, so their posts and cadence will appear here'}{' '}
+        after the next Business Discovery fetch. Use Sync now.
       </p>
     </div>
   );

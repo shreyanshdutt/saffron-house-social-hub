@@ -915,7 +915,7 @@ const COMPETITOR_CATCHMENT = {
 
 const LISTENING_COMPETITORS = [
   {
-    id: 'cmp-1', name: 'Dwarka Darbar', handle: '@dwarkadarbar', channel: 'ig',
+    id: 'cmp-1', synced: true, name: 'Dwarka Darbar', handle: '@dwarkadarbar', channel: 'ig',
     avatarColor: '#7C3AED',
     followers: 41200,       followersChange7dPct: 3.8,
     postsPerWeek: 11,       avgInteractions: 3584,
@@ -929,7 +929,7 @@ const LISTENING_COMPETITORS = [
     isMoment: true,
   },
   {
-    id: 'cmp-2', name: 'Sector 10 Social', handle: '@sector10social', channel: 'ig',
+    id: 'cmp-2', synced: true, name: 'Sector 10 Social', handle: '@sector10social', channel: 'ig',
     avatarColor: '#0EA5E9',
     followers: 33800,       followersChange7dPct: 2.1,
     postsPerWeek: 9,        avgInteractions: 1386,
@@ -941,7 +941,7 @@ const LISTENING_COMPETITORS = [
     isMoment: false,
   },
   {
-    id: 'cmp-3', name: 'Baoli Kitchen', handle: '@baolikitchen', channel: 'ig',
+    id: 'cmp-3', synced: true, name: 'Baoli Kitchen', handle: '@baolikitchen', channel: 'ig',
     avatarColor: '#10B981',
     followers: 19600,       postsPerWeek: 8,   followersChange7dPct: 4.2,
     avgInteractions: 1196,
@@ -953,7 +953,7 @@ const LISTENING_COMPETITORS = [
     isMoment: false,
   },
   {
-    id: 'cmp-4', name: 'The Curry Room', handle: '@thecurryroom', channel: 'ig',
+    id: 'cmp-4', synced: true, name: 'The Curry Room', handle: '@thecurryroom', channel: 'ig',
     avatarColor: '#F59E0B',
     followers: 11400,       followersChange7dPct: -0.4,
     postsPerWeek: 3,        avgInteractions: 217,
@@ -965,7 +965,7 @@ const LISTENING_COMPETITORS = [
     isMoment: false,
   },
   {
-    id: 'cmp-5', name: 'Nawab & Sons', handle: '@nawabandsons', channel: 'ig',
+    id: 'cmp-5', synced: true, name: 'Nawab & Sons', handle: '@nawabandsons', channel: 'ig',
     avatarColor: '#EC4899',
     followers: 8900,        followersChange7dPct: 6.1,
     postsPerWeek: 6,        avgInteractions: 463,
@@ -977,7 +977,7 @@ const LISTENING_COMPETITORS = [
     isMoment: false,
   },
   {
-    id: 'cmp-6', name: 'Chowk 21', handle: '@chowk21', channel: 'ig',
+    id: 'cmp-6', synced: true, name: 'Chowk 21', handle: '@chowk21', channel: 'ig',
     avatarColor: '#64748B',
     followers: 16200,       followersChange7dPct: 0.0,
     postsPerWeek: 4,        avgInteractions: 551,
@@ -986,6 +986,41 @@ const LISTENING_COMPETITORS = [
     themes: ['street food', 'offers'],
     postingPeak: '6–8pm',
     sparkEngagement: [0.034, 0.035, 0.034, 0.033, 0.034, 0.034, 0.034],
+    isMoment: false,
+  },
+
+  // Not yet pulled. `synced: false` means we hold the identity but no
+  // Business Discovery response — no followers, no feed, no engagement rate.
+  // A sync fills these in; until then they are correctly absent from the
+  // table rather than shown with placeholder zeroes.
+  {
+    id: 'cmp-7', name: 'Wok Republic', handle: '@wokrepublicdwarka', channel: 'ig',
+    avatarColor: '#0D9488', synced: false,
+    followers: 14800,       followersChange7dPct: 1.8,
+    googleRating: 4.1,      googleReviews: 960,   reviewVelocityPerMonth: 51,
+    themes: ['chinese', 'offers', 'late night'],
+    postingPeak: '8–10pm',
+    sparkEngagement: [0.031, 0.032, 0.033, 0.033, 0.034, 0.035, 0.036],
+    isMoment: false,
+  },
+  {
+    id: 'cmp-8', name: 'The Bread Room', handle: '@thebreadroom.dwk', channel: 'ig',
+    avatarColor: '#A16207', synced: false,
+    followers: 9400,        followersChange7dPct: 5.2,
+    googleRating: 4.6,      googleReviews: 540,   reviewVelocityPerMonth: 38,
+    themes: ['bakes', 'coffee', 'chef stories'],
+    postingPeak: '9–11am',
+    sparkEngagement: [0.058, 0.061, 0.063, 0.066, 0.068, 0.070, 0.072],
+    isMoment: true,
+  },
+  {
+    id: 'cmp-9', name: 'Tandoori Nights', handle: '@tandoorinights10', channel: 'ig',
+    avatarColor: '#9333EA', synced: false,
+    followers: 12100,       followersChange7dPct: 0.6,
+    googleRating: 4.0,      googleReviews: 1120,  reviewVelocityPerMonth: 47,
+    themes: ['kebabs', 'offers', 'family dining'],
+    postingPeak: '7–9pm',
+    sparkEngagement: [0.028, 0.028, 0.029, 0.029, 0.030, 0.030, 0.031],
     isMoment: false,
   },
 ];
@@ -1124,6 +1159,44 @@ const COMPETITOR_POST_SEEDS = {
     { caption: 'Best value in Sector 10 and we will keep saying it.', format: 'image', theme: 'value', tags: ['#Value'] },
     { caption: 'Bulk orders for functions. Call us a week ahead.', format: 'image', theme: 'family dining', tags: ['#BulkOrders'] },
   ],
+  'cmp-7': [ // Wok Republic — chinese, offers, late night
+    { caption: 'Hakka noodles, wok-tossed to order. Nothing sits under a lamp here.', format: 'reel', theme: 'chinese', tags: ['#HakkaNoodles'] },
+    { caption: 'MIDWEEK DEAL: any two mains + rice, ₹499.', format: 'image', theme: 'offers', isOffer: true, tags: ['#Offer'] },
+    { caption: 'Open till 12:30am Friday and Saturday. Dwarka, we hear you.', format: 'image', theme: 'late night', tags: ['#LateNight'] },
+    { caption: 'The chilli garlic prawns are back on the menu.', format: 'image', theme: 'chinese', tags: ['#Prawns'] },
+    { caption: 'Dim sum baskets from ₹249. Steamed to order, six a basket.', format: 'carousel', theme: 'chinese', tags: ['#DimSum'] },
+    { caption: 'Free Coke with every order above ₹599 this week.', format: 'image', theme: 'offers', isOffer: true, tags: ['#Offer'] },
+    { caption: 'Wok station at 9pm on a Saturday. Sound on.', format: 'reel', theme: 'late night', tags: ['#BehindTheScenes'] },
+    { caption: 'New: Burnt garlic fried rice. Order it with the chilli chicken.', format: 'image', theme: 'chinese', tags: ['#FriedRice'] },
+    { caption: 'Student combo ₹199, weekdays till 5pm.', format: 'image', theme: 'offers', isOffer: true, tags: ['#StudentDeal'] },
+    { caption: 'Our chef trained in Kolkata for six years. It shows in the chowmein.', format: 'reel', theme: 'chinese', tags: ['#ChefStories'] },
+    { caption: 'Late-night delivery till 1am across Sector 10 and 11.', format: 'image', theme: 'late night', tags: ['#LateNight'] },
+    { caption: 'Momos, steamed or fried, ₹149. All week.', format: 'image', theme: 'offers', isOffer: true, tags: ['#Momos'] },
+  ],
+  'cmp-8': [ // The Bread Room — bakes, coffee, chef stories
+    { caption: 'Sourdough comes out at 8am. It rarely lasts past 11.', format: 'image', theme: 'bakes', tags: ['#Sourdough'] },
+    { caption: 'Our croissants take three days. Here is day two.', format: 'reel', theme: 'chef stories', tags: ['#Croissant'] },
+    { caption: 'Single-origin filter from Chikmagalur this month.', format: 'image', theme: 'coffee', tags: ['#Coffee'] },
+    { caption: 'Cinnamon rolls, Saturday only, from 9am.', format: 'image', theme: 'bakes', tags: ['#CinnamonRoll'] },
+    { caption: 'Meet Anjali, who has been baking here since we opened.', format: 'reel', theme: 'chef stories', tags: ['#TeamStories'] },
+    { caption: 'Cold brew is back for the season.', format: 'image', theme: 'coffee', tags: ['#ColdBrew'] },
+    { caption: 'Whole-wheat loaves now daily. No maida, no shortcuts.', format: 'image', theme: 'bakes', tags: ['#Bread'] },
+    { caption: 'The 4pm bake. Everything half price after 8pm.', format: 'image', theme: 'bakes', isOffer: true, tags: ['#Offer'] },
+    { caption: 'Why we grind our coffee to order and not before.', format: 'reel', theme: 'coffee', tags: ['#Coffee'] },
+    { caption: 'Birthday cakes on 48 hours notice. WhatsApp us.', format: 'image', theme: 'bakes', tags: ['#Cakes'] },
+  ],
+  'cmp-9': [ // Tandoori Nights — kebabs, offers, family dining
+    { caption: 'The tandoor goes on at 4pm. Everything after that is timing.', format: 'reel', theme: 'kebabs', tags: ['#Tandoor'] },
+    { caption: 'KEBAB PLATTER ₹649 — six kinds, serves three.', format: 'image', theme: 'offers', isOffer: true, tags: ['#Offer'] },
+    { caption: 'Malai tikka, the way it should be. Soft, not sweet.', format: 'image', theme: 'kebabs', tags: ['#MalaiTikka'] },
+    { caption: 'Sunday family lunch, kids under 8 free.', format: 'image', theme: 'family dining', isOffer: true, tags: ['#FamilyDining'] },
+    { caption: 'Our seekh is hand-minced every morning. No machines.', format: 'reel', theme: 'kebabs', tags: ['#Seekh'] },
+    { caption: 'Terrace seating open now the rain has eased.', format: 'image', theme: 'family dining', tags: ['#Terrace'] },
+    { caption: 'Buy one main, get a naan basket free. Till Thursday.', format: 'image', theme: 'offers', isOffer: true, tags: ['#Offer'] },
+    { caption: 'Afghani chicken — marinated 18 hours, cooked in eight minutes.', format: 'image', theme: 'kebabs', tags: ['#Afghani'] },
+    { caption: 'Large tables welcome. We seat up to 20 without notice.', format: 'image', theme: 'family dining', tags: ['#GroupDining'] },
+    { caption: 'The grill at 8pm. This is the busiest hour of our week.', format: 'reel', theme: 'kebabs', tags: ['#BehindTheScenes'] },
+  ],
   'cmp-6': [ // Chowk 21 — street food, offers
     { caption: 'Chaat counter is open. Golgappas till they run out.', format: 'reel', theme: 'street food', tags: ['#Chaat'] },
     { caption: 'ALL CHAAT ₹99 — this weekend only.', format: 'image', theme: 'offers', isOffer: true, tags: ['#Offer'] },
@@ -1139,25 +1212,37 @@ const COMPETITOR_POST_SEEDS = {
 // Attach the feeds, then derive each competitor's cadence, average
 // interactions and per-post performance index FROM the feed — so the row
 // summary and the expanded posts can never disagree.
+// Apply one Business Discovery response to a competitor row: build the feed,
+// then derive every summary number FROM that feed so the row and the expanded
+// posts can never disagree. Called at load for already-synced rows, and by
+// syncCompetitors() for rows pulled later.
+function applyCompetitorSync(comp, nowMs) {
+  const seeds = COMPETITOR_POST_SEEDS[comp.id] || [];
+  if (!seeds.length) return false;
+
+  comp.recentPosts = buildCompetitorFeed(comp, seeds, nowMs);
+  comp.postsPerWeek = Math.round(seeds.length / 2);
+
+  const inter = comp.recentPosts.map(m => m.interactions);
+  const sorted = [...inter].sort((a, b) => a - b);
+  const med = sorted.length % 2
+    ? sorted[(sorted.length - 1) / 2]
+    : (sorted[sorted.length / 2 - 1] + sorted[sorted.length / 2]) / 2;
+  comp.medianInteractions = med;
+  comp.recentPosts.forEach(m => { m.index = med ? m.interactions / med : 1; });
+
+  comp.avgInteractions = Math.round(inter.reduce((a, b) => a + b, 0) / inter.length);
+  comp.engagementRate = +(comp.avgInteractions / comp.followers).toFixed(4);
+  comp.offerShare = comp.recentPosts.filter(m => m.isOffer).length / comp.recentPosts.length;
+  comp.synced = true;
+  comp.lastSyncedAt = new Date(nowMs).toISOString();
+  return true;
+}
+
 (function hydrateCompetitorFeeds() {
   const now = Date.now();
   for (const comp of LISTENING_COMPETITORS) {
-    const seeds = COMPETITOR_POST_SEEDS[comp.id] || [];
-    comp.recentPosts = buildCompetitorFeed(comp, seeds, now);
-    comp.postsPerWeek = Math.round(seeds.length / 2);
-
-    const inter = comp.recentPosts.map(m => m.interactions);
-    const sorted = [...inter].sort((a, b) => a - b);
-    const med = sorted.length % 2
-      ? sorted[(sorted.length - 1) / 2]
-      : (sorted[sorted.length / 2 - 1] + sorted[sorted.length / 2]) / 2;
-    comp.medianInteractions = med;
-    comp.recentPosts.forEach(m => { m.index = med ? m.interactions / med : 1; });
-
-    // Keep the headline row honest against the feed it now owns.
-    comp.avgInteractions = Math.round(inter.reduce((a, b) => a + b, 0) / inter.length);
-    comp.engagementRate = +(comp.avgInteractions / comp.followers).toFixed(4);
-    comp.offerShare = comp.recentPosts.filter(m => m.isOffer).length / comp.recentPosts.length;
+    if (comp.synced) applyCompetitorSync(comp, now);
   }
 })();
 
@@ -1219,13 +1304,13 @@ const ESTABLISHMENTS = [
     instagram: { handle: '@chowk21',         accountType: 'business' }, x: null },
 
   // Trackable, but not currently in the competitor set.
-  { id: 'est-7',  competitorId: null,    name: 'Wok Republic',             category: 'Chinese',        distanceKm: 0.5,
+  { id: 'est-7',  competitorId: 'cmp-7',  name: 'Wok Republic',             category: 'Chinese',        distanceKm: 0.5,
     google: { rating: 4.1, reviews: 960,  status: 'OPERATIONAL' },
     instagram: { handle: '@wokrepublicdwarka', accountType: 'business' }, x: { handle: '@wokrepublic' } },
-  { id: 'est-8',  competitorId: null,    name: 'The Bread Room',           category: 'Bakery & cafe',  distanceKm: 0.7,
+  { id: 'est-8',  competitorId: 'cmp-8',  name: 'The Bread Room',           category: 'Bakery & cafe',  distanceKm: 0.7,
     google: { rating: 4.6, reviews: 540,  status: 'OPERATIONAL' },
     instagram: { handle: '@thebreadroom.dwk', accountType: 'creator' }, x: null },
-  { id: 'est-9',  competitorId: null,    name: 'Tandoori Nights',          category: 'North Indian',   distanceKm: 1.4,
+  { id: 'est-9',  competitorId: 'cmp-9',  name: 'Tandoori Nights',          category: 'North Indian',   distanceKm: 1.4,
     google: { rating: 4.0, reviews: 1120, status: 'OPERATIONAL' },
     instagram: { handle: '@tandoorinights10', accountType: 'business' }, x: null },
   { id: 'est-10', competitorId: null,    name: 'Punjabi Rasoi',            category: 'North Indian',   distanceKm: 0.9,
@@ -1299,7 +1384,10 @@ function establishmentAvailability(e) {
 // read by both the Competitors screen and the recommendation engine so one
 // choice drives both.
 const TRACKED_KEY = 'saf-tracked-v1';
-const TRACKED_DEFAULT = ESTABLISHMENTS.filter(e => e.competitorId).map(e => e.id);
+// The six already pulled. est-7/8/9 also carry a competitorId now — they are
+// trackable and have a dormant record waiting — but they start untracked, so
+// adding one is a deliberate act that costs an API call on the next sync.
+const TRACKED_DEFAULT = ['est-1', 'est-2', 'est-3', 'est-4', 'est-5', 'est-6'];
 
 function trackedLoad() {
   try {
@@ -1323,9 +1411,12 @@ function trackedSave(ids) {
 // way the honest thing is to say "not synced", not to drop it silently.
 function trackedPendingEstablishments() {
   const ids = new Set(trackedLoad());
-  return ESTABLISHMENTS.filter(e =>
-    ids.has(e.id) && !e.competitorId && establishmentAvailability(e).tier === 'full'
-  );
+  return ESTABLISHMENTS.filter(e => {
+    if (!ids.has(e.id)) return false;
+    if (establishmentAvailability(e).tier !== 'full') return false;
+    const comp = e.competitorId && LISTENING_COMPETITORS.find(c => c.id === e.competitorId);
+    return !comp || !comp.synced;
+  });
 }
 
 function trackedCompetitors() {
@@ -1333,7 +1424,131 @@ function trackedCompetitors() {
   const wanted = new Set(
     ESTABLISHMENTS.filter(e => ids.has(e.id) && e.competitorId).map(e => e.competitorId)
   );
-  return LISTENING_COMPETITORS.filter(c => wanted.has(c.id));
+  return LISTENING_COMPETITORS.filter(c => wanted.has(c.id) && c.synced);
+}
+
+// --- Sync --------------------------------------------------------------------
+// What a refresh actually does, and what it costs.
+//
+// One pass over the tracked set:
+//   · Google Places Details — 1 call per tracked establishment. Returns
+//     rating and user_ratings_total. Works for anything with a listing.
+//   · Instagram Business Discovery — 1 call per establishment whose account
+//     is a public Business or Creator. Returns followers_count, media_count
+//     and the media edge. Personal and private accounts are skipped: the call
+//     would return nothing, so spending the quota on it is pointless.
+//
+// Both share rate limits, which is why the Establishments screen carries a
+// soft cap. The report below names every call and its outcome — a sync that
+// silently half-worked is worse than one that failed loudly.
+//
+// Review velocity is the one thing a single sync cannot produce: it is the
+// delta between this pull's review count and the last one, so it needs at
+// least two syncs on different days. Rows that have never been compared
+// report it as unavailable rather than guessing.
+const SYNC_KEY = 'saf-sync-v1';
+
+function syncStateLoad() {
+  try {
+    const raw = localStorage.getItem(SYNC_KEY);
+    if (!raw) return { lastSyncedAt: null, runs: 0 };
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' ? parsed : { lastSyncedAt: null, runs: 0 };
+  } catch (e) {
+    return { lastSyncedAt: null, runs: 0 };
+  }
+}
+function syncStateSave(st) {
+  try { localStorage.setItem(SYNC_KEY, JSON.stringify(st)); } catch (e) {}
+}
+
+// Bumped on every completed sync. Screens that cache derived data key their
+// memo on this so a refresh actually propagates rather than needing a reload.
+const SYNC_VERSION = { value: 0 };
+
+// Runs the pass and returns a per-establishment report. Synchronous over the
+// data; the UI paces it so a person can read what happened.
+function syncCompetitors() {
+  const now = Date.now();
+  const trackedIds = new Set(trackedLoad());
+  const targets = ESTABLISHMENTS.filter(e => trackedIds.has(e.id));
+  const steps = [];
+  let placesCalls = 0;
+  let discoveryCalls = 0;
+
+  for (const e of targets) {
+    const avail = establishmentAvailability(e);
+    const comp = e.competitorId && LISTENING_COMPETITORS.find(c => c.id === e.competitorId);
+
+    // Places Details — every tracked establishment with a listing.
+    if (avail.hasGoogle) {
+      placesCalls += 1;
+      // A real pull would move these; the demo nudges the review count so the
+      // "what changed" line is not always empty.
+      const gained = 1 + ((now / 60000 | 0) + e.id.length) % 3;
+      e.google.reviews += gained;
+      if (comp) comp.googleReviews = e.google.reviews;
+      steps.push({
+        establishment: e.name, api: 'Places Details', ok: true,
+        detail: `${e.google.rating.toFixed(1)}★, ${e.google.reviews.toLocaleString('en-IN')} reviews (+${gained})`,
+      });
+    } else {
+      steps.push({
+        establishment: e.name, api: 'Places Details', ok: false,
+        detail: 'No listing — nothing to fetch',
+      });
+    }
+
+    // Business Discovery — only where the account is actually readable.
+    if (avail.igReadable) {
+      discoveryCalls += 1;
+      if (comp) {
+        const wasSynced = comp.synced;
+        applyCompetitorSync(comp, now);
+        steps.push({
+          establishment: e.name, api: 'Business Discovery', ok: true,
+          detail: wasSynced
+            ? `${comp.recentPosts.length} posts refreshed · ${comp.postsPerWeek}/week`
+            : `First pull — ${comp.recentPosts.length} posts, ${(comp.followers / 1000).toFixed(1)}k followers`,
+          isNew: !wasSynced,
+        });
+      } else {
+        steps.push({
+          establishment: e.name, api: 'Business Discovery', ok: false,
+          detail: 'Readable, but no seed content in this prototype',
+        });
+      }
+    } else if (e.instagram) {
+      steps.push({
+        establishment: e.name, api: 'Business Discovery', ok: false,
+        detail: `Skipped — ${e.instagram.accountType} accounts cannot be read, and the call would burn quota for nothing`,
+      });
+    } else {
+      steps.push({
+        establishment: e.name, api: 'Business Discovery', ok: false,
+        detail: 'Skipped — no Instagram account found',
+      });
+    }
+  }
+
+  const prev = syncStateLoad();
+  const state = {
+    lastSyncedAt: new Date(now).toISOString(),
+    runs: (prev.runs || 0) + 1,
+    // Velocity needs two pulls on different days to mean anything.
+    velocityComparable: (prev.runs || 0) >= 1,
+  };
+  syncStateSave(state);
+  SYNC_VERSION.value += 1;
+
+  return {
+    steps,
+    placesCalls,
+    discoveryCalls,
+    totalCalls: placesCalls + discoveryCalls,
+    newlySynced: steps.filter(s => s.isNew).length,
+    state,
+  };
 }
 
 // --- Per-channel trends ------------------------------------------------------
@@ -1513,7 +1728,7 @@ Object.assign(window, {
   LISTENING_KINDS, LISTENING_SEVERITIES, listeningLoad, listeningSave,
   SAF_HANDLE, SAF_SELF_STATS, COMPETITOR_CATCHMENT, COMPETITOR_POST_SEEDS,
   ESTABLISHMENTS, establishmentAvailability, trackedLoad, trackedSave, trackedCompetitors,
-  trackedPendingEstablishments,
+  trackedPendingEstablishments, syncCompetitors, syncStateLoad, SYNC_VERSION,
   PlatformGlyph, Avatar,
   POSTS, SCHEDULED, CONVERSATIONS, POST_COMMENTS,
   REVIEWS, REVIEW_STATS, MENU_ITEMS,
