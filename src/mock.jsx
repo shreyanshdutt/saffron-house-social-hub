@@ -975,6 +975,177 @@ const LISTENING_COMPETITORS = [
   },
 ];
 
+// --- Competitor post feeds ---------------------------------------------------
+// In production this array IS the Business Discovery `media` edge:
+//
+//   GET /{ig-user-id}?fields=business_discovery.username(THEIR_HANDLE){
+//         followers_count, media_count,
+//         media.limit(50){ caption, media_type, timestamp,
+//                          like_count, comments_count, permalink }}
+//
+// That is the complete field list. Note what is NOT in it:
+//
+//   · comment TEXT — only `comments_count`. There is no way to read what
+//     people said on a competitor's post, so THERE IS NO SENTIMENT TO
+//     COMPUTE. Sentiment on their own caption would just be marketing copy
+//     rating itself. The viewer shows performance against their own median
+//     instead, which answers the real question ("did this work for them?")
+//     with data that actually exists.
+//   · reach, impressions, saves, shares — private to them.
+//   · media files we may store. Meta and Google terms both restrict caching
+//     platform media, so the UI shows a format placeholder and links out to
+//     the permalink rather than mirroring their photos.
+//
+// `theme` and `isOffer` are DERIVED by classifying the caption — their public
+// text, our classification.
+
+// Fixed variance pattern so the demo is stable across reloads and, more
+// importantly, so a competitor's post interactions average exactly to the
+// `avgInteractions` shown on their row. Two screens must never disagree.
+const FEED_VARIANCE = [1.00, 0.62, 1.48, 0.81, 1.15, 0.55, 2.10, 0.74, 0.93,
+                       1.32, 0.68, 1.05, 0.88, 1.62, 0.71, 1.24, 0.59, 1.41];
+
+function buildCompetitorFeed(comp, seeds, nowMs) {
+  const n = seeds.length;
+  const raw = seeds.map((_, i) => FEED_VARIANCE[i % FEED_VARIANCE.length]);
+  const mean = raw.reduce((a, b) => a + b, 0) / n;
+  // Normalise so the feed's mean interactions equal the row's avgInteractions.
+  const mult = raw.map(v => v / mean);
+
+  return seeds.map((seed, i) => {
+    const interactions = Math.round(comp.avgInteractions * mult[i]);
+    // Comments run roughly 6–9% of interactions on restaurant content.
+    const comments = Math.max(1, Math.round(interactions * (0.06 + (i % 4) * 0.01)));
+    const likes = Math.max(0, interactions - comments);
+    // Spread across the trailing 14 days, newest first.
+    const hoursAgo = Math.round((i * (14 * 24)) / n) + (i % 3) * 2;
+    return {
+      id: `${comp.id}-m${i + 1}`,
+      caption: seed.caption,
+      format: seed.format,
+      theme: seed.theme,
+      isOffer: !!seed.isOffer,
+      hashtags: seed.tags || [],
+      likes,
+      comments,
+      interactions,
+      // Performance against this competitor's own median — the honest answer
+      // to "did this post work", computable from public counts alone.
+      index: 0,   // filled below, once the median is known
+      permalink: `https://instagram.com/p/${comp.id}-m${i + 1}`,
+      t: new Date(nowMs - hoursAgo * 3_600_000).toISOString(),
+    };
+  });
+}
+
+const COMPETITOR_POST_SEEDS = {
+  'cmp-1': [ // Dwarka Darbar — offers, family dining, thali
+    { caption: 'FLAT 20% OFF this weekend on all thalis. Dine-in only. Sector 10 Market.', format: 'image', theme: 'offers', isOffer: true, tags: ['#DwarkaFood','#Offer'] },
+    { caption: 'The Darbar Special Thali — 11 items, one plate, ₹399. Nobody leaves hungry.', format: 'carousel', theme: 'thali', tags: ['#Thali','#DwarkaDarbar'] },
+    { caption: 'Sunday lunch at Darbar. Bring the whole family, we will find the table.', format: 'reel', theme: 'family dining', tags: ['#FamilyDining'] },
+    { caption: 'Monsoon menu is live. Pakoras, chai, and a roof that does not leak.', format: 'reel', theme: 'offers', tags: ['#MonsoonMenu'] },
+    { caption: 'Kids eat free on Tuesdays. Under 10, with any adult main.', format: 'image', theme: 'family dining', isOffer: true, tags: ['#KidsEatFree'] },
+    { caption: 'Our dal makhani takes 12 hours. You will taste every one of them.', format: 'reel', theme: 'thali', tags: ['#DalMakhani'] },
+    { caption: 'BUY 1 GET 1 on all starters, Monday to Thursday, 3–7pm.', format: 'image', theme: 'offers', isOffer: true, tags: ['#BOGO','#Dwarka'] },
+    { caption: 'Birthday at Darbar? Cake cutting is on us. Just tell us when you book.', format: 'image', theme: 'family dining', tags: ['#Celebrations'] },
+    { caption: 'Behind the tandoor at 7pm on a Saturday. Sound on.', format: 'reel', theme: 'thali', tags: ['#Tandoor'] },
+    { caption: 'Corporate lunch boxes from ₹199. Delivery across Dwarka.', format: 'image', theme: 'offers', isOffer: true, tags: ['#CorporateLunch'] },
+    { caption: 'The paneer tikka everyone in Sector 10 keeps talking about.', format: 'image', theme: 'thali', tags: ['#PaneerTikka'] },
+    { caption: 'Weekend brunch buffet — 40+ items, ₹649 per head.', format: 'carousel', theme: 'offers', isOffer: true, tags: ['#Brunch'] },
+    { caption: 'Three generations, one table. This is what Sunday should look like.', format: 'image', theme: 'family dining', tags: ['#FamilyDining'] },
+    { caption: 'New: Hyderabadi biryani, every Friday, limited portions.', format: 'reel', theme: 'thali', tags: ['#Biryani'] },
+    { caption: 'Rain outside, rajma chawal inside. Open till 11.', format: 'image', theme: 'family dining', tags: ['#ComfortFood'] },
+    { caption: 'Independence Day thali, ₹299, this week only.', format: 'image', theme: 'offers', isOffer: true, tags: ['#Offer'] },
+    { caption: 'Meet Suresh, who has run our tandoor for nine years.', format: 'reel', theme: 'family dining', tags: ['#TeamStories'] },
+    { caption: 'Table for 12? We have the private room. Book on WhatsApp.', format: 'image', theme: 'family dining', tags: ['#GroupDining'] },
+  ],
+  'cmp-2': [ // Sector 10 Social — bar, late night, events
+    { caption: 'Live music every Friday. Doors 8pm, no cover.', format: 'reel', theme: 'events', tags: ['#LiveMusic','#Dwarka'] },
+    { caption: 'HAPPY HOURS 4–8pm. 1+1 on all cocktails.', format: 'image', theme: 'bar', isOffer: true, tags: ['#HappyHours'] },
+    { caption: 'Kitchen open till 1am. Because Dwarka deserves a late night.', format: 'image', theme: 'late night', tags: ['#LateNight'] },
+    { caption: 'Karaoke Wednesdays are back. Bring your worst.', format: 'reel', theme: 'events', tags: ['#Karaoke'] },
+    { caption: 'The Sector 10 Sour — our bartender will not tell us what is in it.', format: 'reel', theme: 'bar', tags: ['#Cocktails'] },
+    { caption: 'Match screening this Sunday. Big screen, bigger nachos.', format: 'image', theme: 'events', tags: ['#MatchDay'] },
+    { caption: 'Ladies night Thursday — selected drinks on the house till 10pm.', format: 'image', theme: 'bar', isOffer: true, tags: ['#LadiesNight'] },
+    { caption: 'That 12am plate of chilli garlic noodles hits different.', format: 'image', theme: 'late night', tags: ['#LateNight'] },
+    { caption: 'Open mic night. Poets, comics, and one guy with a ukulele.', format: 'reel', theme: 'events', tags: ['#OpenMic'] },
+    { caption: 'New cocktail menu drops Friday. 14 drinks, 4 of them dangerous.', format: 'carousel', theme: 'bar', tags: ['#NewMenu'] },
+    { caption: 'Weekend DJ nights, 9pm onwards. Entry free before 10.', format: 'reel', theme: 'events', tags: ['#DJNight'] },
+    { caption: 'Pitchers at ₹599 all week. Yes, all week.', format: 'image', theme: 'bar', isOffer: true, tags: ['#Offer'] },
+    { caption: 'Rooftop is open again now the rain has eased.', format: 'image', theme: 'late night', tags: ['#Rooftop'] },
+    { caption: 'Sunday sundowners. 5pm, terrace, acoustic set.', format: 'reel', theme: 'events', tags: ['#Sundowner'] },
+  ],
+  'cmp-3': [ // Baoli Kitchen — chef stories, north indian, kebabs
+    { caption: 'Chef Iqbal learned this seekh from his grandmother in Old Delhi.', format: 'reel', theme: 'chef stories', tags: ['#ChefStories'] },
+    { caption: 'The galouti, made the long way. 21 spices, ground every morning.', format: 'reel', theme: 'kebabs', tags: ['#Galouti'] },
+    { caption: 'Our nihari runs from 8am Sunday. It usually goes by 11.', format: 'image', theme: 'north indian', tags: ['#Nihari'] },
+    { caption: 'Kakori kebab — soft enough to eat with a spoon. That is the test.', format: 'image', theme: 'kebabs', tags: ['#Kakori'] },
+    { caption: 'Inside the kitchen at 6am. The marination starts before we open.', format: 'reel', theme: 'chef stories', tags: ['#BehindTheScenes'] },
+    { caption: 'Butter chicken, but the Lucknow way. Less sweet, more smoke.', format: 'image', theme: 'north indian', tags: ['#ButterChicken'] },
+    { caption: 'Chef Iqbal on why he will not put a pizza on this menu.', format: 'reel', theme: 'chef stories', tags: ['#ChefStories'] },
+    { caption: 'Fresh sheermal from the tandoor, every evening at 7.', format: 'image', theme: 'north indian', tags: ['#Sheermal'] },
+    { caption: 'The mutton burra takes 40 minutes. Order it when you sit down.', format: 'image', theme: 'kebabs', tags: ['#Burra'] },
+    { caption: 'We source our meat from the same butcher since 2016.', format: 'reel', theme: 'chef stories', tags: ['#Sourcing'] },
+    { caption: 'Kebab platter for four, ₹899. Six kinds.', format: 'carousel', theme: 'kebabs', isOffer: true, tags: ['#KebabPlatter'] },
+    { caption: 'Sunday biryani. One pot, 40 portions, no repeats.', format: 'image', theme: 'north indian', tags: ['#Biryani'] },
+  ],
+  'cmp-4': [ // The Curry Room — offers, delivery
+    { caption: '30% OFF on all online orders this week. Code CURRY30.', format: 'image', theme: 'offers', isOffer: true, tags: ['#Offer'] },
+    { caption: 'Free delivery across Dwarka on orders above ₹399.', format: 'image', theme: 'delivery', isOffer: true, tags: ['#FreeDelivery'] },
+    { caption: 'Family combo — 2 mains, 2 breads, rice, dessert. ₹649.', format: 'image', theme: 'offers', isOffer: true, tags: ['#Combo'] },
+    { caption: 'Hot and fresh in 30 minutes or your next one is on us.', format: 'image', theme: 'delivery', tags: ['#Delivery'] },
+    { caption: 'Weekday lunch boxes ₹149. Order before 11am.', format: 'image', theme: 'offers', isOffer: true, tags: ['#LunchBox'] },
+    { caption: 'New packaging. Nothing spills now, we promise.', format: 'image', theme: 'delivery', tags: ['#Packaging'] },
+  ],
+  'cmp-5': [ // Nawab & Sons — biryani, value, family dining
+    { caption: 'The Nawabi dum biryani. Sealed with dough, opened at your table.', format: 'reel', theme: 'biryani', tags: ['#DumBiryani'] },
+    { caption: 'Family pack biryani — feeds 4, ₹749. Weekends only.', format: 'image', theme: 'value', isOffer: true, tags: ['#FamilyPack'] },
+    { caption: 'Why our rice rests for 20 minutes before it reaches you.', format: 'reel', theme: 'biryani', tags: ['#Biryani'] },
+    { caption: 'Thali at ₹249. Eight items. Sector 10 Market.', format: 'image', theme: 'value', isOffer: true, tags: ['#Thali'] },
+    { caption: 'Sunday afternoons at Nawab. Loud, full, exactly right.', format: 'image', theme: 'family dining', tags: ['#FamilyDining'] },
+    { caption: 'Mutton biryani is back on the weekend menu.', format: 'image', theme: 'biryani', tags: ['#MuttonBiryani'] },
+    { caption: 'Kids under 8 eat free with any family pack.', format: 'image', theme: 'family dining', isOffer: true, tags: ['#KidsEatFree'] },
+    { caption: 'The kitchen at 11am — 60 kilos of rice, before service.', format: 'reel', theme: 'biryani', tags: ['#BehindTheScenes'] },
+    { caption: 'Best value in Sector 10 and we will keep saying it.', format: 'image', theme: 'value', tags: ['#Value'] },
+    { caption: 'Bulk orders for functions. Call us a week ahead.', format: 'image', theme: 'family dining', tags: ['#BulkOrders'] },
+  ],
+  'cmp-6': [ // Chowk 21 — street food, offers
+    { caption: 'Chaat counter is open. Golgappas till they run out.', format: 'reel', theme: 'street food', tags: ['#Chaat'] },
+    { caption: 'ALL CHAAT ₹99 — this weekend only.', format: 'image', theme: 'offers', isOffer: true, tags: ['#Offer'] },
+    { caption: 'Dahi bhalla the way Chandni Chowk does it.', format: 'image', theme: 'street food', tags: ['#DahiBhalla'] },
+    { caption: 'Monsoon means pakoras. We are ready.', format: 'reel', theme: 'street food', tags: ['#Pakora'] },
+    { caption: 'Combo: chole bhature + lassi, ₹199.', format: 'image', theme: 'offers', isOffer: true, tags: ['#Combo'] },
+    { caption: 'The tikki gets fried to order. That is why it takes six minutes.', format: 'reel', theme: 'street food', tags: ['#AlooTikki'] },
+    { caption: 'Evening rush at the chaat counter, 7pm.', format: 'image', theme: 'street food', tags: ['#StreetFood'] },
+    { caption: 'Student discount — 15% off with any college ID.', format: 'image', theme: 'offers', isOffer: true, tags: ['#StudentDiscount'] },
+  ],
+};
+
+// Attach the feeds, then derive each competitor's cadence, average
+// interactions and per-post performance index FROM the feed — so the row
+// summary and the expanded posts can never disagree.
+(function hydrateCompetitorFeeds() {
+  const now = Date.now();
+  for (const comp of LISTENING_COMPETITORS) {
+    const seeds = COMPETITOR_POST_SEEDS[comp.id] || [];
+    comp.recentPosts = buildCompetitorFeed(comp, seeds, now);
+    comp.postsPerWeek = Math.round(seeds.length / 2);
+
+    const inter = comp.recentPosts.map(m => m.interactions);
+    const sorted = [...inter].sort((a, b) => a - b);
+    const med = sorted.length % 2
+      ? sorted[(sorted.length - 1) / 2]
+      : (sorted[sorted.length / 2 - 1] + sorted[sorted.length / 2]) / 2;
+    comp.medianInteractions = med;
+    comp.recentPosts.forEach(m => { m.index = med ? m.interactions / med : 1; });
+
+    // Keep the headline row honest against the feed it now owns.
+    comp.avgInteractions = Math.round(inter.reduce((a, b) => a + b, 0) / inter.length);
+    comp.engagementRate = +(comp.avgInteractions / comp.followers).toFixed(4);
+    comp.offerShare = comp.recentPosts.filter(m => m.isOffer).length / comp.recentPosts.length;
+  }
+})();
+
 // --- Per-channel trends ------------------------------------------------------
 // The three APIs count genuinely different things, so each channel names its
 // own metrics rather than being forced into a shared "mentions / reach" shape
@@ -1032,7 +1203,7 @@ const SAF_SELF_STATS = {
   avatarInitials: 'SH',
   avatarColor: '#B4451F',
   followers: 28400,       followersChange7dPct: 1.4,
-  postsPerWeek: 4,        avgInteractions: 1739,
+  postsPerWeek: 5,        avgInteractions: 1739,
   engagementRate: 0.061,  engagementChange7dPct: 3.2,
   googleRating: 4.3,      googleReviews: 1284,  reviewVelocityPerMonth: 62,
   themes: ['chef stories', 'monsoon menu', 'team stories'],
@@ -1150,7 +1321,7 @@ Object.assign(window, {
   POSTABLE, REVIEW_CHANNELS, INBOX_CHANNELS, platformColor,
   LISTENING_SIGNALS, LISTENING_COMPETITORS, LISTENING_TRENDS, LISTENING_KPIS,
   LISTENING_KINDS, LISTENING_SEVERITIES, listeningLoad, listeningSave,
-  SAF_HANDLE, SAF_SELF_STATS, COMPETITOR_CATCHMENT,
+  SAF_HANDLE, SAF_SELF_STATS, COMPETITOR_CATCHMENT, COMPETITOR_POST_SEEDS,
   PlatformGlyph, Avatar,
   POSTS, SCHEDULED, CONVERSATIONS, POST_COMMENTS,
   REVIEWS, REVIEW_STATS, MENU_ITEMS,

@@ -120,6 +120,10 @@ obtained (their reach, mention volume and sentiment) are gone.
 |---|---|---|
 | Follower count, post count | Instagram Business Discovery | API (public accounts) |
 | Their likes + comments per post | Instagram Business Discovery | API |
+| Their captions, format, timestamps, permalinks | Instagram Business Discovery `media` edge | API |
+| Their post themes + offer detection | Your classification of their captions | Derived |
+| Their per-post performance vs own median | Computed from public counts | Derived |
+| **Comment TEXT on their posts** | Not returned — counts only | ✗ **no competitor sentiment possible** |
 | Their star rating + review count | Google Places API | API |
 | Engagement **rate** | Computed as interactions ÷ followers | Derived, approximate |
 | Their **reach / impressions** | Private to them | ✗ — removed from the screen |

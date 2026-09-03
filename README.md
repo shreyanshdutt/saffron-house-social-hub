@@ -100,7 +100,11 @@ over:
   rate, Google rating and review velocity. Plus a content-positioning split of
   themes nobody nearby posts versus themes two or more rivals own. Every figure
   is Business Discovery or Places; their reach and sentiment are private and
-  are not shown at any confidence.
+  are not shown at any confidence. Each competitor row expands into their last
+  14 days of posts, one at a time — caption, format, likes, comments, derived
+  theme, offer flag, and how the post performed against that competitor's own
+  median. There is no sentiment on competitor posts: Business Discovery returns
+  comment counts, not comment text, so there is nothing to classify.
 - **Composer previews** (`src/page-compose.jsx`) are genuinely different per
   channel. A Google post renders inside a business listing with its rating and
   Book/Directions buttons; a marketplace post renders above an order button; a

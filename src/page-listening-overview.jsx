@@ -39,7 +39,7 @@ function OverviewScreen({ state, theme, onGoSignals, onGoTrends, onGoCompetitors
       {/* KPI strip — 2 columns on mobile, 5 on lg+. flex-wrap would also
           work; grid gives more predictable column widths. */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-        <KpiCard
+        <ListeningKpiCard
           label={t.listening.overview.kpi.totalMentions}
           value={kp.mentions.current}
           deltaText={fmtPctChange(mentionsChangePct)}
@@ -48,7 +48,7 @@ function OverviewScreen({ state, theme, onGoSignals, onGoTrends, onGoCompetitors
           sparkline={kp.mentions.sparkline}
           sparkColor="#B4451F"
         />
-        <KpiCard
+        <ListeningKpiCard
           label={t.listening.overview.kpi.reach}
           value={fmtCompact(kp.reach.current)}
           deltaText={fmtPctChange(reachChangePct)}
@@ -57,7 +57,7 @@ function OverviewScreen({ state, theme, onGoSignals, onGoTrends, onGoCompetitors
           sparkline={kp.reach.sparkline}
           sparkColor="#D99A16"
         />
-        <KpiCard
+        <ListeningKpiCard
           label={t.listening.overview.kpi.netSentiment}
           value={(kp.netSentiment.current >= 0 ? '+' : '') + kp.netSentiment.current.toFixed(2)}
           deltaText={(sentimentDelta >= 0 ? '+' : '') + sentimentDelta.toFixed(2)}
@@ -66,7 +66,7 @@ function OverviewScreen({ state, theme, onGoSignals, onGoTrends, onGoCompetitors
           sparkline={kp.netSentiment.sparkline}
           sparkColor="#2E7D4F"
         />
-        <KpiCard
+        <ListeningKpiCard
           label={t.listening.overview.kpi.directionRequests}
           value={fmt(kp.directionRequests.current)}
           deltaText={(dirChangePct >= 0 ? '+' : '') + dirChangePct + '%'}
@@ -104,7 +104,7 @@ function fmtPctChange(pct) {
   return (pct >= 0 ? '+' : '') + pct + '%';
 }
 
-function KpiCard({ label, value, deltaText, deltaUp, subLabel, sparkline, sparkColor }) {
+function ListeningKpiCard({ label, value, deltaText, deltaUp, subLabel, sparkline, sparkColor }) {
   return (
     <Card padding="p-4" className="relative overflow-hidden">
       <div className="text-[11px] uppercase tracking-wider font-medium text-saf-muted">{label}</div>

@@ -47,10 +47,10 @@ function AnalyticsPage({ onOpenPost }) {
       {/* ── Instagram ─────────────────────────────────────────────────── */}
       <ChannelSection id="ig">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <KpiCard label="Reach"        value={ig.totals.reach}    delta={ig.change.reach}    sparkColor="#B4451F" data={ig.daily.map(d => ({ v: d.reach }))} />
-          <KpiCard label="Views"        value={ig.totals.views}    delta={ig.change.views}    sparkColor="#D99A16" data={ig.daily.map(d => ({ v: d.views }))} />
-          <KpiCard label="Interactions" value={ig.totals.likes + ig.totals.comments + ig.totals.shares + ig.totals.saves} delta={ig.change.likes} sparkColor="#6E2412" data={ig.daily.map(d => ({ v: d.interactions }))} />
-          <KpiCard label="New follows"  value={ig.totals.follows}  delta={ig.change.follows}  sparkColor="#2E7D4F" data={ig.daily.map(d => ({ v: d.interactions / 3 }))} />
+          <AnalyticsKpiCard label="Reach"        value={ig.totals.reach}    delta={ig.change.reach}    sparkColor="#B4451F" data={ig.daily.map(d => ({ v: d.reach }))} />
+          <AnalyticsKpiCard label="Views"        value={ig.totals.views}    delta={ig.change.views}    sparkColor="#D99A16" data={ig.daily.map(d => ({ v: d.views }))} />
+          <AnalyticsKpiCard label="Interactions" value={ig.totals.likes + ig.totals.comments + ig.totals.shares + ig.totals.saves} delta={ig.change.likes} sparkColor="#6E2412" data={ig.daily.map(d => ({ v: d.interactions }))} />
+          <AnalyticsKpiCard label="New follows"  value={ig.totals.follows}  delta={ig.change.follows}  sparkColor="#2E7D4F" data={ig.daily.map(d => ({ v: d.interactions / 3 }))} />
         </div>
 
         <div className="grid grid-cols-12 gap-4 mt-4">
@@ -68,10 +68,10 @@ function AnalyticsPage({ onOpenPost }) {
       {/* ── Google ────────────────────────────────────────────────────── */}
       <ChannelSection id="gg">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <KpiCard label="Search impressions" value={gg.totals.searchImpressions} delta={gg.change.searchImpressions} sparkColor="#B4451F" data={gg.daily.map(d => ({ v: d.searchImpressions }))} />
-          <KpiCard label="Maps impressions"   value={gg.totals.mapsImpressions}   delta={gg.change.mapsImpressions}   sparkColor="#D99A16" data={gg.daily.map(d => ({ v: d.mapsImpressions }))} />
-          <KpiCard label="Direction requests" value={gg.totals.directionRequests} delta={gg.change.directionRequests} sparkColor="#2E7D4F" data={gg.daily.map(d => ({ v: d.mapsImpressions / 6 }))} />
-          <KpiCard label="Bookings"           value={gg.totals.bookings}          delta={gg.change.bookings}          sparkColor="#6E2412" data={gg.daily.map(d => ({ v: d.searchImpressions / 20 }))} />
+          <AnalyticsKpiCard label="Search impressions" value={gg.totals.searchImpressions} delta={gg.change.searchImpressions} sparkColor="#B4451F" data={gg.daily.map(d => ({ v: d.searchImpressions }))} />
+          <AnalyticsKpiCard label="Maps impressions"   value={gg.totals.mapsImpressions}   delta={gg.change.mapsImpressions}   sparkColor="#D99A16" data={gg.daily.map(d => ({ v: d.mapsImpressions }))} />
+          <AnalyticsKpiCard label="Direction requests" value={gg.totals.directionRequests} delta={gg.change.directionRequests} sparkColor="#2E7D4F" data={gg.daily.map(d => ({ v: d.mapsImpressions / 6 }))} />
+          <AnalyticsKpiCard label="Bookings"           value={gg.totals.bookings}          delta={gg.change.bookings}          sparkColor="#6E2412" data={gg.daily.map(d => ({ v: d.searchImpressions / 20 }))} />
         </div>
 
         <div className="grid grid-cols-12 gap-4 mt-4">
@@ -94,10 +94,10 @@ function AnalyticsPage({ onOpenPost }) {
       {/* ── WhatsApp ──────────────────────────────────────────────────── */}
       <ChannelSection id="wa">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <KpiCard label="Conversations"  value={wa.totals.conversations} delta={wa.change.conversations} sparkColor="#2E7D4F" data={wa.daily.map(d => ({ v: d.conversations }))} />
-          <KpiCard label="Messages in"    value={wa.totals.messagesIn}    delta={wa.change.messagesIn}    sparkColor="#B4451F" data={wa.daily.map(d => ({ v: d.messagesIn }))} />
-          <KpiCard label="Messages out"   value={wa.totals.messagesOut}   delta={wa.change.messagesOut}   sparkColor="#D99A16" data={wa.daily.map(d => ({ v: d.messagesOut }))} />
-          <KpiCard label="Templates sent" value={wa.totals.templatesSent} delta={wa.change.templatesSent} sparkColor="#6E2412" data={wa.daily.map(d => ({ v: d.conversations / 2 }))} />
+          <AnalyticsKpiCard label="Conversations"  value={wa.totals.conversations} delta={wa.change.conversations} sparkColor="#2E7D4F" data={wa.daily.map(d => ({ v: d.conversations }))} />
+          <AnalyticsKpiCard label="Messages in"    value={wa.totals.messagesIn}    delta={wa.change.messagesIn}    sparkColor="#B4451F" data={wa.daily.map(d => ({ v: d.messagesIn }))} />
+          <AnalyticsKpiCard label="Messages out"   value={wa.totals.messagesOut}   delta={wa.change.messagesOut}   sparkColor="#D99A16" data={wa.daily.map(d => ({ v: d.messagesOut }))} />
+          <AnalyticsKpiCard label="Templates sent" value={wa.totals.templatesSent} delta={wa.change.templatesSent} sparkColor="#6E2412" data={wa.daily.map(d => ({ v: d.conversations / 2 }))} />
         </div>
 
         <div className="grid grid-cols-12 gap-4 mt-4">
@@ -366,7 +366,7 @@ function SegmentedControl({ value, onChange, options }) {
 }
 
 // ---------------------------------------------------------------------------
-function KpiCard({ label, value, delta, suffix = '', sparkColor, data, format }) {
+function AnalyticsKpiCard({ label, value, delta, suffix = '', sparkColor, data, format }) {
   const trendUp = delta >= 0;
   const fmtFn = format || ((v) => fmt(v));
   return (

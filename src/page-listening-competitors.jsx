@@ -120,6 +120,9 @@ function CompetitorInsights({ theme }) {
     const a = [...arr].sort((x, y) => x - y);
     return a.length % 2 ? a[(a.length - 1) / 2] : (a[a.length / 2 - 1] + a[a.length / 2]) / 2;
   };
+  // A median of an even-length set can land on a half. Show it exactly — it is
+  // a measurement — but drop a trailing .0 so whole numbers read as whole.
+  const num = (v) => (Number.isInteger(v) ? String(v) : v.toFixed(1));
 
   const medCadence = med(peers.map(p => p.postsPerWeek));
   const medEngagement = med(peers.map(p => p.engagementRate));
@@ -139,7 +142,7 @@ function CompetitorInsights({ theme }) {
     {
       icon: 'Repeat',
       label: 'Posting cadence',
-      value: `${us.postsPerWeek} vs ${medCadence}`,
+      value: `${us.postsPerWeek} vs ${num(medCadence)}`,
       unit: 'posts/week',
       good: us.postsPerWeek >= medCadence,
       note: us.postsPerWeek >= medCadence
@@ -169,7 +172,7 @@ function CompetitorInsights({ theme }) {
     {
       icon: 'TrendingUp',
       label: 'Review velocity',
-      value: `${us.reviewVelocityPerMonth} vs ${medVelocity}`,
+      value: `${us.reviewVelocityPerMonth} vs ${num(medVelocity)}`,
       unit: 'new reviews/month',
       good: us.reviewVelocityPerMonth >= medVelocity,
       note: us.reviewVelocityPerMonth >= medVelocity
@@ -277,6 +280,7 @@ function SelfRowCard({ data, theme, t }) {
 }
 
 function CompetitorsTable({ rows, sort, onSort, theme, t }) {
+  const [openId, setOpenId] = React.useState(null);
   const sortLabel = (field) => {
     const col = t.listening.competitors.column[field];
     return t.listening.competitors.sortAriaLabel.replace('{column}', col || field);
@@ -300,10 +304,10 @@ function CompetitorsTable({ rows, sort, onSort, theme, t }) {
                               ariaLabel={sortLabel('followers')}  className="text-end px-3 py-2.5" />
               <SortableHeader col="engagement" sort={sort} onSort={onSort} label={t.listening.competitors.column.engagement}
                               ariaLabel={sortLabel('engagement')} className="text-end px-3 py-2.5" />
-              <SortableHeader col="mentions"   sort={sort} onSort={onSort} label={t.listening.competitors.column.mentions}
-                              ariaLabel={sortLabel('mentions')}   className="text-end px-3 py-2.5 hidden lg:table-cell" />
-              <SortableHeader col="sentiment"  sort={sort} onSort={onSort} label={t.listening.competitors.column.sentiment}
-                              ariaLabel={sortLabel('sentiment')}  className="text-end px-3 py-2.5 hidden lg:table-cell" />
+              <SortableHeader col="cadence"    sort={sort} onSort={onSort} label={t.listening.competitors.column.cadence}
+                              ariaLabel={sortLabel('cadence')}    className="text-end px-3 py-2.5 hidden lg:table-cell" />
+              <SortableHeader col="rating"     sort={sort} onSort={onSort} label={t.listening.competitors.column.rating}
+                              ariaLabel={sortLabel('rating')}     className="text-end px-3 py-2.5 hidden lg:table-cell" />
               <th scope="col" className="text-end pe-4 ps-3 py-2.5 text-[11px] uppercase tracking-wider font-medium text-saf-muted hidden md:table-cell">
                 {t.listening.competitors.column.trend}
               </th>
@@ -311,7 +315,14 @@ function CompetitorsTable({ rows, sort, onSort, theme, t }) {
           </thead>
           <tbody>
             {rows.map(c => (
-              <CompetitorRow key={c.id} c={c} theme={theme} t={t} />
+              <CompetitorRow
+                key={c.id}
+                c={c}
+                theme={theme}
+                t={t}
+                expanded={openId === c.id}
+                onToggle={() => setOpenId(prev => (prev === c.id ? null : c.id))}
+              />
             ))}
           </tbody>
         </table>
@@ -344,7 +355,7 @@ function SortableHeader({ col, sort, onSort, label, ariaLabel, className }) {
   );
 }
 
-function CompetitorRow({ c, theme, t, inSelfCard }) {
+function CompetitorRow({ c, theme, t, inSelfCard, expanded, onToggle }) {
   const p = PLATFORM_BY_ID[c.channel];
   const channelColor = platformColor(p, theme);
   // The Saffron House self-row gets a YOU badge + sparkline-in-avatarColor +
@@ -357,8 +368,10 @@ function CompetitorRow({ c, theme, t, inSelfCard }) {
   const rowBg = isSelf
     ? (inSelfCard ? '' : 'bg-saf-primary/10 dark:bg-saf-primary/20')
     : 'hover:bg-saf-surface/60';
+  const canExpand = !isSelf && Array.isArray(c.recentPosts) && c.recentPosts.length > 0;
   return (
-    <tr className={`border-b border-saf-border last:border-b-0 transition-colors ${rowBg}`}>
+    <React.Fragment>
+    <tr className={`border-b border-saf-border last:border-b-0 transition-colors ${expanded ? 'bg-saf-light/40' : rowBg}`}>
       {/* Moment indicator column — full-height amber stripe when isMoment.
           The self-row has no isMoment flag, so renders nothing. */}
       <td className="w-2 p-0 relative">
@@ -376,20 +389,44 @@ function CompetitorRow({ c, theme, t, inSelfCard }) {
       {/* Competitor (avatar + name + handle). YOU badge inline next to
           the name for the self-row. */}
       <td className="ps-4 pe-3 py-3">
-        <div className="flex items-center gap-2.5 min-w-0">
-          <CompetitorMark name={c.name} color={c.avatarColor} size={32} />
-          <div className="min-w-0">
-            <div className="flex items-center gap-1.5 min-w-0" dir="ltr">
-              <span className="text-[13px] font-medium text-saf-text truncate">{c.name}</span>
-              {isSelf && (
-                <span className="inline-flex items-center px-1.5 h-4 text-[9px] font-semibold uppercase tracking-wider rounded bg-saf-primary text-white shrink-0">
-                  {t.listening.competitors.youBadge}
-                </span>
-              )}
+        {canExpand ? (
+          <button
+            onClick={onToggle}
+            aria-expanded={expanded}
+            aria-controls={`feed-${c.id}`}
+            className="flex items-center gap-2.5 min-w-0 w-full text-start rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saf-accent group"
+          >
+            <Icon
+              name="ChevronRight"
+              size={14}
+              className={`text-saf-muted shrink-0 transition-transform ${expanded ? 'rotate-90' : ''}`}
+            />
+            <CompetitorMark name={c.name} color={c.avatarColor} size={32} />
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 min-w-0" dir="ltr">
+                <span className="text-[13px] font-medium text-saf-text truncate group-hover:text-saf-primary transition-colors">{c.name}</span>
+              </div>
+              <div className="text-[11px] text-saf-muted truncate" dir="ltr">
+                {c.handle} · {c.recentPosts.length} posts / 14d
+              </div>
             </div>
-            <div className="text-[11px] text-saf-muted truncate" dir="ltr">{c.handle}</div>
+          </button>
+        ) : (
+          <div className="flex items-center gap-2.5 min-w-0">
+            <CompetitorMark name={c.name} color={c.avatarColor} size={32} />
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 min-w-0" dir="ltr">
+                <span className="text-[13px] font-medium text-saf-text truncate">{c.name}</span>
+                {isSelf && (
+                  <span className="inline-flex items-center px-1.5 h-4 text-[9px] font-semibold uppercase tracking-wider rounded bg-saf-primary text-white shrink-0">
+                    {t.listening.competitors.youBadge}
+                  </span>
+                )}
+              </div>
+              <div className="text-[11px] text-saf-muted truncate" dir="ltr">{c.handle}</div>
+            </div>
           </div>
-        </div>
+        )}
       </td>
 
       {/* Channel */}
@@ -436,6 +473,214 @@ function CompetitorRow({ c, theme, t, inSelfCard }) {
         <Sparkline data={c.sparkEngagement} width={120} height={26} stroke={sparkColor} className="inline-block h-6" />
       </td>
     </tr>
+
+    {canExpand && expanded && (
+      <tr>
+        <td colSpan={8} className="p-0 border-b border-saf-border bg-saf-surface">
+          <CompetitorFeed c={c} theme={theme} />
+        </td>
+      </tr>
+    )}
+    </React.Fragment>
+  );
+}
+
+
+// --- Competitor post feed ----------------------------------------------------
+// One post at a time, with prev/next — the whole feed at a glance is a grid you
+// skim and forget; one post at a time is a feed you actually read.
+//
+// Every field here comes from the Business Discovery `media` edge: caption,
+// media_type, timestamp, like_count, comments_count, permalink. What is NOT
+// here, and why:
+//
+//   · SENTIMENT. Business Discovery returns comment COUNTS, not comment text.
+//     There is no way to read what people said on a competitor's post, so
+//     there is nothing to run sentiment over — classifying their own caption
+//     would just be their marketing copy rating itself. The "performance"
+//     figure replaces it: interactions against that competitor's own median,
+//     which answers the real question (did this work for them?) using data
+//     that exists.
+//   · Their reach, impressions and saves — private.
+//   · Their media files — Meta's terms restrict storing platform media, so
+//     this shows a format placeholder and links out to the original.
+function CompetitorFeed({ c, theme }) {
+  const posts = c.recentPosts;
+  const [i, setI] = React.useState(0);
+  const post = posts[i];
+
+  const go = React.useCallback((delta) => {
+    setI(prev => Math.min(posts.length - 1, Math.max(0, prev + delta)));
+  }, [posts.length]);
+
+  const onKeyDown = (e) => {
+    if (e.key === 'ArrowRight') { e.preventDefault(); go(1); }
+    if (e.key === 'ArrowLeft')  { e.preventDefault(); go(-1); }
+  };
+
+  const offers = posts.filter(m => m.isOffer).length;
+  const best = posts.reduce((a, b) => (b.interactions > a.interactions ? b : a), posts[0]);
+
+  return (
+    <div
+      id={`feed-${c.id}`}
+      className="p-4 focus-visible:outline-none"
+      tabIndex={0}
+      onKeyDown={onKeyDown}
+      role="group"
+      aria-label={`${c.name} posts from the last 14 days`}
+    >
+      {/* Feed-level summary — the pattern across their fortnight, which is the
+          part that actually informs a decision. */}
+      <div className="flex items-center gap-4 flex-wrap mb-3">
+        <div className="text-[12px] text-saf-muted">
+          <span className="font-semibold text-saf-text">{posts.length} posts</span> in 14 days
+        </div>
+        <div className="text-[12px] text-saf-muted">
+          <span className="font-semibold text-saf-text">{Math.round(c.offerShare * 100)}%</span> are offers or discounts
+        </div>
+        <div className="text-[12px] text-saf-muted">
+          Median <span className="font-semibold text-saf-text">{fmtCompact(c.medianInteractions)}</span> interactions
+        </div>
+        <div className="text-[12px] text-saf-muted">
+          Best <span className="font-semibold text-saf-text">{fmtCompact(best.interactions)}</span> ({best.theme})
+        </div>
+        <a
+          href={`https://instagram.com/${c.handle.replace('@', '')}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="ms-auto text-[12px] font-medium text-saf-primary hover:underline inline-flex items-center gap-1"
+        >
+          Open profile <Icon name="ExternalLink" size={12} />
+        </a>
+      </div>
+
+      {/* Performance strip — every post as a bar, so the outliers are visible
+          before you page through. Click to jump. */}
+      <div className="flex items-end gap-1 h-12 mb-3" role="list" aria-label="All posts by interactions">
+        {posts.map((m, idx) => {
+          const h = Math.max(8, (m.interactions / best.interactions) * 100);
+          const active = idx === i;
+          return (
+            <button
+              key={m.id}
+              role="listitem"
+              onClick={() => setI(idx)}
+              aria-label={`Post ${idx + 1}: ${fmt(m.interactions)} interactions, ${m.theme}`}
+              aria-current={active}
+              title={`${fmt(m.interactions)} interactions · ${m.theme}`}
+              className={`flex-1 min-w-[6px] rounded-t transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saf-accent ${active ? '' : 'opacity-45 hover:opacity-80'}`}
+              style={{ height: `${h}%`, background: m.isOffer ? '#D99A16' : c.avatarColor }}
+            />
+          );
+        })}
+      </div>
+
+      {/* The post */}
+      <Card padding="p-0" className="overflow-hidden">
+        <div className="grid grid-cols-12">
+          <div className="col-span-12 sm:col-span-4 lg:col-span-3">
+            {/* Their media is not mirrored — see the note above. */}
+            <div className="relative h-full min-h-[150px] bg-saf-light grid place-items-center">
+              <div className="text-center px-3 py-6">
+                <Icon
+                  name={post.format === 'reel' ? 'Video' : post.format === 'carousel' ? 'Copy' : 'Image'}
+                  size={26}
+                  className="text-saf-primary mx-auto"
+                />
+                <div className="text-[11px] font-medium text-saf-text mt-1.5 capitalize">{post.format}</div>
+                <div className="text-[10px] text-saf-muted mt-0.5">media not mirrored</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="col-span-12 sm:col-span-8 lg:col-span-9 p-4">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-[11px] text-saf-muted">{fmtTime(post.t, { withDate: true })}</span>
+              <span className="text-[11px] text-saf-muted">·</span>
+              <span className="px-2 h-5 inline-flex items-center rounded-full bg-saf-light text-saf-primary text-[10.5px] font-medium">
+                {post.theme}
+              </span>
+              {post.isOffer && (
+                <span className="px-2 h-5 inline-flex items-center rounded-full bg-amber-50 text-amber-700 text-[10.5px] font-semibold">
+                  Discount / offer
+                </span>
+              )}
+              <span className="ms-auto text-[11px] text-saf-muted tabular-nums">
+                Post {i + 1} of {posts.length}
+              </span>
+            </div>
+
+            <p className="mt-2 text-[13.5px] leading-relaxed text-saf-text">{post.caption}</p>
+
+            {post.hashtags.length > 0 && (
+              <div className="mt-1.5 text-[12px] text-saf-primary">{post.hashtags.join(' ')}</div>
+            )}
+
+            <div className="mt-3 flex items-center gap-5 flex-wrap">
+              <FeedMetric icon="Heart" label="Likes" value={fmt(post.likes)} />
+              <FeedMetric icon="MessageCircle" label="Comments" value={fmt(post.comments)} />
+              <PerformanceChip index={post.index} />
+              <a
+                href={post.permalink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[12px] font-medium text-saf-primary hover:underline inline-flex items-center gap-1"
+              >
+                View on Instagram <Icon name="ExternalLink" size={12} />
+              </a>
+            </div>
+          </div>
+        </div>
+
+        {/* Pager */}
+        <div className="flex items-center justify-between gap-2 px-4 py-2.5 border-t border-saf-border bg-saf-surface">
+          <Button size="sm" variant="secondary" leadingIcon="ChevronLeft" onClick={() => go(-1)} disabled={i === 0}>
+            Previous
+          </Button>
+          <span className="text-[11.5px] text-saf-muted">Use ← → to move between posts</span>
+          <Button size="sm" variant="secondary" trailingIcon="ChevronRight" onClick={() => go(1)} disabled={i === posts.length - 1}>
+            Next
+          </Button>
+        </div>
+      </Card>
+
+      {/* The honesty note, on the screen rather than in a doc nobody opens. */}
+      <div className="flex items-start gap-2 mt-3">
+        <Icon name="Info" size={13} className="text-saf-muted mt-0.5 shrink-0" />
+        <p className="text-[11.5px] text-saf-muted leading-relaxed">
+          <span className="font-medium text-saf-text">No sentiment on competitor posts.</span>{' '}
+          Business Discovery returns comment counts, not comment text — there is no way to read what
+          people said on someone else's post, so there is nothing to classify. Performance against
+          their own median is shown instead. Their reach, impressions and saves are private, and
+          their media is linked rather than mirrored.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function FeedMetric({ icon, label, value }) {
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <Icon name={icon} size={14} className="text-saf-muted" />
+      <span className="text-[13px] font-semibold text-saf-text tabular-nums">{value}</span>
+      <span className="text-[11.5px] text-saf-muted">{label}</span>
+    </span>
+  );
+}
+
+// Performance against this competitor's own median. Carries a word as well as
+// a tone, so it survives greyscale and colour-blind viewing.
+function PerformanceChip({ index }) {
+  const pct = Math.round((index - 1) * 100);
+  const meta = index >= 1.5 ? { tone: 'bg-emerald-50 text-emerald-700', label: 'Outperformed' }
+             : index >= 0.8 ? { tone: 'bg-saf-light text-saf-primary',  label: 'Typical' }
+             :                { tone: 'bg-slate-100 text-saf-muted',     label: 'Underperformed' };
+  return (
+    <span className={`inline-flex items-center gap-1 px-2 h-6 rounded-full text-[11.5px] font-semibold ${meta.tone}`}>
+      {meta.label} · {pct > 0 ? '+' : ''}{pct}% vs their median
+    </span>
   );
 }
 
@@ -476,3 +721,6 @@ function SentimentValue({ value }) {
 }
 
 window.CompetitorsScreen = CompetitorsScreen;
+
+// Exported for verification harnesses; the screen uses it directly.
+window.CompetitorFeed = CompetitorFeed;

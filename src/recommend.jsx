@@ -397,6 +397,7 @@ const REC_RULES = [
     run(ctx) {
       const us = ctx.self.postsPerWeek;
       const medianCadence = median(ctx.competitors.map(c => c.postsPerWeek));
+      const target = Math.ceil(medianCadence);
       if (us >= medianCadence) return [];
       const busier = ctx.competitors.filter(c => c.postsPerWeek > us);
       // Only worth raising if our engagement rate is competitive — telling
@@ -409,7 +410,7 @@ const REC_RULES = [
         kind: 'content',
         title: `You post ${us}× a week; the catchment median is ${medianCadence}`,
         detail: `${busier.length} of ${ctx.competitors.length} restaurants nearby post more often than you, and your engagement rate (${(ourRate * 100).toFixed(1)}%) is at or above the local median (${(medianRate * 100).toFixed(1)}%) — meaning the audience responds when you do show up. This is the cheapest growth available: the content works, there is just not enough of it.`,
-        action: `Lift to ${medianCadence} posts a week using existing kitchen footage`,
+        action: `Lift to ${target} posts a week using existing kitchen footage`,
         owner: 'executive',
         where: 'Content plan · schedule queue',
         channels: ['ig'],
