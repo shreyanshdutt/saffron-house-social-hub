@@ -997,6 +997,7 @@ const LISTENING_COMPETITORS = [
     id: 'cmp-7', name: 'Wok Republic', handle: '@wokrepublicdwarka', channel: 'ig',
     avatarColor: '#0D9488', synced: false,
     followers: 14800,       followersChange7dPct: 1.8,
+    avgInteractions: 533,
     googleRating: 4.1,      googleReviews: 960,   reviewVelocityPerMonth: 51,
     themes: ['chinese', 'offers', 'late night'],
     postingPeak: '8–10pm',
@@ -1007,6 +1008,7 @@ const LISTENING_COMPETITORS = [
     id: 'cmp-8', name: 'The Bread Room', handle: '@thebreadroom.dwk', channel: 'ig',
     avatarColor: '#A16207', synced: false,
     followers: 9400,        followersChange7dPct: 5.2,
+    avgInteractions: 677,
     googleRating: 4.6,      googleReviews: 540,   reviewVelocityPerMonth: 38,
     themes: ['bakes', 'coffee', 'chef stories'],
     postingPeak: '9–11am',
@@ -1017,6 +1019,7 @@ const LISTENING_COMPETITORS = [
     id: 'cmp-9', name: 'Tandoori Nights', handle: '@tandoorinights10', channel: 'ig',
     avatarColor: '#9333EA', synced: false,
     followers: 12100,       followersChange7dPct: 0.6,
+    avgInteractions: 375,
     googleRating: 4.0,      googleReviews: 1120,  reviewVelocityPerMonth: 47,
     themes: ['kebabs', 'offers', 'family dining'],
     postingPeak: '7–9pm',
@@ -1056,6 +1059,15 @@ const FEED_VARIANCE = [1.00, 0.62, 1.48, 0.81, 1.15, 0.55, 2.10, 0.74, 0.93,
                        1.32, 0.68, 1.05, 0.88, 1.62, 0.71, 1.24, 0.59, 1.41];
 
 function buildCompetitorFeed(comp, seeds, nowMs) {
+  // A missing avgInteractions silently produced NaN through every derived
+  // number, and fmt() renders NaN as an em dash — so the feed looked merely
+  // empty rather than broken. Refuse instead.
+  if (!Number.isFinite(comp.avgInteractions) || !Number.isFinite(comp.followers)) {
+    throw new Error(
+      `Cannot build feed for ${comp.id}: avgInteractions and followers must be finite numbers ` +
+      `(got ${comp.avgInteractions} / ${comp.followers}). Business Discovery returns both.`
+    );
+  }
   const n = seeds.length;
   const raw = seeds.map((_, i) => FEED_VARIANCE[i % FEED_VARIANCE.length]);
   const mean = raw.reduce((a, b) => a + b, 0) / n;
@@ -1082,7 +1094,11 @@ function buildCompetitorFeed(comp, seeds, nowMs) {
       // Performance against this competitor's own median — the honest answer
       // to "did this post work", computable from public counts alone.
       index: 0,   // filled below, once the median is known
-      permalink: `https://instagram.com/p/${comp.id}-m${i + 1}`,
+      // Real shape once the data is real; a marker while it is not, so a
+      // permalink copied out of the app cannot masquerade as a live post.
+      permalink: COMPETITOR_CATCHMENT.isSampleData
+        ? `sample://${comp.id}/m${i + 1}`
+        : `https://instagram.com/p/${comp.id}-m${i + 1}`,
       t: new Date(nowMs - hoursAgo * 3_600_000).toISOString(),
     };
   });
@@ -1220,7 +1236,14 @@ function applyCompetitorSync(comp, nowMs) {
   const seeds = COMPETITOR_POST_SEEDS[comp.id] || [];
   if (!seeds.length) return false;
 
-  comp.recentPosts = buildCompetitorFeed(comp, seeds, nowMs);
+  try {
+    comp.recentPosts = buildCompetitorFeed(comp, seeds, nowMs);
+  } catch (err) {
+    comp.syncError = err.message;
+    comp.synced = false;
+    return false;
+  }
+  comp.syncError = null;
   comp.postsPerWeek = Math.round(seeds.length / 2);
 
   const inter = comp.recentPosts.map(m => m.interactions);
@@ -1504,13 +1527,16 @@ function syncCompetitors() {
       discoveryCalls += 1;
       if (comp) {
         const wasSynced = comp.synced;
-        applyCompetitorSync(comp, now);
-        steps.push({
+        const ok = applyCompetitorSync(comp, now);
+        steps.push(ok ? {
           establishment: e.name, api: 'Business Discovery', ok: true,
           detail: wasSynced
             ? `${comp.recentPosts.length} posts refreshed · ${comp.postsPerWeek}/week`
             : `First pull — ${comp.recentPosts.length} posts, ${(comp.followers / 1000).toFixed(1)}k followers`,
           isNew: !wasSynced,
+        } : {
+          establishment: e.name, api: 'Business Discovery', ok: false,
+          detail: comp.syncError || 'Pull failed — no content applied',
         });
       } else {
         steps.push({

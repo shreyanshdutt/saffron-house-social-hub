@@ -753,14 +753,11 @@ function CompetitorFeed({ c, theme }) {
         <div className="text-[12px] text-saf-muted">
           Best <span className="font-semibold text-saf-text">{fmtCompact(best.interactions)}</span> ({best.theme})
         </div>
-        <a
+        <ExternalRef
           href={`https://instagram.com/${c.handle.replace('@', '')}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="ms-auto text-[12px] font-medium text-saf-primary hover:underline inline-flex items-center gap-1"
-        >
-          Open profile <Icon name="ExternalLink" size={12} />
-        </a>
+          label="Open profile"
+          className="ms-auto"
+        />
       </div>
 
       {/* Performance strip — every post as a bar, so the outliers are visible
@@ -829,14 +826,7 @@ function CompetitorFeed({ c, theme }) {
               <FeedMetric icon="Heart" label="Likes" value={fmt(post.likes)} />
               <FeedMetric icon="MessageCircle" label="Comments" value={fmt(post.comments)} />
               <PerformanceChip index={post.index} />
-              <a
-                href={post.permalink}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[12px] font-medium text-saf-primary hover:underline inline-flex items-center gap-1"
-              >
-                View on Instagram <Icon name="ExternalLink" size={12} />
-              </a>
+              <ExternalRef href={post.permalink} label="View on Instagram" />
             </div>
           </div>
         </div>
@@ -865,6 +855,32 @@ function CompetitorFeed({ c, theme }) {
         </p>
       </div>
     </div>
+  );
+}
+
+// An outbound link, but only when there is something real behind it. Under
+// sample data the same affordance renders as inert text saying why — a dead
+// link to instagram.com reads as "our data broke", not "this data is invented".
+function ExternalRef({ href, label, className = '' }) {
+  if (COMPETITOR_CATCHMENT.isSampleData) {
+    return (
+      <Tooltip label="Sample data — this handle does not exist, so there is nothing to open" side="top">
+        <span className={`text-[12px] text-saf-muted inline-flex items-center gap-1 cursor-help ${className}`}>
+          <Icon name="Unlink" size={12} />
+          {label} — no live link
+        </span>
+      </Tooltip>
+    );
+  }
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={`text-[12px] font-medium text-saf-primary hover:underline inline-flex items-center gap-1 ${className}`}
+    >
+      {label} <Icon name="ExternalLink" size={12} />
+    </a>
   );
 }
 
