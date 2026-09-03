@@ -134,7 +134,7 @@ function Sidebar({ collapsed, onToggle, page, onNavigate, unreadCount, role }) {
         </button>
         <div className={`min-w-0 transition-all duration-200 ${collapsed ? 'opacity-0 -translate-x-2 w-0 overflow-hidden' : 'opacity-100'}`}>
           <div className="text-[15px] font-bold leading-tight text-white whitespace-nowrap text-start">Saffron House Social Hub</div>
-          <div className="text-[11px] text-white/70 whitespace-nowrap text-start">Khan Market, New Delhi</div>
+          <div className="text-[11px] text-white/70 whitespace-nowrap text-start">Sector 10 Market, Dwarka</div>
         </div>
       </div>
 

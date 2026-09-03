@@ -1,8 +1,10 @@
 # Saffron House Social Hub
 
 Prototype UI for a single-restaurant social and reputation hub, built for
-**Saffron House** — a flagship modern-Indian restaurant in Khan Market, New
-Delhi.
+**Saffron House** — a modern-Indian restaurant in Sector 10 Market, Dwarka,
+New Delhi 110075. Positioning, prices, follower counts and review volumes are
+scaled to that catchment: it is the upmarket option in a neighbourhood market,
+not a central-Delhi flagship.
 
 Single-page React app served from `index.html`, using CDN-hosted React 18,
 in-browser Babel for the JSX in `src/`, an importmap to bind ESM modules
@@ -72,7 +74,7 @@ Four things were restructured around restaurant reality rather than carried
 over:
 
 - **Actions** (`src/page-recommendations.jsx`, engine in `src/recommend.jsx`) is
-  the "what should I do today" screen. Eleven rules run over the week's
+  the "what should I do today" screen. Eighteen rules run over the week's
   reviews, menu conversation, listening signals, channel performance and
   publishing queue, and produce a ranked list of concrete actions — post this
   dish, fix the packing station, open a second Diwali seating, do not promote
@@ -92,6 +94,13 @@ over:
   tracks sentiment per *dish* rather than per hashtag — the only vocabulary a
   kitchen can act on. It leads with the biggest mover in each direction, since
   "most talked about" is just the bestseller you already knew about.
+- **Competitor insights** (`src/page-listening-competitors.jsx`) compares the
+  restaurant against a named catchment — Sector 10 Market, Dwarka, 2.5km — on
+  the four things public data actually supports: posting cadence, engagement
+  rate, Google rating and review velocity. Plus a content-positioning split of
+  themes nobody nearby posts versus themes two or more rivals own. Every figure
+  is Business Discovery or Places; their reach and sentiment are private and
+  are not shown at any confidence.
 - **Composer previews** (`src/page-compose.jsx`) are genuinely different per
   channel. A Google post renders inside a business listing with its rating and
   Book/Directions buttons; a marketplace post renders above an order button; a

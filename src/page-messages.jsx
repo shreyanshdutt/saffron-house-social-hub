@@ -58,7 +58,7 @@ function MessagesPage({ role }) {
       const text = await window.claude.complete({
         messages: [
           { role: 'user', content:
-            `You write guest replies for Saffron House, a modern-Indian restaurant in Khan Market, New Delhi. Write a warm, concise reply (2-3 sentences max) to the following guest message on ${PLATFORM_BY_ID[active.platform].name}.\n\nBe specific and human, never corporate. If the guest has a problem, acknowledge it plainly and give a concrete next step rather than an apology template. Never promise a refund or a comp — that is the Marketing Manager's call. Do not use quotation marks.\n\nGuest message:\n${userMsgs}` },
+            `You write guest replies for Saffron House, a modern-Indian restaurant in Sector 10 Market, Dwarka. Write a warm, concise reply (2-3 sentences max) to the following guest message on ${PLATFORM_BY_ID[active.platform].name}.\n\nBe specific and human, never corporate. If the guest has a problem, acknowledge it plainly and give a concrete next step rather than an apology template. Never promise a refund or a comp — that is the Marketing Manager's call. Do not use quotation marks.\n\nGuest message:\n${userMsgs}` },
         ],
       });
       setReply(prev => (prev ? prev + '\n\n' : '') + text.trim());

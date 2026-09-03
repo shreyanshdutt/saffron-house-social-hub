@@ -136,6 +136,298 @@ function projectReach(ctx, dish) {
 // 0–1 weights; see scoreRecommendation() for how they combine.
 const REC_RULES = [
   // ---------------------------------------------------------------------
+  // The Google listing is where intent-to-visit is decided, and its funnel is
+  // fully instrumented by the Performance API. A listing seen 56k times that
+  // produces 96 bookings is not a marketing problem, it is a conversion one —
+  // and the fixes are free.
+  {
+    id: 'gbp-conversion',
+    title: 'Google listing conversion',
+    run(ctx) {
+      const g = ANALYTICS_GG;
+      const impressions = g.totals.searchImpressions + g.totals.mapsImpressions;
+      const actions = g.totals.directionRequests + g.totals.callClicks + g.totals.websiteClicks + g.totals.bookings;
+      const rate = actions / impressions;
+      // Below ~7% of impressions producing any action, the listing itself is
+      // the bottleneck rather than demand.
+      if (rate >= 0.07) return [];
+      const photos = g.photos;
+
+      return [{
+        kind: 'ops',
+        title: `Your Google listing converts at ${(rate * 100).toFixed(1)}% — the traffic is already there`,
+        detail: `${fmt(impressions)} people saw the listing this week and ${fmt(actions)} did anything about it. That is not a demand problem; it is a shop-window problem. The three things that move this are recent photos, answered questions, and replied-to reviews — all free, all within your control, and the listing has had ${photos.addedLast30d} new photos in 30 days.`,
+        action: 'Add 8–10 fresh photos and answer the open questions',
+        owner: 'executive',
+        where: 'Google Business Profile',
+        channels: ['gg'],
+        window: 'This week',
+        evidence: [
+          { label: 'Impressions (7d)', value: `${fmt(g.totals.searchImpressions)} search + ${fmt(g.totals.mapsImpressions)} maps`, source: 'gbpPerf' },
+          { label: 'Actions taken', value: `${fmt(actions)} (${(rate * 100).toFixed(1)}%)`, source: 'gbpPerf' },
+          { label: 'Bookings', value: `${fmt(g.totals.bookings)}`, source: 'gbpPerf' },
+          { label: 'Photos added in 30d', value: `${photos.addedLast30d} — last one ${photos.lastAddedDaysAgo} days ago`, source: 'gbp' },
+        ],
+        impact: 0.85,
+        confidence: 0.75,
+        effort: 0.25,
+      }];
+    },
+  },
+
+  // ---------------------------------------------------------------------
+  // Anyone can answer a question on a Google listing, including people who
+  // have never eaten here. An unanswered question is a stranger's guess
+  // waiting to become the top answer — and it is answered in public, forever.
+  {
+    id: 'gbp-qanda',
+    title: 'Unanswered questions on the listing',
+    run(ctx) {
+      const qa = ANALYTICS_GG.qanda;
+      if (!qa || qa.open < 3) return [];
+      return [{
+        kind: 'reply',
+        title: `${qa.open} questions on your Google listing have no answer from you`,
+        detail: `${qa.answeredByPublic} of your listing's questions were answered by members of the public rather than by you — those answers are now what a prospective guest reads, and nobody checked them. The oldest unanswered question has been sitting for ${qa.oldestOpenDays} days. Answering is free and takes ten minutes.`,
+        action: 'Answer all open questions, and post the common ones yourself',
+        owner: 'srexec',
+        where: 'Google Business Profile → Q&A',
+        channels: ['gg'],
+        window: 'Today',
+        evidence: [
+          { label: 'Open questions', value: `${qa.open}`, source: 'gbpQanda' },
+          { label: 'Answered by strangers', value: `${qa.answeredByPublic}`, source: 'gbpQanda' },
+          { label: 'Oldest unanswered', value: `${qa.oldestOpenDays} days`, source: 'gbpQanda' },
+          { label: 'Answered by you', value: `${qa.answeredByUs}`, source: 'gbpQanda' },
+        ],
+        impact: 0.7,
+        confidence: 0.9,
+        effort: 0.15,
+      }];
+    },
+  },
+
+  // ---------------------------------------------------------------------
+  // WhatsApp allows free-form replies for 24 hours after a guest messages you.
+  // Miss the window and the only way back is an approved template, billed per
+  // message. This rule is a cost control as much as a service one.
+  {
+    id: 'wa-window',
+    title: 'WhatsApp service windows closing',
+    run(ctx) {
+      const closing = CONVERSATIONS.filter(c =>
+        c.platform === 'wa' &&
+        typeof c.windowMinsLeft === 'number' &&
+        c.windowMinsLeft > 0 &&
+        c.windowMinsLeft < 240 &&
+        c.unread > 0
+      );
+      if (!closing.length) return [];
+      const soonest = closing.sort((a, b) => a.windowMinsLeft - b.windowMinsLeft)[0];
+      const mins = soonest.windowMinsLeft;
+
+      return [{
+        kind: 'reply',
+        title: `${closing.length} WhatsApp conversation${closing.length > 1 ? 's' : ''} about to fall outside the free reply window`,
+        detail: `${soonest.user} messaged ${Math.round((24 * 60 - mins) / 60)} hours ago and is still waiting. You have ${Math.floor(mins / 60)}h ${mins % 60}m of free-form reply left. After that the only way to reach them is an approved template message, which costs money per send and reads like marketing — to someone who asked you a direct question.`,
+        action: 'Reply now, before the window closes',
+        owner: 'executive',
+        where: 'Inbox → WhatsApp',
+        channels: ['wa'],
+        window: `${Math.floor(mins / 60)}h ${mins % 60}m`,
+        evidence: [
+          { label: 'Windows closing within 4h', value: `${closing.length}`, source: 'wa' },
+          { label: 'Soonest', value: `${soonest.user} — ${Math.floor(mins / 60)}h ${mins % 60}m left`, source: 'wa' },
+          { label: 'Their message', value: `"${soonest.preview}"`, source: 'wa' },
+          { label: 'Median reply time', value: `${ANALYTICS_WA.totals.medianResponseMins} min`, source: 'wa' },
+        ],
+        impact: 0.8,
+        confidence: 0.95,
+        effort: 0.1,
+      }];
+    },
+  },
+
+  // ---------------------------------------------------------------------
+  // A like is applause; a save is someone planning to come. Comparing save
+  // rate by format tells you what to shoot next, and the data is per-media in
+  // Instagram insights.
+  {
+    id: 'format-saves',
+    title: 'Which format earns intent',
+    run(ctx) {
+      const published = ctx.posts.filter(p => p.status === 'published' && p.metrics.reach > 0 && p.format);
+      if (published.length < 3) return [];
+      const byFormat = {};
+      published.forEach(p => {
+        const f = p.format;
+        if (!byFormat[f]) byFormat[f] = { saves: 0, reach: 0, n: 0 };
+        byFormat[f].saves += p.metrics.saves;
+        byFormat[f].reach += p.metrics.reach;
+        byFormat[f].n += 1;
+      });
+      const ranked = Object.entries(byFormat)
+        .map(([f, v]) => ({ format: f, rate: v.saves / v.reach, n: v.n }))
+        .sort((a, b) => b.rate - a.rate);
+      if (ranked.length < 2) return [];
+      const best = ranked[0], worst = ranked[ranked.length - 1];
+      const multiple = worst.rate > 0 ? best.rate / worst.rate : 0;
+      if (multiple < 1.5) return [];
+
+      return [{
+        kind: 'content',
+        title: `${best.format}s earn ${multiple.toFixed(1)}× the save rate of ${worst.format}s`,
+        detail: `Saves are the closest thing Instagram gives you to intent — a like is applause, a save is someone planning a visit. Your ${best.format}s save at ${(best.rate * 100).toFixed(2)}% of reach against ${(worst.rate * 100).toFixed(2)}% for ${worst.format}s. Shift the shooting schedule accordingly rather than posting whatever is easiest that day.`,
+        action: `Make ${best.format}s the default format`,
+        owner: 'executive',
+        where: 'Content plan',
+        channels: ['ig'],
+        window: 'Next content batch',
+        evidence: ranked.map(r => ({
+          label: `${r.format} save rate (${r.n} post${r.n > 1 ? 's' : ''})`,
+          value: `${(r.rate * 100).toFixed(2)}% of reach`,
+          source: 'ig',
+        })),
+        impact: 0.6,
+        confidence: 0.6,
+        effort: 0.3,
+      }];
+    },
+  },
+
+  // ---------------------------------------------------------------------
+  // The same question arriving on three different channels is not three
+  // support tickets, it is one missing piece of published information.
+  {
+    id: 'repeat-question',
+    title: 'Questions you are answering over and over',
+    run(ctx) {
+      // Pull guest-side text from every channel and look for recurring topics
+      // that a published answer would kill off permanently.
+      const guestText = [
+        ...CONVERSATIONS.flatMap(c => c.messages.filter(m => m.from === 'user').map(m => m.text)),
+        ...POST_COMMENTS.filter(c => !c.isBrand).map(c => c.text),
+      ];
+      const topics = [
+        { id: 'booking',   label: 'booking and table-holding policy', re: /book|table|reserv|walk-?in/i },
+        { id: 'group',     label: 'group and large-party bookings',   re: /group of|\bfor \d{2}|private din|corporate/i },
+        { id: 'veg',       label: 'vegetarian options',               re: /vegetarian|veg version|jackfruit|kathal/i },
+        { id: 'parking',   label: 'parking',                          re: /parking|park\b/i },
+        { id: 'kids',      label: 'children and high chairs',         re: /toddler|high chair|kids?\b|child/i },
+        { id: 'hours',     label: 'opening hours and late kitchen',   re: /open till|closing|late|what time/i },
+      ];
+      const hits = topics
+        .map(t => ({ ...t, n: guestText.filter(x => t.re.test(x)).length }))
+        .filter(t => t.n >= 2)
+        .sort((a, b) => b.n - a.n);
+      if (!hits.length) return [];
+      const top = hits[0];
+
+      return [{
+        kind: 'content',
+        title: `Guests keep asking about ${top.label}`,
+        detail: `The same question is arriving across Instagram DMs, comments and Google Q&A — ${top.n} times in the current window, each one answered by hand. Publishing the answer once, in the three places people look before they ask, removes the work permanently and helps the guests who would never bother to ask.`,
+        action: 'Answer it on the Google listing, an Instagram highlight, and the WhatsApp greeting',
+        owner: 'executive',
+        where: 'Google Q&A · Instagram highlights · WhatsApp auto-reply',
+        channels: ['gg', 'ig', 'wa'],
+        window: 'This week',
+        evidence: [
+          { label: `Asked about ${top.label}`, value: `${top.n} times`, source: 'nlp' },
+          ...hits.slice(1, 4).map(h => ({ label: `Also asked: ${h.label}`, value: `${h.n} times`, source: 'nlp' })),
+          { label: 'Open Google questions', value: `${ANALYTICS_GG.qanda.open}`, source: 'gbpQanda' },
+        ],
+        impact: 0.6,
+        confidence: 0.75,
+        effort: 0.2,
+      }];
+    },
+  },
+
+  // ---------------------------------------------------------------------
+  // Review velocity is the competitor metric nobody watches and everybody
+  // loses to. Google sorts and surfaces on volume as well as score: a rival
+  // gaining reviews twice as fast will out-rank you eventually regardless of
+  // who cooks better. Computable from stored Places review counts.
+  {
+    id: 'review-velocity',
+    title: 'Losing ground on review volume',
+    run(ctx) {
+      const us = ctx.self.reviewVelocityPerMonth;
+      if (!us) return [];
+      const faster = ctx.competitors
+        .filter(c => c.reviewVelocityPerMonth > us)
+        .sort((a, b) => b.reviewVelocityPerMonth - a.reviewVelocityPerMonth);
+      if (!faster.length) return [];
+      const leader = faster[0];
+      const gap = leader.reviewVelocityPerMonth / us;
+      // Months until they overtake us on total review count, if nothing changes.
+      const monthsToOvertake = leader.googleReviews > ctx.self.googleReviews
+        ? null
+        : Math.ceil((ctx.self.googleReviews - leader.googleReviews) / (leader.reviewVelocityPerMonth - us));
+
+      return [{
+        kind: 'ops',
+        title: `${leader.name} is gaining Google reviews ${gap.toFixed(1)}× faster than you`,
+        detail: `They add roughly ${leader.reviewVelocityPerMonth} reviews a month against your ${us}. Google weighs volume as well as score, so this compounds quietly: ${faster.length} restaurant${faster.length > 1 ? 's' : ''} in the catchment ${faster.length > 1 ? 'are' : 'is'} outpacing you${leader.googleReviews > ctx.self.googleReviews ? ' and already ahead on total count' : monthsToOvertake ? `, and at this rate they pass your total in about ${monthsToOvertake} months` : ''}. The fix is a review ask built into the end of service, not a campaign.`,
+        action: 'Add a review ask to the bill drop and the WhatsApp thank-you',
+        owner: 'admin',
+        where: 'Floor process · WhatsApp template',
+        channels: ['gg', 'wa'],
+        window: 'This month',
+        evidence: [
+          { label: 'Our review velocity', value: `${us}/month (${fmt(ctx.self.googleReviews)} total)`, source: 'gbp' },
+          { label: `${leader.name}`, value: `${leader.reviewVelocityPerMonth}/month (${fmt(leader.googleReviews)} total)`, source: 'publicApi' },
+          { label: 'Faster than us', value: `${faster.length} of ${ctx.competitors.length} in the catchment`, source: 'publicApi' },
+          { label: 'Their rating', value: `${leader.googleRating.toFixed(1)} vs our ${ctx.self.googleRating.toFixed(1)}`, source: 'publicApi' },
+        ],
+        impact: 0.75,
+        confidence: 0.7,
+        effort: 0.35,
+      }];
+    },
+  },
+
+  // ---------------------------------------------------------------------
+  // Posting cadence against the catchment. Business Discovery gives media
+  // counts for every public competitor, so this is a real comparison.
+  {
+    id: 'cadence-gap',
+    title: 'Posting cadence against the catchment',
+    run(ctx) {
+      const us = ctx.self.postsPerWeek;
+      const medianCadence = median(ctx.competitors.map(c => c.postsPerWeek));
+      if (us >= medianCadence) return [];
+      const busier = ctx.competitors.filter(c => c.postsPerWeek > us);
+      // Only worth raising if our engagement rate is competitive — telling
+      // someone to post more when nobody engages is bad advice.
+      const ourRate = ctx.self.engagementRate;
+      const medianRate = median(ctx.competitors.map(c => c.engagementRate));
+      if (ourRate < medianRate * 0.8) return [];
+
+      return [{
+        kind: 'content',
+        title: `You post ${us}× a week; the catchment median is ${medianCadence}`,
+        detail: `${busier.length} of ${ctx.competitors.length} restaurants nearby post more often than you, and your engagement rate (${(ourRate * 100).toFixed(1)}%) is at or above the local median (${(medianRate * 100).toFixed(1)}%) — meaning the audience responds when you do show up. This is the cheapest growth available: the content works, there is just not enough of it.`,
+        action: `Lift to ${medianCadence} posts a week using existing kitchen footage`,
+        owner: 'executive',
+        where: 'Content plan · schedule queue',
+        channels: ['ig'],
+        window: 'From next week',
+        evidence: [
+          { label: 'Our cadence', value: `${us} posts/week`, source: 'ig' },
+          { label: 'Catchment median', value: `${medianCadence} posts/week`, source: 'publicApi' },
+          { label: 'Busiest peer', value: `${busier.sort((a, b) => b.postsPerWeek - a.postsPerWeek)[0].name} — ${busier[0].postsPerWeek}/week`, source: 'publicApi' },
+          { label: 'Our engagement rate', value: `${(ourRate * 100).toFixed(1)}% vs ${(medianRate * 100).toFixed(1)}% median`, source: 'ig' },
+        ],
+        impact: 0.55,
+        confidence: 0.65,
+        effort: 0.4,
+      }];
+    },
+  },
+
+  // ---------------------------------------------------------------------
   {
     id: 'rising-dish',
     title: 'Dishes gaining attention with nothing scheduled',

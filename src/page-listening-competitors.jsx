@@ -76,12 +76,183 @@ function CompetitorsScreen({ theme }) {
   };
 
   return (
-    <div id="listening-competitors" role="tabpanel" className="space-y-3">
+    <div id="listening-competitors" role="tabpanel" className="space-y-4">
+      <CatchmentHeader />
+      <CompetitorInsights theme={theme} />
       {/* Saffron House sits above the peer table — internal-source data, our own
           baseline. The peer table below is purely external observation. */}
       <SelfRowCard data={SAF_SELF_STATS} theme={theme} t={t} />
       <CompetitorsTable rows={sortedRows} sort={sort} onSort={onSort} theme={theme} t={t} />
+      <SourceNote />
     </div>
+  );
+}
+
+// Names the catchment, because a competitor set without a boundary is just a
+// list of restaurants. Google Places nearby search seeds it; a human curates.
+function CatchmentHeader() {
+  const c = COMPETITOR_CATCHMENT;
+  return (
+    <div className="flex items-start gap-2.5">
+      <span className="w-8 h-8 rounded-lg bg-saf-light text-saf-primary grid place-items-center shrink-0">
+        <Icon name="MapPin" size={16} />
+      </span>
+      <div>
+        <div className="text-[14.5px] font-semibold text-saf-text">
+          {c.label} · {c.pincode}
+        </div>
+        <div className="text-[12px] text-saf-muted">
+          {c.radiusKm} km radius · {LISTENING_COMPETITORS.length} restaurants tracked · {c.note}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// The table shows numbers; the insight is in the gaps between them. Each of
+// these is computed from public fields only — Business Discovery counts and
+// Places ratings — and says what the gap means rather than just how big it is.
+function CompetitorInsights({ theme }) {
+  const us = SAF_SELF_STATS;
+  const peers = LISTENING_COMPETITORS;
+
+  const med = (arr) => {
+    const a = [...arr].sort((x, y) => x - y);
+    return a.length % 2 ? a[(a.length - 1) / 2] : (a[a.length / 2 - 1] + a[a.length / 2]) / 2;
+  };
+
+  const medCadence = med(peers.map(p => p.postsPerWeek));
+  const medEngagement = med(peers.map(p => p.engagementRate));
+  const medRating = med(peers.map(p => p.googleRating));
+  const medVelocity = med(peers.map(p => p.reviewVelocityPerMonth));
+
+  // Theme gap: what the catchment posts about that we do not, and vice versa.
+  const peerThemes = {};
+  peers.forEach(p => (p.themes || []).forEach(t => { peerThemes[t] = (peerThemes[t] || 0) + 1; }));
+  const ourThemes = new Set(us.themes || []);
+  const uncontested = (us.themes || []).filter(t => !peerThemes[t]);
+  const crowded = Object.entries(peerThemes)
+    .filter(([t, n]) => n >= 2 && !ourThemes.has(t))
+    .sort((a, b) => b[1] - a[1]);
+
+  const cards = [
+    {
+      icon: 'Repeat',
+      label: 'Posting cadence',
+      value: `${us.postsPerWeek} vs ${medCadence}`,
+      unit: 'posts/week',
+      good: us.postsPerWeek >= medCadence,
+      note: us.postsPerWeek >= medCadence
+        ? 'At or above the catchment median.'
+        : `Behind the median. ${peers.filter(p => p.postsPerWeek > us.postsPerWeek).length} of ${peers.length} post more often.`,
+    },
+    {
+      icon: 'Heart',
+      label: 'Engagement rate',
+      value: `${(us.engagementRate * 100).toFixed(1)}% vs ${(medEngagement * 100).toFixed(1)}%`,
+      unit: 'interactions ÷ followers',
+      good: us.engagementRate >= medEngagement,
+      note: us.engagementRate >= medEngagement
+        ? 'The audience responds when you post. Cadence is the constraint, not content.'
+        : 'Below median — more posting will not fix this; the content needs to change.',
+    },
+    {
+      icon: 'Star',
+      label: 'Google rating',
+      value: `${us.googleRating.toFixed(1)} vs ${medRating.toFixed(1)}`,
+      unit: 'catchment median',
+      good: us.googleRating >= medRating,
+      note: us.googleRating >= medRating
+        ? 'At or above the local median.'
+        : `${peers.filter(p => p.googleRating > us.googleRating).length} nearby restaurants rate higher.`,
+    },
+    {
+      icon: 'TrendingUp',
+      label: 'Review velocity',
+      value: `${us.reviewVelocityPerMonth} vs ${medVelocity}`,
+      unit: 'new reviews/month',
+      good: us.reviewVelocityPerMonth >= medVelocity,
+      note: us.reviewVelocityPerMonth >= medVelocity
+        ? 'Keeping pace on volume.'
+        : 'Falling behind on volume. Google weighs count as well as score, so this compounds.',
+    },
+  ];
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {cards.map(c => (
+          <Card key={c.label} padding="p-4">
+            <div className="flex items-center gap-1.5">
+              <Icon name={c.icon} size={13} className="text-saf-muted" />
+              <span className="text-[11.5px] uppercase tracking-wider text-saf-muted">{c.label}</span>
+            </div>
+            <div className="mt-1.5 flex items-baseline gap-1.5">
+              <span className="text-[19px] font-bold text-saf-text tabular-nums">{c.value}</span>
+              {/* Direction is carried by an icon and by the note text, never by
+                  colour alone. */}
+              <Icon
+                name={c.good ? 'ArrowUp' : 'ArrowDown'}
+                size={13}
+                className={c.good ? 'text-emerald-700' : 'text-rose-700'}
+              />
+            </div>
+            <div className="text-[10.5px] text-saf-muted mt-0.5">{c.unit}</div>
+            <p className="text-[11.5px] text-saf-muted mt-2 leading-relaxed">{c.note}</p>
+          </Card>
+        ))}
+      </div>
+
+      <Card padding="p-4">
+        <div className="text-[11.5px] uppercase tracking-wider text-saf-muted">Content positioning</div>
+        <div className="mt-2.5 grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <div className="text-[12.5px] font-medium text-saf-text">Yours alone in this market</div>
+            <div className="mt-1.5 flex flex-wrap gap-1.5">
+              {uncontested.length ? uncontested.map(t => (
+                <span key={t} className="px-2 h-6 inline-flex items-center rounded-full bg-emerald-50 text-emerald-700 text-[11.5px] font-medium">{t}</span>
+              )) : <span className="text-[12px] text-saf-muted">Nothing uncontested — every theme you post is also posted nearby.</span>}
+            </div>
+            <p className="text-[11.5px] text-saf-muted mt-2 leading-relaxed">
+              Themes no competitor in the catchment is posting. This is where you win by default.
+            </p>
+          </div>
+          <div>
+            <div className="text-[12.5px] font-medium text-saf-text">Crowded — two or more rivals, you absent</div>
+            <div className="mt-1.5 flex flex-wrap gap-1.5">
+              {crowded.length ? crowded.map(([t, n]) => (
+                <span key={t} className="px-2 h-6 inline-flex items-center rounded-full bg-amber-50 text-amber-700 text-[11.5px] font-medium">
+                  {t} · {n}
+                </span>
+              )) : <span className="text-[12px] text-saf-muted">Nothing crowded that you are missing.</span>}
+            </div>
+            <p className="text-[11.5px] text-saf-muted mt-2 leading-relaxed">
+              Entering a crowded theme means competing on their terms. Usually a reason to stay out, not to join in.
+            </p>
+          </div>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+// States the limits out loud, on the screen where they matter most.
+function SourceNote() {
+  return (
+    <Card padding="p-3.5">
+      <div className="flex items-start gap-2">
+        <Icon name="Info" size={14} className="text-saf-muted mt-0.5 shrink-0" />
+        <p className="text-[11.5px] text-saf-muted leading-relaxed">
+          <span className="font-medium text-saf-text">Public data only.</span>{' '}
+          Followers, posting cadence and interactions come from Instagram Business Discovery;
+          rating and review count from Google Places. Engagement rate is computed as
+          interactions ÷ followers — the same formula for them and for us, so the comparison is
+          like-for-like, but it is an approximation. Their reach, impressions, ad spend and
+          sentiment are private and are not shown here at any confidence, because they cannot be
+          obtained at all.
+        </p>
+      </div>
+    </Card>
   );
 }
 

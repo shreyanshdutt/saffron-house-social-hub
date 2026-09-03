@@ -33,7 +33,7 @@ function AccountsTab() {
   const t = useT();
   const accounts = [
     { id: 'ig', handle: '@saffronhouse',            followers: '218K', status: 'expired',   last: '48 min ago' },
-    { id: 'gg', handle: 'Saffron House · Khan Market', followers: '1.3K reviews', status: 'connected', last: 'just now' },
+    { id: 'gg', handle: 'Saffron House · Sector 10 Dwarka', followers: '1.3K reviews', status: 'connected', last: 'just now' },
     { id: 'wa', handle: '+91 11 4160 2200',         followers: '6.4K contacts', status: 'connected', last: '1 min ago' },
   ];
   return (
@@ -101,7 +101,7 @@ function BrandTab() {
     'Write like a host, not a marketer. Name the dish, name the person, say what actually happens in the kitchen. '
     + 'Never use empty superlatives ("best in Delhi", "culinary journey") and never claim an award we have not won. '
     + 'Prices in rupees, always inclusive of taxes. For complaints: acknowledge plainly, give a concrete next step, '
-    + 'and never promise a refund or comp — that is the Marketing Manager\'s call. We are open 12pm–11:30pm, seven days, Khan Market.'
+    + 'and never promise a refund or comp — that is the Marketing Manager\'s call. We are open 12pm–11:30pm, seven days, Sector 10 Market, Dwarka.'
   );
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

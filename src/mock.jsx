@@ -1,6 +1,6 @@
 // Mock data for Saffron House Social Hub — every section is wired to this.
 //
-// Saffron House is a single flagship modern-Indian restaurant in Khan Market,
+// Saffron House is a single flagship modern-Indian restaurant in Sector 10 Market, Dwarka,
 // New Delhi. One location, so there is no location dimension anywhere in the
 // data — the org axis is *role*, and the content axis is *channel*.
 //
@@ -219,18 +219,20 @@ function Avatar({ name, size = 36, className = '' }) {
 const POSTS = [
   {
     id: 'p1',
+    format: 'carousel',
     platforms: ['ig','gg'],
     metricsFrom: 'ig',
     status: 'published',
     date: '2026-09-03T12:30:00+05:30',
     author: 'Priya Menon',
-    content: 'The monsoon menu is here. Twelve plates built around what Delhi actually eats when it rains — corn and chilli pakoras with saffron chutney, Kashmiri morel pulao, and a ginger-jaggery kheer worth the walk in the wet. Available all week, lunch and dinner. Khan Market.',
+    content: 'The monsoon menu is here. Twelve plates built around what Delhi actually eats when it rains — corn and chilli pakoras with saffron chutney, Kashmiri morel pulao, and a ginger-jaggery kheer worth the walk in the wet. Available all week, lunch and dinner. Sector 10 Market, Dwarka.',
     media: { kind: 'image', label: 'Monsoon thali overhead, rain on the window', tone: 'warm' },
     tags: ['#SaffronHouse', '#MonsoonMenu', '#KhanMarket', '#DelhiFood'],
-    metrics: { views: 84320, reach: 61850, likes: 4820, comments: 312, shares: 612, saves: 1188, rate: 6.2 },
+    metrics: { views: 21200, reach: 16400, likes: 490, comments: 88, shares: 142, saves: 296, rate: 6.2 },
   },
   {
     id: 'p2',
+    format: 'reel',
     platforms: ['ig'],
     metricsFrom: 'ig',
     status: 'published',
@@ -239,34 +241,37 @@ const POSTS = [
     content: 'Chef Meera spent three months in Lucknow to get this one right. The galouti is now made the way it was meant to be — 27 spices, ground fresh every morning, cooked on the tawa to order. On the menu from tonight. 🔥',
     media: { kind: 'video', label: 'Galouti kebab on the tawa, close crop', tone: 'night' },
     tags: ['#Galouti', '#SaffronHouse', '#ChefsTable'],
-    metrics: { views: 212800, reach: 156410, likes: 18230, comments: 920, shares: 2104, saves: 4712, rate: 9.1 },
+    metrics: { views: 58000, reach: 42000, likes: 2010, comments: 214, shares: 486, saves: 1120, rate: 9.1 },
   },
   {
     id: 'p3',
+    format: 'image',
     platforms: ['gg','ig'],
     metricsFrom: 'ig',
     status: 'published',
     date: '2026-09-01T11:00:00+05:30',
     author: 'Vikram Suri',
-    content: 'Saffron House has been listed in the Delhi Top 50 for the third year running. Thank you to every guest who walked up those stairs in Khan Market and gave us a table to cook for. We are open seven days, 12pm to 11:30pm.',
+    content: 'Saffron House has been listed in the Delhi Top 50 for the third year running. Thank you to every guest who walked up those stairs in Sector 10 Market, Dwarka and gave us a table to cook for. We are open seven days, 12pm to 11:30pm.',
     media: null,
     tags: ['#SaffronHouse', '#DelhiTop50', '#KhanMarket'],
-    metrics: { views: 42140, reach: 31050, likes: 2104, comments: 142, shares: 318, saves: 264, rate: 5.6 },
+    metrics: { views: 11400, reach: 9100, likes: 343, comments: 34, shares: 71, saves: 62, rate: 5.6 },
   },
   {
     id: 'p4',
+    format: 'image',
     platforms: ['ig'],
     metricsFrom: 'ig',
     status: 'failed',
     date: '2026-09-01T08:00:00+05:30',
     author: 'Ananya Rao',
-    content: 'Weekday lunch, sorted. Two courses and a cooler for ₹899, 12 to 4pm. Walk in or book on WhatsApp.',
+    content: 'Weekday lunch, sorted. Two courses and a cooler for ₹649, 12 to 4pm. Walk in or book on WhatsApp.',
     tags: ['#SaffronHouse', '#LunchDeal', '#KhanMarket'],
     metrics: { views: 0, reach: 0, likes: 0, comments: 0, shares: 0, saves: 0, rate: 0 },
     error: 'Instagram access token expired. Please reconnect the account.',
   },
   {
     id: 'p5',
+    format: 'image',
     platforms: ['ig','gg'],
     metricsFrom: 'ig',
     status: 'published',
@@ -275,10 +280,11 @@ const POSTS = [
     content: 'Every Sunday our kitchen cooks 200 extra meals for the Nizamuddin community kitchen. No campaign, no hashtag needed — just what a restaurant with a working stove should do. If you want to help, the door is open.',
     media: { kind: 'image', label: 'Kitchen team packing meal boxes', tone: 'sand' },
     tags: ['#SaffronHouse', '#DelhiCommunity'],
-    metrics: { views: 96800, reach: 71430, likes: 6042, comments: 488, shares: 1024, saves: 640, rate: 7.4 },
+    metrics: { views: 23400, reach: 18200, likes: 849, comments: 112, shares: 238, saves: 148, rate: 7.4 },
   },
   {
     id: 'p6',
+    format: 'reel',
     platforms: ['ig'],
     metricsFrom: 'ig',
     status: 'published',
@@ -287,10 +293,11 @@ const POSTS = [
     content: '60 seconds inside a Saffron House dinner service. Sound on — that clatter is 140 covers going out in ninety minutes.',
     media: { kind: 'video', label: 'Kitchen pass, dinner service', tone: 'tech' },
     tags: ['#SaffronHouse', '#BehindTheScenes', '#DelhiFood'],
-    metrics: { views: 128200, reach: 94580, likes: 8840, comments: 396, shares: 1240, saves: 2130, rate: 8.1 },
+    metrics: { views: 32800, reach: 24600, likes: 1095, comments: 96, shares: 284, saves: 518, rate: 8.1 },
   },
   {
     id: 'p7',
+    format: 'image',
     platforms: ['ig'],
     metricsFrom: 'ig',
     status: 'draft',
@@ -323,7 +330,7 @@ const SCHEDULED = [
 //        private messaging channel on Google at all.)
 const CONVERSATIONS = [
   {
-    id: 'c1', user: 'Rahul Khanna', platform: 'wa', unread: 2, online: true,
+    id: 'c1', user: 'Rahul Khanna', platform: 'wa', unread: 2, online: true, lastInboundAge: '3h',
     preview: 'Hi, booking for our anniversary on Saturday — is the terrace open?',
     // Phone comes from WhatsApp; the booking reference is from your own
     // booking system, joined on the phone number.
@@ -333,7 +340,7 @@ const CONVERSATIONS = [
       { from: 'user', text: 'Also can you do something for dessert? She loves the kheer.', t: '2026-09-04T09:15:00+05:30' },
       { from: 'saf',  text: 'Congratulations Rahul! Terrace is open Saturday and I have moved you to table 12 by the railing. I have noted the kheer — the kitchen will send it out with a candle.', t: '2026-09-04T09:18:00+05:30', status: 'read' },
       { from: 'user', text: 'Perfect, thank you so much 🙏', t: '2026-09-04T09:19:00+05:30' },
-      { from: 'user', text: 'One more thing — is there parking at Khan Market on a Saturday?', t: '2026-09-04T09:42:00+05:30' },
+      { from: 'user', text: 'One more thing — is there parking at Sector 10 Market, Dwarka on a Saturday?', t: '2026-09-04T09:42:00+05:30' },
     ],
   },
   {
@@ -345,7 +352,7 @@ const CONVERSATIONS = [
     ],
   },
   {
-    id: 'c3', user: 'Arjun Mehta', platform: 'wa', unread: 3, online: false,
+    id: 'c3', user: 'Arjun Mehta', platform: 'wa', unread: 3, online: false, lastInboundAge: '21h',
     preview: 'Booked for 8pm, waited 50 minutes for the table…',
     pii: { phone: '+91 99715 88102', account: 'BKG-2026-08109' },
     messages: [
@@ -380,7 +387,7 @@ const CONVERSATIONS = [
     ],
   },
   {
-    id: 'c7', user: 'Kabir Sethi', platform: 'wa', unread: 0, online: false,
+    id: 'c7', user: 'Kabir Sethi', platform: 'wa', unread: 0, online: false, lastInboundAge: '23h',
     preview: 'Corporate dinner for 30 in October — do you do a private area?',
     pii: { phone: '+91 97110 22540' },
     messages: [
@@ -419,7 +426,7 @@ const REVIEWS = [
   {
     id: 'rv-1', channel: 'gg', author: 'Ishaan Kapoor', rating: 1, age: '7h',
     sentiment: -0.82, replied: false, escalated: true,
-    text: 'Waited 55 minutes for a table we had booked for 8pm. When we finally sat, two of the four dishes we ordered were unavailable. Nobody apologised. For these prices in Khan Market, this is not acceptable.',
+    text: 'Waited 55 minutes for a table we had booked for 8pm. When we finally sat, two of the four dishes we ordered were unavailable. Nobody apologised. For these prices in Sector 10 Market, Dwarka, this is not acceptable.',
     themes: ['wait time', 'availability', 'service'],
   },
   {
@@ -445,7 +452,7 @@ const REVIEWS = [
   {
     id: 'rv-5', channel: 'gg', author: 'Nikhil Bansal', rating: 5, age: '2h',
     sentiment: 0.88, replied: false,
-    text: 'The monsoon menu is the best thing happening in Khan Market right now. Corn and chilli pakoras with that saffron chutney — I would walk here in the rain for them, which is exactly the point I suppose.',
+    text: 'The monsoon menu is the best thing happening in Sector 10 Market, Dwarka right now. Corn and chilli pakoras with that saffron chutney — I would walk here in the rain for them, which is exactly the point I suppose.',
     themes: ['monsoon menu', 'pakora', 'value'],
   },
   {
@@ -504,8 +511,11 @@ const REVIEWS = [
 const REVIEW_STATS = {
   avg: 4.3,                                // Google location averageRating
   avgPrev: 4.5,                            // your own history — Google keeps none
-  total90d: 612,                           // Google totalReviewCount, windowed
-  distribution: [24, 31, 58, 168, 331],    // derived by bucketing pulled reviews
+  total90d: 186,                           // Google totalReviewCount, windowed
+  distribution: [8, 11, 19, 51, 97],       // derived by bucketing pulled reviews
+  // Reviews gained per month, from stored totalReviewCount deltas. Google
+  // gives you today's count; the velocity is yours to remember.
+  velocityPerMonth: 62,
   responseRate: 0.68,                      // your own
   responseRateTarget: 0.90,
   medianResponseMins: 214,
@@ -528,15 +538,15 @@ const REVIEW_STATS = {
 // `sentiment` and the theme strings are your classification output.
 const MENU_ITEMS = [
   {
-    id: 'mi-1', name: 'Galouti Kebab', category: 'Small plates', price: 685,
+    id: 'mi-1', name: 'Galouti Kebab', category: 'Small plates', price: 495,
     mentions7d: 412, mentionsChange7dPct: 68, sentiment: 0.81, sentimentDelta: 0.06,
     spark: [140, 165, 188, 210, 268, 344, 412],
     topPraise: 'Texture and spice balance — repeatedly called the best in Delhi',
-    topComplaint: 'Portion size at ₹685 questioned by a minority',
+    topComplaint: 'Portion size at ₹495 questioned by a minority',
     isMoment: true,
   },
   {
-    id: 'mi-2', name: 'Awadhi Biryani', category: 'Mains', price: 890,
+    id: 'mi-2', name: 'Awadhi Biryani', category: 'Mains', price: 645,
     mentions7d: 318, mentionsChange7dPct: 22, sentiment: 0.74, sentimentDelta: 0.02,
     spark: [240, 252, 261, 274, 288, 302, 318],
     topPraise: 'The 40-a-day cap reads as a quality signal, not a limitation',
@@ -544,7 +554,7 @@ const MENU_ITEMS = [
     isMoment: false,
   },
   {
-    id: 'mi-3', name: 'Kathal Galouti', category: 'Small plates', price: 545,
+    id: 'mi-3', name: 'Kathal Galouti', category: 'Small plates', price: 395,
     mentions7d: 196, mentionsChange7dPct: 118, sentiment: 0.86, sentimentDelta: 0.11,
     spark: [42, 58, 71, 96, 128, 162, 196],
     topPraise: 'Vegetarians reporting meat-eaters cannot tell the difference',
@@ -552,7 +562,7 @@ const MENU_ITEMS = [
     isMoment: true,
   },
   {
-    id: 'mi-4', name: 'Corn & Chilli Pakora', category: 'Monsoon menu', price: 395,
+    id: 'mi-4', name: 'Corn & Chilli Pakora', category: 'Monsoon menu', price: 285,
     mentions7d: 174, mentionsChange7dPct: 240, sentiment: 0.78, sentimentDelta: 0.14,
     spark: [12, 18, 31, 58, 94, 138, 174],
     topPraise: 'The saffron chutney is doing most of the work and people know it',
@@ -560,7 +570,7 @@ const MENU_ITEMS = [
     isMoment: true,
   },
   {
-    id: 'mi-5', name: 'Paneer Tikka Masala', category: 'Mains', price: 720,
+    id: 'mi-5', name: 'Paneer Tikka Masala', category: 'Mains', price: 525,
     mentions7d: 148, mentionsChange7dPct: -8, sentiment: 0.12, sentimentDelta: -0.19,
     spark: [188, 181, 174, 170, 162, 154, 148],
     topPraise: 'Consistent, safe order for mixed tables',
@@ -568,7 +578,7 @@ const MENU_ITEMS = [
     isMoment: true,
   },
   {
-    id: 'mi-6', name: 'Ginger-Jaggery Kheer', category: 'Desserts', price: 340,
+    id: 'mi-6', name: 'Ginger-Jaggery Kheer', category: 'Desserts', price: 245,
     mentions7d: 132, mentionsChange7dPct: 84, sentiment: 0.83, sentimentDelta: 0.08,
     spark: [38, 46, 58, 72, 94, 112, 132],
     topPraise: 'Named unprompted in anniversary and celebration bookings',
@@ -576,15 +586,15 @@ const MENU_ITEMS = [
     isMoment: false,
   },
   {
-    id: 'mi-7', name: 'Kashmiri Morel Pulao', category: 'Monsoon menu', price: 1150,
+    id: 'mi-7', name: 'Kashmiri Morel Pulao', category: 'Monsoon menu', price: 845,
     mentions7d: 88, mentionsChange7dPct: 46, sentiment: 0.58, sentimentDelta: 0.03,
     spark: [32, 38, 44, 51, 62, 74, 88],
     topPraise: 'Treated as the "occasion" dish; strong photo performance',
-    topComplaint: 'Price resistance at ₹1150 in comments',
+    topComplaint: 'Price resistance at ₹845 in comments',
     isMoment: false,
   },
   {
-    id: 'mi-8', name: 'Butter Chicken', category: 'Mains', price: 780,
+    id: 'mi-8', name: 'Butter Chicken', category: 'Mains', price: 565,
     mentions7d: 84, mentionsChange7dPct: -22, sentiment: -0.14, sentimentDelta: -0.26,
     spark: [142, 132, 124, 112, 102, 92, 84],
     topPraise: 'Regulars defend it as deliberately less sweet than the Delhi norm',
@@ -601,18 +611,18 @@ const MENU_ITEMS = [
 // Instagram Graph API — account + media insights.
 const ANALYTICS_IG = {
   daily: [
-    { d: 'Mon', reach: 18200, views: 24100, interactions: 1840 },
-    { d: 'Tue', reach: 21000, views: 27600, interactions: 2110 },
-    { d: 'Wed', reach: 19800, views: 25900, interactions: 1960 },
-    { d: 'Thu', reach: 24500, views: 32400, interactions: 2480 },
-    { d: 'Fri', reach: 38200, views: 51800, interactions: 4120 },
-    { d: 'Sat', reach: 46200, views: 62400, interactions: 5240 },
-    { d: 'Sun', reach: 31400, views: 41200, interactions: 3180 },
+    { d: 'Mon', reach: 6100,  views: 8200,  interactions: 819 },
+    { d: 'Tue', reach: 6900,  views: 9100,  interactions: 941 },
+    { d: 'Wed', reach: 6400,  views: 8600,  interactions: 870 },
+    { d: 'Thu', reach: 8200,  views: 11100, interactions: 1123 },
+    { d: 'Fri', reach: 12800, views: 17400, interactions: 1837 },
+    { d: 'Sat', reach: 15400, views: 20900, interactions: 2339 },
+    { d: 'Sun', reach: 10400, views: 13800, interactions: 1414 },
   ],
   totals: {
-    reach: 199300, views: 265400,
-    likes: 42180, comments: 2984, shares: 5298, saves: 8934,
-    follows: 1842, profileVisits: 12480,
+    reach: 66200, views: 89100,
+    likes: 5140, comments: 586, shares: 1290, saves: 2280,
+    follows: 214, profileVisits: 1840,
   },
   change: { reach: 24, views: 28, likes: 19, comments: 31, shares: 22, saves: 41, follows: 12, profileVisits: 18 },
   // Instagram reports demographics for your FOLLOWERS and engaged audience,
@@ -622,12 +632,12 @@ const ANALYTICS_IG = {
     age:    [ { label: '18–24', value: 14 }, { label: '25–34', value: 41 }, { label: '35–44', value: 26 }, { label: '45–54', value: 12 }, { label: '55+', value: 7 } ],
     gender: [ { label: 'Female', value: 53 }, { label: 'Male', value: 46 }, { label: 'Other', value: 1 } ],
     cities: [
-      { label: 'New Delhi', value: 54 },
-      { label: 'Gurugram',  value: 14 },
-      { label: 'Noida',     value: 9 },
-      { label: 'Mumbai',    value: 7 },
-      { label: 'Bengaluru', value: 5 },
-      { label: 'Other',     value: 11 },
+      { label: 'Dwarka',            value: 38 },
+      { label: 'Janakpuri / Uttam Nagar', value: 17 },
+      { label: 'Palam / Najafgarh', value: 12 },
+      { label: 'Gurugram',          value: 11 },
+      { label: 'Rest of Delhi',     value: 15 },
+      { label: 'Other',             value: 7 },
     ],
   },
 };
@@ -637,22 +647,29 @@ const ANALYTICS_IG = {
 // BUSINESS_DIRECTION_REQUESTS, CALL_CLICKS, WEBSITE_CLICKS, BUSINESS_BOOKINGS).
 const ANALYTICS_GG = {
   daily: [
-    { d: 'Mon', searchImpressions: 8400,  mapsImpressions: 4100 },
-    { d: 'Tue', searchImpressions: 9100,  mapsImpressions: 4600 },
-    { d: 'Wed', searchImpressions: 8800,  mapsImpressions: 4400 },
-    { d: 'Thu', searchImpressions: 10200, mapsImpressions: 5300 },
-    { d: 'Fri', searchImpressions: 14800, mapsImpressions: 8200 },
-    { d: 'Sat', searchImpressions: 17400, mapsImpressions: 9900 },
-    { d: 'Sun', searchImpressions: 12600, mapsImpressions: 6800 },
+    { d: 'Mon', searchImpressions: 3100, mapsImpressions: 2400 },
+    { d: 'Tue', searchImpressions: 3300, mapsImpressions: 2600 },
+    { d: 'Wed', searchImpressions: 3200, mapsImpressions: 2500 },
+    { d: 'Thu', searchImpressions: 3900, mapsImpressions: 3100 },
+    { d: 'Fri', searchImpressions: 5800, mapsImpressions: 4900 },
+    { d: 'Sat', searchImpressions: 6900, mapsImpressions: 5900 },
+    { d: 'Sun', searchImpressions: 4700, mapsImpressions: 3900 },
   ],
   totals: {
-    searchImpressions: 81300,
-    mapsImpressions: 43300,
-    directionRequests: 6420,
-    callClicks: 1284,
-    websiteClicks: 3910,
-    bookings: 412,
+    searchImpressions: 30900,
+    mapsImpressions: 25300,
+    directionRequests: 2510,
+    callClicks: 604,
+    websiteClicks: 388,
+    bookings: 96,
   },
+  // Google Q&A. Anyone can answer a question on your listing, including people
+  // who have never eaten here — an unanswered question is a stranger's guess
+  // waiting to become the top answer. This is polled, not pushed.
+  qanda: { open: 14, answeredByUs: 31, answeredByPublic: 9, oldestOpenDays: 11 },
+  // Photos on the listing. GBP reports media; freshness affects how the
+  // listing performs and is entirely within your control.
+  photos: { total: 148, addedLast30d: 2, lastAddedDaysAgo: 24 },
   // Percentage change vs the previous 7 days — you compute this from stored
   // history; the API returns a series, not a delta.
   change: { searchImpressions: 18, mapsImpressions: 24, directionRequests: 31, callClicks: 12, websiteClicks: 9, bookings: 22 },
@@ -663,19 +680,20 @@ const ANALYTICS_GG = {
 // honest metrics are conversation and message counts.
 const ANALYTICS_WA = {
   daily: [
-    { d: 'Mon', conversations: 42, messagesIn: 118, messagesOut: 131 },
-    { d: 'Tue', conversations: 48, messagesIn: 132, messagesOut: 146 },
-    { d: 'Wed', conversations: 51, messagesIn: 141, messagesOut: 154 },
-    { d: 'Thu', conversations: 56, messagesIn: 158, messagesOut: 171 },
-    { d: 'Fri', conversations: 74, messagesIn: 214, messagesOut: 228 },
-    { d: 'Sat', conversations: 88, messagesIn: 261, messagesOut: 274 },
-    { d: 'Sun', conversations: 61, messagesIn: 172, messagesOut: 184 },
+    { d: 'Mon', conversations: 18, messagesIn: 52,  messagesOut: 57 },
+    { d: 'Tue', conversations: 21, messagesIn: 58,  messagesOut: 64 },
+    { d: 'Wed', conversations: 22, messagesIn: 61,  messagesOut: 66 },
+    { d: 'Thu', conversations: 25, messagesIn: 70,  messagesOut: 74 },
+    { d: 'Fri', conversations: 34, messagesIn: 98,  messagesOut: 101 },
+    { d: 'Sat', conversations: 41, messagesIn: 119, messagesOut: 122 },
+    { d: 'Sun', conversations: 27, messagesIn: 76,  messagesOut: 81 },
   ],
   totals: {
-    conversations: 420,
-    messagesIn: 1196,
-    messagesOut: 1288,
-    templatesSent: 214,
+    conversations: 188,
+    messagesIn: 534,
+    messagesOut: 565,
+    templatesSent: 96,
+    optedInContacts: 1420,
     medianResponseMins: 6,
   },
   change: { conversations: 60, messagesIn: 54, messagesOut: 58, templatesSent: 12 },
@@ -734,7 +752,7 @@ const ACTIVITY = [
 //
 // Three-act story, all of it API-supported now that the marketplaces are gone:
 //   Act 1 — volume spike: the galouti reel (Instagram insights + mentions)
-//   Act 2 — competitor move: Dilli Darbar's cadence and interactions climbing
+//   Act 2 — competitor move: Dwarka Darbar's cadence and interactions climbing
 //           (Instagram Business Discovery — public data on a public account)
 //   Act 3 — crisis cluster (critical): weekend booking failures surfacing at
 //           once in Google reviews, Instagram comments and WhatsApp. The Top
@@ -750,7 +768,7 @@ const LISTENING_SIGNALS = [
     metrics: { mentions: 1240, reach: 84000, sentiment: 0.72, changePct: 340 } },
   // ACT 2 — competitor move
   { id: 'sig-002', t: '5h',  channel: 'ig', kind: 'competitor_move', severity: 'warn',
-    title: 'Dilli Darbar launched a monsoon menu; interactions 4× ours',
+    title: 'Dwarka Darbar launched a monsoon menu; interactions 4× ours',
     body:  'Their launch reel is carrying roughly four times the public interactions of our comparable post. Same week, same category, and they went first.',
     metrics: { mentions: 482, reach: 0, sentiment: 0.48, changePct: 312 } },
   // ACT 3 — crisis cluster
@@ -766,7 +784,7 @@ const LISTENING_SIGNALS = [
 
   // Background signals.
   { id: 'sig-010', t: '15m', channel: 'ig', kind: 'mention_burst',   severity: 'info',
-    title: 'Story tags from Khan Market up sharply',
+    title: 'Story tags from Sector 10 Market, Dwarka up sharply',
     body:  '42 organic story tags in 15 minutes, mostly Saturday-evening geotags — event-driven, not campaign-driven.',
     metrics: { mentions: 42, reach: 8200, sentiment: 0.61, changePct: 88 } },
   { id: 'sig-011', t: '28m', channel: 'gg', kind: 'sentiment_shift', severity: 'warn',
@@ -842,7 +860,7 @@ const LISTENING_SIGNALS = [
     body:  'No opt-outs. Template messages require prior opt-in and are billed per message, so the list is small on purpose.',
     metrics: { mentions: 214, reach: 0, sentiment: 0.58, changePct: 18 } },
   { id: 'sig-055', t: '1d',  channel: 'ig', kind: 'competitor_move', severity: 'info',
-    title: 'Dilli Darbar posting cadence visibly up',
+    title: 'Dwarka Darbar posting cadence visibly up',
     body:  'Eleven posts this week against the usual four or five. They are buying the monsoon window.',
     metrics: { mentions: 12, reach: 0, sentiment: 0.12, changePct: 130 } },
   { id: 'sig-060', t: '2d',  channel: 'gg', kind: 'mention_burst',   severity: 'info',
@@ -873,64 +891,85 @@ const LISTENING_SIGNALS = [
 // `engagementRate` is DERIVED as interactions ÷ followers — an approximation,
 // but computed identically for us and for them, so the comparison is at least
 // like-for-like. The UI labels it as derived.
+const COMPETITOR_CATCHMENT = {
+  label: 'Sector 10 Market, Dwarka',
+  pincode: '110075',
+  radiusKm: 2.5,
+  note: 'Restaurants competing for the same table in the same market. Set by you — Google Places nearby search seeds the list, you curate it.',
+};
+
 const LISTENING_COMPETITORS = [
   {
-    id: 'cmp-1', name: 'Dilli Darbar', handle: '@dillidarbar', channel: 'ig',
+    id: 'cmp-1', name: 'Dwarka Darbar', handle: '@dwarkadarbar', channel: 'ig',
     avatarColor: '#7C3AED',
-    followers: 184500,      followersChange7dPct: 2.4,
-    postsPerWeek: 11,       avgInteractions: 16050,
+    followers: 41200,       followersChange7dPct: 3.8,
+    postsPerWeek: 11,       avgInteractions: 3584,
     engagementRate: 0.087,  engagementChange7dPct: 56,
-    googleRating: 4.5,      googleReviews: 3820,
+    googleRating: 4.5,      googleReviews: 3120,  reviewVelocityPerMonth: 148,
+    // Caption themes from Business Discovery media — public text, classified
+    // by you. Not a platform field.
+    themes: ['offers', 'family dining', 'thali'],
+    postingPeak: '7–9pm',
     sparkEngagement: [0.058, 0.062, 0.066, 0.071, 0.078, 0.083, 0.087],
     isMoment: true,
   },
   {
-    id: 'cmp-2', name: 'Copper Chimney Co.', handle: '@copperchimneyco', channel: 'ig',
+    id: 'cmp-2', name: 'Sector 10 Social', handle: '@sector10social', channel: 'ig',
     avatarColor: '#0EA5E9',
-    followers: 92000,       followersChange7dPct: 1.2,
-    postsPerWeek: 5,        avgInteractions: 3772,
+    followers: 33800,       followersChange7dPct: 2.1,
+    postsPerWeek: 9,        avgInteractions: 1386,
     engagementRate: 0.041,  engagementChange7dPct: 9,
-    googleRating: 4.2,      googleReviews: 2140,
+    googleRating: 4.2,      googleReviews: 2240,  reviewVelocityPerMonth: 96,
+    themes: ['bar', 'late night', 'events'],
+    postingPeak: '9–11pm',
     sparkEngagement: [0.037, 0.038, 0.039, 0.040, 0.040, 0.041, 0.041],
     isMoment: false,
   },
   {
     id: 'cmp-3', name: 'Baoli Kitchen', handle: '@baolikitchen', channel: 'ig',
     avatarColor: '#10B981',
-    followers: 68000,       followersChange7dPct: 3.1,
-    postsPerWeek: 8,        avgInteractions: 4148,
+    followers: 19600,       postsPerWeek: 8,   followersChange7dPct: 4.2,
+    avgInteractions: 1196,
     engagementRate: 0.061,  engagementChange7dPct: 4,
-    googleRating: 4.4,      googleReviews: 1680,
+    googleRating: 4.4,      googleReviews: 1180,  reviewVelocityPerMonth: 74,
+    themes: ['chef stories', 'north indian', 'kebabs'],
+    postingPeak: '1–3pm',
     sparkEngagement: [0.058, 0.060, 0.059, 0.061, 0.060, 0.061, 0.061],
     isMoment: false,
   },
   {
     id: 'cmp-4', name: 'The Curry Room', handle: '@thecurryroom', channel: 'ig',
     avatarColor: '#F59E0B',
-    followers: 47000,       followersChange7dPct: -0.4,
-    postsPerWeek: 3,        avgInteractions: 893,
+    followers: 11400,       followersChange7dPct: -0.4,
+    postsPerWeek: 3,        avgInteractions: 217,
     engagementRate: 0.019,  engagementChange7dPct: -12,
-    googleRating: 3.8,      googleReviews: 940,
+    googleRating: 3.8,      googleReviews: 640,   reviewVelocityPerMonth: 21,
+    themes: ['offers', 'delivery'],
+    postingPeak: '12–2pm',
     sparkEngagement: [0.024, 0.022, 0.021, 0.020, 0.020, 0.019, 0.019],
     isMoment: false,
   },
   {
     id: 'cmp-5', name: 'Nawab & Sons', handle: '@nawabandsons', channel: 'ig',
     avatarColor: '#EC4899',
-    followers: 31000,       followersChange7dPct: 4.8,
-    postsPerWeek: 6,        avgInteractions: 1612,
+    followers: 8900,        followersChange7dPct: 6.1,
+    postsPerWeek: 6,        avgInteractions: 463,
     engagementRate: 0.052,  engagementChange7dPct: 18,
-    googleRating: 4.3,      googleReviews: 1210,
+    googleRating: 4.3,      googleReviews: 810,   reviewVelocityPerMonth: 58,
+    themes: ['biryani', 'value', 'family dining'],
+    postingPeak: '7–9pm',
     sparkEngagement: [0.043, 0.045, 0.047, 0.048, 0.050, 0.051, 0.052],
     isMoment: false,
   },
   {
     id: 'cmp-6', name: 'Chowk 21', handle: '@chowk21', channel: 'ig',
     avatarColor: '#64748B',
-    followers: 76000,       followersChange7dPct: 0.0,
-    postsPerWeek: 4,        avgInteractions: 2584,
+    followers: 16200,       followersChange7dPct: 0.0,
+    postsPerWeek: 4,        avgInteractions: 551,
     engagementRate: 0.034,  engagementChange7dPct: -1,
-    googleRating: 4.0,      googleReviews: 1520,
+    googleRating: 4.0,      googleReviews: 1420,  reviewVelocityPerMonth: 44,
+    themes: ['street food', 'offers'],
+    postingPeak: '6–8pm',
     sparkEngagement: [0.034, 0.035, 0.034, 0.033, 0.034, 0.034, 0.034],
     isMoment: false,
   },
@@ -992,11 +1031,13 @@ const SAF_SELF_STATS = {
   channel: 'ig',
   avatarInitials: 'SH',
   avatarColor: '#B4451F',
-  followers: 215000,      followersChange7dPct: 1.4,
-  postsPerWeek: 4,        avgInteractions: 12470,
-  engagementRate: 0.058,  engagementChange7dPct: 3.2,
-  googleRating: 4.3,      googleReviews: 612,
-  sparkEngagement: [0.052, 0.054, 0.053, 0.055, 0.057, 0.058, 0.058],
+  followers: 28400,       followersChange7dPct: 1.4,
+  postsPerWeek: 4,        avgInteractions: 1739,
+  engagementRate: 0.061,  engagementChange7dPct: 3.2,
+  googleRating: 4.3,      googleReviews: 1284,  reviewVelocityPerMonth: 62,
+  themes: ['chef stories', 'monsoon menu', 'team stories'],
+  postingPeak: '6–8pm',
+  sparkEngagement: [0.055, 0.056, 0.055, 0.058, 0.059, 0.060, 0.061],
   isSelf: true,
 };
 
@@ -1008,15 +1049,15 @@ const SAF_SELF_STATS = {
 const LISTENING_KPIS = {
   mentions: {
     label: 'Mentions (7d)', source: 'Instagram Graph API',
-    sparkline: [820, 950, 1010, 880, 1180, 1320, 1450],
-    current:  7610,
-    baseline: 5800,
+    sparkline: [128, 146, 158, 139, 184, 208, 226],
+    current:  1189,
+    baseline: 908,
   },
   reach: {
     label: 'Instagram reach (7d)', source: 'Instagram Graph API',
-    sparkline: [42000, 55000, 61000, 49000, 78000, 92000, 110000],
-    current:  487000,
-    baseline: 380000,
+    sparkline: [6100, 6900, 6400, 8200, 12800, 15400, 10400],
+    current:  66200,
+    baseline: 53400,
   },
   netSentiment: {
     label: 'Net sentiment', source: 'Derived in-house',
@@ -1028,9 +1069,9 @@ const LISTENING_KPIS = {
   },
   directionRequests: {
     label: 'Direction requests (7d)', source: 'GBP Performance API',
-    sparkline: [720, 780, 810, 860, 1080, 1240, 930],
-    current:  6420,
-    baseline: 4900,
+    sparkline: [282, 302, 315, 343, 430, 479, 359],
+    current:  2510,
+    baseline: 1920,
   },
 };
 
@@ -1056,6 +1097,19 @@ function relativeTimeToISO(rel, now) {
 // Reviews carry a relative `age` and get an absolute ISO timestamp here. The
 // Reviews screen runs a live SLA clock against Date.now(), so a hard-coded
 // date would drift and the demo would contradict itself.
+// WhatsApp conversations carry a relative age for the last inbound message,
+// hydrated here for the same reason reviews are: the 24-hour service window
+// is a live countdown, and a hard-coded date would drift out of sync with it.
+(function hydrateConversationWindows() {
+  const now = Date.now();
+  for (const c of CONVERSATIONS) {
+    if (!c.lastInboundAge) continue;
+    c.lastInboundISO = relativeTimeToISO(c.lastInboundAge, now);
+    const elapsedMins = (now - new Date(c.lastInboundISO).getTime()) / 60_000;
+    c.windowMinsLeft = Math.max(0, Math.round(24 * 60 - elapsedMins));
+  }
+})();
+
 (function hydrateReviewTimestamps() {
   const now = Date.now();
   for (const r of REVIEWS) {
@@ -1096,7 +1150,7 @@ Object.assign(window, {
   POSTABLE, REVIEW_CHANNELS, INBOX_CHANNELS, platformColor,
   LISTENING_SIGNALS, LISTENING_COMPETITORS, LISTENING_TRENDS, LISTENING_KPIS,
   LISTENING_KINDS, LISTENING_SEVERITIES, listeningLoad, listeningSave,
-  SAF_HANDLE, SAF_SELF_STATS,
+  SAF_HANDLE, SAF_SELF_STATS, COMPETITOR_CATCHMENT,
   PlatformGlyph, Avatar,
   POSTS, SCHEDULED, CONVERSATIONS, POST_COMMENTS,
   REVIEWS, REVIEW_STATS, MENU_ITEMS,

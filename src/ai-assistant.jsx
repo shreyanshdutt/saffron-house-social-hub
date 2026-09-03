@@ -17,7 +17,7 @@ function AIAssistant({ onCopyToComposer }) {
     { id: 'dish',    label: t.ai.preset.dish,    prompt: 'Write a post announcing the kathal galouti — jackfruit, the same 27-spice mix as our meat galouti, cooked to order on the tawa. ₹545. Do not oversell it; let the dish speak.' },
     { id: 'offer',   label: t.ai.preset.offer,   prompt: 'Announce our weekday lunch set menu: two courses and a cooler for ₹899, 12 to 4pm, walk in or book on WhatsApp.' },
     { id: 'review',  label: t.ai.preset.review,  prompt: 'Draft a public reply to a 1-star Google review from a guest who waited 55 minutes for a booked table and found two dishes unavailable. Own it, no excuses, offer a concrete next step.' },
-    { id: 'tags',    label: t.ai.preset.tags,    prompt: 'Suggest 5 relevant hashtags for a post about our monsoon menu launching in Khan Market, New Delhi.' },
+    { id: 'tags',    label: t.ai.preset.tags,    prompt: 'Suggest 5 relevant hashtags for a post about our monsoon menu launching in Sector 10 Market, Dwarka.' },
     { id: 'festive', label: t.ai.preset.festive, prompt: 'Create a Diwali post for our six-course festive menu — one seating a night, 24 seats, from 18 October. Warm and celebratory without being generic.' },
     { id: 'tone',    label: t.ai.preset.tone,    prompt: 'Improve the tone of this post so it sounds like a restaurant rather than an ad: "Best food in Delhi. Book now. Limited seats."' },
   ];
@@ -42,7 +42,7 @@ function AIAssistant({ onCopyToComposer }) {
       const text = await window.claude.complete({
         messages: [
           { role: 'user', content:
-            `You write for Saffron House, a modern-Indian restaurant in Khan Market, New Delhi. The voice is confident and specific: name the dish, name the person, say what actually happens in the kitchen. Never use empty superlatives ("best in Delhi", "culinary journey"), never invent awards, prices or availability, and never promise what the kitchen has not confirmed. Prices are in rupees. Tailor length and format to the channel.\n\nChannel: ${pName}. ${platformHint}\nTone: ${toneLabel}.\n\nRequest:\n${prompt}` },
+            `You write for Saffron House, a modern-Indian restaurant in Sector 10 Market, Dwarka. The voice is confident and specific: name the dish, name the person, say what actually happens in the kitchen. Never use empty superlatives ("best in Delhi", "culinary journey"), never invent awards, prices or availability, and never promise what the kitchen has not confirmed. Prices are in rupees. Tailor length and format to the channel.\n\nChannel: ${pName}. ${platformHint}\nTone: ${toneLabel}.\n\nRequest:\n${prompt}` },
         ],
       });
       setOutput(text.trim());

@@ -445,7 +445,7 @@ function PreviewInstagram({ content, media, dir }) {
         </div>
         <div className="flex-1">
           <div className="text-[13px] font-semibold text-saf-text">saffronhouse</div>
-          <div className="text-[10px] text-saf-muted">Khan Market, New Delhi</div>
+          <div className="text-[10px] text-saf-muted">Sector 10 Market, Dwarka</div>
         </div>
         <Icon name="MoreHorizontal" size={18} className="text-saf-muted" />
       </div>
@@ -474,7 +474,7 @@ function PreviewGoogle({ content, media, dir }) {
   return (
     <div className="bg-white rounded-xl border border-saf-border overflow-hidden">
       <div className="p-3 flex items-center justify-between">
-        <BrandHeader subtitle="Restaurant · Khan Market" />
+        <BrandHeader subtitle="Restaurant · Sector 10 Dwarka" />
         <Icon name="MoreHorizontal" size={18} className="text-saf-muted" />
       </div>
       <div className="px-3 pb-2 flex items-center gap-1.5 text-[12px]">

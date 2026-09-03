@@ -8,7 +8,7 @@
 // =============================================================================
 const CHANNEL_HEALTH = [
   { id: 'ig', handle: '@saffronhouse',               followers: '218K',   state: 'down',     last: '48 min', incidents24h: 1 },
-  { id: 'gg', handle: 'Saffron House · Khan Market',  followers: '1.3K',   state: 'ok',       last: 'just now', incidents24h: 0 },
+  { id: 'gg', handle: 'Saffron House · Sector 10 Dwarka',  followers: '1.3K',   state: 'ok',       last: 'just now', incidents24h: 0 },
   { id: 'wa', handle: '+91 11 4160 2200',             followers: '6.4K',   state: 'ok',       last: '1 min',  incidents24h: 0 },
 ];
 const STATE_TONE = {
@@ -125,10 +125,10 @@ function BrandKitPage() {
     { name: 'Danger',   hex: '#C0342B' },
   ];
   const copyBlocks = [
-    { id: 'tag',      label: 'Master tagline',      body: 'Cooked the long way, in Khan Market.' },
+    { id: 'tag',      label: 'Master tagline',      body: 'Cooked the long way, in Sector 10 Market, Dwarka.' },
     { id: 'book-cta', label: 'Booking CTA',         body: 'Book a table on WhatsApp — we answer in minutes.' },
     { id: 'late-cta', label: 'Late kitchen CTA',    body: 'Kitchen open until 11:30pm, seven days.' },
-    { id: 'hours',    label: 'Hours boilerplate',   body: 'Open seven days, 12pm to 11:30pm. Khan Market, New Delhi.' },
+    { id: 'hours',    label: 'Hours boilerplate',   body: 'Open seven days, 12pm to 11:30pm. Sector 10 Market, Dwarka.' },
   ];
   return (
     <div className="space-y-6">
