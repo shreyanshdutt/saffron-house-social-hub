@@ -105,6 +105,15 @@ over:
   theme, offer flag, and how the post performed against that competitor's own
   median. There is no sentiment on competitor posts: Business Discovery returns
   comment counts, not comment text, so there is nothing to classify.
+- **Establishments** (`src/page-establishments.jsx`) is the candidate pool the
+  competitor set is chosen from — every restaurant Places Nearby Search returns
+  in the catchment, with a per-channel verdict on whether it can be analysed at
+  all. Three tiers: *full comparison* (Google listing + public Instagram
+  Business/Creator account), *ratings only* (Google alone — their Instagram is
+  personal, private, dormant or absent, and Business Discovery cannot read
+  those), and *cannot track* (no Google listing, common for delivery-only
+  kitchens). Marking an establishment here drives both the Competitors screen
+  and the recommendation engine.
 - **Composer previews** (`src/page-compose.jsx`) are genuinely different per
   channel. A Google post renders inside a business listing with its rating and
   Book/Directions buttons; a marketplace post renders above an order button; a

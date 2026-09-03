@@ -50,6 +50,7 @@ const SIDEBAR_SECTIONS = [
       { route: 'channel-health', icon: 'Activity',   perm: 'social.manage',      labelKey: 'channel-health' },
       { route: 'analytics',      icon: 'TrendingUp', perm: 'notifications.read', labelKey: 'analytics' },
       { route: 'listening',      icon: 'Megaphone',  perm: 'notifications.read', labelKey: 'listening' },
+      { route: 'establishments', icon: 'Store',     perm: 'notifications.read', labelKey: 'establishments' },
     ],
   },
   {

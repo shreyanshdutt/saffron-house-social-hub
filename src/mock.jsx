@@ -1161,6 +1161,181 @@ const COMPETITOR_POST_SEEDS = {
   }
 })();
 
+// --- Establishments in the catchment -----------------------------------------
+// The candidate pool the competitor set is picked from.
+//
+// In production this list comes from Google Places Nearby Search around the
+// market's coordinates:
+//
+//   GET /place/nearbysearch/json?location=LAT,LNG&radius=2500&type=restaurant
+//   → name, place_id, rating, user_ratings_total, vicinity, business_status,
+//     price_level, opening_hours
+//
+// Places gives you the storefront. It does NOT give you social handles — no
+// API maps a place_id to an Instagram account — so the handle is found by
+// hand once, then stored. That manual step is why this is a curated list
+// rather than a live feed.
+//
+// ⚠ INVENTED, like the competitor rows they feed. No establishment below is a
+// real business in Sector 10 Market, Dwarka. See COMPETITOR_CATCHMENT.
+//
+// Whether an establishment can actually be ANALYSED is the interesting part,
+// and it is not a yes/no — it is a tier:
+//
+//   full    — Google listing + a public Instagram Business/Creator account.
+//             Business Discovery works, so you get cadence, engagement and
+//             their actual posts.
+//   ratings — Google listing only. Their Instagram is personal, private, or
+//             does not exist, and Business Discovery CANNOT read personal or
+//             private accounts at all. You still get rating, review count and
+//             review velocity, which is enough to track a rival's trajectory.
+//   none    — no Google listing (delivery-only kitchens often have none).
+//             Nothing to analyse; cannot be tracked.
+//
+// X/Twitter is listed where a handle exists, but is deliberately not part of
+// the tier calculation. Reading another account's posts needs a paid API tier
+// — the free tier is effectively write-only — and the entry price is well
+// beyond a single-outlet restaurant's software budget. Pricing has also
+// changed repeatedly, so verify before planning around it. In practice almost
+// no neighbourhood restaurant in Delhi posts there anyway.
+const ESTABLISHMENTS = [
+  { id: 'est-1',  competitorId: 'cmp-1', name: 'Dwarka Darbar',            category: 'North Indian',   distanceKm: 0.2,
+    google: { rating: 4.5, reviews: 3120, status: 'OPERATIONAL' },
+    instagram: { handle: '@dwarkadarbar',    accountType: 'business' }, x: null },
+  { id: 'est-2',  competitorId: 'cmp-2', name: 'Sector 10 Social',         category: 'Bar & kitchen',  distanceKm: 0.3,
+    google: { rating: 4.2, reviews: 2240, status: 'OPERATIONAL' },
+    instagram: { handle: '@sector10social',  accountType: 'business' }, x: { handle: '@sector10social' } },
+  { id: 'est-3',  competitorId: 'cmp-3', name: 'Baoli Kitchen',            category: 'North Indian',   distanceKm: 0.6,
+    google: { rating: 4.4, reviews: 1180, status: 'OPERATIONAL' },
+    instagram: { handle: '@baolikitchen',    accountType: 'business' }, x: null },
+  { id: 'est-4',  competitorId: 'cmp-4', name: 'The Curry Room',           category: 'North Indian',   distanceKm: 1.1,
+    google: { rating: 3.8, reviews: 640,  status: 'OPERATIONAL' },
+    instagram: { handle: '@thecurryroom',    accountType: 'business' }, x: null },
+  { id: 'est-5',  competitorId: 'cmp-5', name: 'Nawab & Sons',             category: 'Biryani',        distanceKm: 0.4,
+    google: { rating: 4.3, reviews: 810,  status: 'OPERATIONAL' },
+    instagram: { handle: '@nawabandsons',    accountType: 'business' }, x: null },
+  { id: 'est-6',  competitorId: 'cmp-6', name: 'Chowk 21',                 category: 'Street food',    distanceKm: 0.2,
+    google: { rating: 4.0, reviews: 1420, status: 'OPERATIONAL' },
+    instagram: { handle: '@chowk21',         accountType: 'business' }, x: null },
+
+  // Trackable, but not currently in the competitor set.
+  { id: 'est-7',  competitorId: null,    name: 'Wok Republic',             category: 'Chinese',        distanceKm: 0.5,
+    google: { rating: 4.1, reviews: 960,  status: 'OPERATIONAL' },
+    instagram: { handle: '@wokrepublicdwarka', accountType: 'business' }, x: { handle: '@wokrepublic' } },
+  { id: 'est-8',  competitorId: null,    name: 'The Bread Room',           category: 'Bakery & cafe',  distanceKm: 0.7,
+    google: { rating: 4.6, reviews: 540,  status: 'OPERATIONAL' },
+    instagram: { handle: '@thebreadroom.dwk', accountType: 'creator' }, x: null },
+  { id: 'est-9',  competitorId: null,    name: 'Tandoori Nights',          category: 'North Indian',   distanceKm: 1.4,
+    google: { rating: 4.0, reviews: 1120, status: 'OPERATIONAL' },
+    instagram: { handle: '@tandoorinights10', accountType: 'business' }, x: null },
+  { id: 'est-10', competitorId: null,    name: 'Punjabi Rasoi',            category: 'North Indian',   distanceKm: 0.9,
+    google: { rating: 4.2, reviews: 780,  status: 'OPERATIONAL' },
+    // A business account that has not posted in months: Business Discovery
+    // works, but there is nothing to compare on.
+    instagram: { handle: '@punjabirasoi.dwarka', accountType: 'business', lastPostDaysAgo: 142 }, x: null },
+
+  // Ratings only — Instagram cannot be read.
+  { id: 'est-11', competitorId: null,    name: 'Gupta Bhojnalaya',         category: 'North Indian',   distanceKm: 0.3,
+    google: { rating: 4.4, reviews: 2010, status: 'OPERATIONAL' },
+    instagram: { handle: '@guptabhojnalaya', accountType: 'personal' }, x: null },
+  { id: 'est-12', competitorId: null,    name: 'Cafe Mocha Lane',          category: 'Cafe',           distanceKm: 0.8,
+    google: { rating: 4.3, reviews: 690,  status: 'OPERATIONAL' },
+    instagram: { handle: '@mochalane', accountType: 'private' }, x: null },
+  { id: 'est-13', competitorId: null,    name: 'Sethi Sweets & Namkeen',   category: 'Sweets',         distanceKm: 0.1,
+    google: { rating: 4.5, reviews: 3460, status: 'OPERATIONAL' },
+    instagram: null, x: null },
+  { id: 'est-14', competitorId: null,    name: 'Grill & Chill',            category: 'Fast food',      distanceKm: 1.9,
+    google: { rating: 3.6, reviews: 420,  status: 'OPERATIONAL' },
+    instagram: { handle: '@grillandchill.dwk', accountType: 'personal' }, x: null },
+
+  // Not trackable at all.
+  { id: 'est-15', competitorId: null,    name: 'Biryani Junction (cloud kitchen)', category: 'Delivery only', distanceKm: 1.2,
+    google: null,
+    instagram: { handle: '@biryanijunction.ncr', accountType: 'business' }, x: null },
+];
+
+// What can actually be analysed for an establishment, and why. Returns the
+// tier plus the reasons, because "you cannot track this" is only useful if it
+// says which door is closed.
+function establishmentAvailability(e) {
+  const reasons = [];
+  const hasGoogle = !!(e.google && e.google.status === 'OPERATIONAL');
+  const ig = e.instagram;
+  const igReadable = !!ig && (ig.accountType === 'business' || ig.accountType === 'creator');
+
+  if (hasGoogle) {
+    reasons.push({ ok: true, text: `Google listing — ${e.google.rating.toFixed(1)}★, ${e.google.reviews.toLocaleString('en-IN')} reviews` });
+  } else {
+    reasons.push({ ok: false, text: 'No Google listing — delivery-only kitchens often have none, and Places is the only way in' });
+  }
+
+  if (!ig) {
+    reasons.push({ ok: false, text: 'No Instagram account found' });
+  } else if (igReadable) {
+    const stale = ig.lastPostDaysAgo && ig.lastPostDaysAgo > 60;
+    reasons.push({
+      ok: !stale,
+      text: stale
+        ? `Instagram ${ig.accountType} account, but last posted ${ig.lastPostDaysAgo} days ago — readable, nothing to compare`
+        : `Instagram ${ig.accountType} account — Business Discovery can read it`,
+    });
+  } else {
+    reasons.push({
+      ok: false,
+      text: `Instagram account is ${ig.accountType} — Business Discovery cannot read ${ig.accountType} accounts at all`,
+    });
+  }
+
+  if (e.x) {
+    reasons.push({ ok: false, text: 'X handle exists, but reading posts needs a paid API tier — not counted toward availability' });
+  }
+
+  const stale = !!(ig && ig.lastPostDaysAgo && ig.lastPostDaysAgo > 60);
+  const tier = !hasGoogle ? 'none' : (igReadable && !stale ? 'full' : 'ratings');
+  return { tier, reasons, hasGoogle, igReadable, stale };
+}
+
+// Which establishments are currently tracked as competitors. Persisted, and
+// read by both the Competitors screen and the recommendation engine so one
+// choice drives both.
+const TRACKED_KEY = 'saf-tracked-v1';
+const TRACKED_DEFAULT = ESTABLISHMENTS.filter(e => e.competitorId).map(e => e.id);
+
+function trackedLoad() {
+  try {
+    const raw = localStorage.getItem(TRACKED_KEY);
+    if (!raw) return [...TRACKED_DEFAULT];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [...TRACKED_DEFAULT];
+  } catch (e) {
+    return [...TRACKED_DEFAULT];
+  }
+}
+function trackedSave(ids) {
+  try { localStorage.setItem(TRACKED_KEY, JSON.stringify(ids)); } catch (e) {}
+}
+
+// The competitor rows for the currently tracked establishments. Only rows we
+// hold full Business Discovery data for can appear on the Competitors table;
+// a ratings-only establishment is tracked but has no feed to show.
+// Tracked establishments we hold no feed for yet. In production, marking one
+// queues a Business Discovery fetch; here there is simply no seed data. Either
+// way the honest thing is to say "not synced", not to drop it silently.
+function trackedPendingEstablishments() {
+  const ids = new Set(trackedLoad());
+  return ESTABLISHMENTS.filter(e =>
+    ids.has(e.id) && !e.competitorId && establishmentAvailability(e).tier === 'full'
+  );
+}
+
+function trackedCompetitors() {
+  const ids = new Set(trackedLoad());
+  const wanted = new Set(
+    ESTABLISHMENTS.filter(e => ids.has(e.id) && e.competitorId).map(e => e.competitorId)
+  );
+  return LISTENING_COMPETITORS.filter(c => wanted.has(c.id));
+}
+
 // --- Per-channel trends ------------------------------------------------------
 // The three APIs count genuinely different things, so each channel names its
 // own metrics rather than being forced into a shared "mentions / reach" shape
@@ -1337,6 +1512,8 @@ Object.assign(window, {
   LISTENING_SIGNALS, LISTENING_COMPETITORS, LISTENING_TRENDS, LISTENING_KPIS,
   LISTENING_KINDS, LISTENING_SEVERITIES, listeningLoad, listeningSave,
   SAF_HANDLE, SAF_SELF_STATS, COMPETITOR_CATCHMENT, COMPETITOR_POST_SEEDS,
+  ESTABLISHMENTS, establishmentAvailability, trackedLoad, trackedSave, trackedCompetitors,
+  trackedPendingEstablishments,
   PlatformGlyph, Avatar,
   POSTS, SCHEDULED, CONVERSATIONS, POST_COMMENTS,
   REVIEWS, REVIEW_STATS, MENU_ITEMS,

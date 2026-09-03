@@ -140,6 +140,27 @@ The Google Places terms restrict caching and storing most place content —
 review text especially. Check them before you build a competitor review
 archive.
 
+### Establishment discovery (`ESTABLISHMENTS`)
+
+| Field | Source | Availability |
+|---|---|---|
+| Name, place_id, address, category | Google Places Nearby Search | API |
+| Their rating + review count | Google Places | API |
+| Business status (operational / closed) | Google Places | API |
+| Their Instagram handle | **No API maps a place to a social account** | Manual, once per establishment |
+| Whether their Instagram is readable | Business Discovery succeeds or returns nothing | API (by attempting it) |
+
+Business Discovery reads **public Business and Creator accounts only**. A
+personal or private account returns nothing at all — not partial data, nothing
+— and you cannot tell which it is from the outside without trying. Expect to
+lose a meaningful share of a neighbourhood market this way.
+
+**X / Twitter is not counted toward availability.** Reading another account's
+posts requires a paid API tier; the free tier is effectively write-only.
+Pricing has changed repeatedly and the entry tier costs more per month than a
+single-outlet restaurant spends on software. In this catchment almost nobody
+posts there. A handle is displayed where one exists, and that is all.
+
 ### Analytics (`ANALYTICS_*`)
 
 | Field | Source | Availability |

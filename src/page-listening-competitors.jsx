@@ -54,18 +54,22 @@ function CompetitorsScreen({ theme }) {
   const t = useT();
   const [sort, setSort] = React.useState({ field: 'engagement', dir: 'desc' });
 
+  // Driven by what is marked on the Establishments screen, so one choice
+  // controls both this table and the recommendation engine.
+  const tracked = React.useMemo(() => trackedCompetitors(), []);
+
   const sortedRows = React.useMemo(() => {
     const col = COMPETITOR_COLUMNS.find(c => c.id === sort.field);
-    if (!col || !col.getValue) return LISTENING_COMPETITORS;
+    if (!col || !col.getValue) return tracked;
     const dir = sort.dir === 'asc' ? 1 : -1;
-    return [...LISTENING_COMPETITORS].sort((a, b) => {
+    return [...tracked].sort((a, b) => {
       const va = col.getValue(a);
       const vb = col.getValue(b);
       if (va < vb) return -1 * dir;
       if (va > vb) return  1 * dir;
       return 0;
     });
-  }, [sort.field, sort.dir]);
+  }, [sort.field, sort.dir, tracked]);
 
   const onSort = (field) => {
     const col = COMPETITOR_COLUMNS.find(c => c.id === field);
@@ -77,8 +81,11 @@ function CompetitorsScreen({ theme }) {
 
   return (
     <div id="listening-competitors" role="tabpanel" className="space-y-4">
-      <CatchmentHeader />
-      <CompetitorInsights theme={theme} />
+      <CatchmentHeader tracked={tracked} />
+      <PendingSyncNote />
+      {tracked.length > 0
+        ? <CompetitorInsights theme={theme} peers={tracked} />
+        : <EmptyCatchment />}
       {/* Saffron House sits above the peer table — internal-source data, our own
           baseline. The peer table below is purely external observation. */}
       <SelfRowCard data={SAF_SELF_STATS} theme={theme} t={t} />
@@ -90,7 +97,7 @@ function CompetitorsScreen({ theme }) {
 
 // Names the catchment, because a competitor set without a boundary is just a
 // list of restaurants. Google Places nearby search seeds it; a human curates.
-function CatchmentHeader() {
+function CatchmentHeader({ tracked }) {
   const c = COMPETITOR_CATCHMENT;
   return (
     <div className="flex items-start gap-2.5">
@@ -110,7 +117,7 @@ function CatchmentHeader() {
           )}
         </div>
         <div className="text-[12px] text-saf-muted">
-          {c.radiusKm} km radius · {LISTENING_COMPETITORS.length} restaurants tracked · {c.note}
+          {c.radiusKm} km radius · {tracked.length} tracked with content data · {c.note}
         </div>
         {c.isSampleData && (
           <p className="text-[11.5px] text-amber-700 mt-1 leading-relaxed">
@@ -126,9 +133,8 @@ function CatchmentHeader() {
 // The table shows numbers; the insight is in the gaps between them. Each of
 // these is computed from public fields only — Business Discovery counts and
 // Places ratings — and says what the gap means rather than just how big it is.
-function CompetitorInsights({ theme }) {
+function CompetitorInsights({ theme, peers }) {
   const us = SAF_SELF_STATS;
-  const peers = LISTENING_COMPETITORS;
 
   const med = (arr) => {
     const a = [...arr].sort((x, y) => x - y);
@@ -250,6 +256,45 @@ function CompetitorInsights({ theme }) {
         </div>
       </Card>
     </div>
+  );
+}
+
+// Tracked and readable, but no content pulled yet. Saying so beats a silent
+// omission that reads as the feature being broken.
+function PendingSyncNote() {
+  const pending = trackedPendingEstablishments();
+  if (!pending.length) return null;
+  return (
+    <div className="flex items-start gap-2 p-3 rounded-xl bg-saf-light border border-saf-primary/30">
+      <Icon name="Clock" size={14} className="text-saf-primary mt-0.5 shrink-0" />
+      <p className="text-[12.5px] text-saf-text leading-relaxed">
+        <span className="font-semibold">
+          {pending.length} tracked establishment{pending.length > 1 ? 's have' : ' has'} not synced yet
+        </span>{' '}
+        — {pending.map(p => p.name).join(', ')}. Their Instagram accounts are readable, so their
+        posts and cadence will appear here after the next Business Discovery fetch.
+      </p>
+    </div>
+  );
+}
+
+// Nothing tracked yet — point at the screen where the set is chosen rather
+// than showing an empty table with no explanation.
+function EmptyCatchment() {
+  return (
+    <Card padding="p-8">
+      <div className="text-center">
+        <div className="w-12 h-12 mx-auto rounded-full bg-saf-light grid place-items-center text-saf-primary">
+          <Icon name="Store" size={22} />
+        </div>
+        <div className="mt-3 text-[15px] font-semibold text-saf-text">No competitors tracked</div>
+        <p className="text-[13px] text-saf-muted mt-1 max-w-md mx-auto leading-relaxed">
+          Nothing is being compared. Open Establishments to see every restaurant in the catchment
+          and mark the ones you compete with — the list there shows which have public data to
+          compare against.
+        </p>
+      </div>
+    </Card>
   );
 }
 

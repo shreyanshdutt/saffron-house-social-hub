@@ -21,6 +21,7 @@ const I18N = {
       exports: 'Exports',
       notifications: 'Notifications',
       listening: 'Social Listening',
+      establishments: 'Establishments',
       settings: 'Settings',
     },
     crumb: {
@@ -40,11 +41,11 @@ const I18N = {
       exports: 'Exports',
       notifications: 'Notifications',
       listening: 'Social Listening',
+      establishments: 'Establishments',
       settings: 'Settings',
       home: 'Home',
     },
     search: 'Search posts, reviews, guests, dishes…',
-    en: 'EN', ar: 'AR',
     user: { name: 'Priya Menon', role: 'Marketing Manager', profile: 'Profile', prefs: 'Preferences', logout: 'Logout' },
     compose: {
       title: 'Compose a post',

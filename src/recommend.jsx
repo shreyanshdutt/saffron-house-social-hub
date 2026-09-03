@@ -101,7 +101,9 @@ function buildRecommendationContext() {
     reviewStats: REVIEW_STATS,
     menu: MENU_ITEMS,
     signals: LISTENING_SIGNALS,
-    competitors: LISTENING_COMPETITORS,
+    // Only what the user marked on the Establishments screen, so the
+    // engine compares against the set they actually chose.
+    competitors: trackedCompetitors(),
     self: SAF_SELF_STATS,
     analytics: ANALYTICS_IG.daily,
     trends: LISTENING_TRENDS,

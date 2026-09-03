@@ -166,6 +166,7 @@ const PAGE_PERMS = {
   exports:        'notifications.read',
   notifications:  'notifications.read',
   listening:      'notifications.read',
+  establishments: 'notifications.read',
   settings:       'dashboard',
 };
 const PAGE_LABEL = {
@@ -186,6 +187,7 @@ const PAGE_LABEL = {
   exports:        'Exports',
   notifications:  'Notifications',
   listening:      'Social Listening',
+  establishments: 'Establishments',
 };
 window.PAGE_PERMS = PAGE_PERMS;
 window.PAGE_LABEL = PAGE_LABEL;
@@ -200,6 +202,7 @@ function PageRouter({ page, go, composerInitial, openedPost, onOpenPost, onClose
     case 'messages':        return <MessagesPage role={role} />;
     case 'team':            return <TeamPage />;
     case 'listening':       return <ListeningPage />;
+    case 'establishments':  return <EstablishmentsPage onNavigate={go} />;
     case 'notifications':   return <NotificationsCenterPage />;
     case 'approvals':       return <ApprovalsPage role={role} openedPost={openedPost} onCloseDrawer={onCloseDrawer} />;
     case 'scheduled':       return <ScheduledPage />;
