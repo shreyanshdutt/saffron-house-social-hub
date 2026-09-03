@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=1280" />
+<title>Saffron House Social Hub</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&display=swap" rel="stylesheet" />
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  // Apply theme BEFORE first paint to avoid a flash.
+  (function(){
+    try {
+      var saved = localStorage.getItem('saf-theme');
+      var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      var dark = saved ? saved === 'dark' : prefersDark;
+      if (dark) document.documentElement.classList.add('dark');
+    } catch (e) {}
+  })();
+  tailwind.config = {
+    darkMode: 'class',
+    theme: {
+      extend: {
+        fontFamily: {
+          sans:    ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+          display: ['Fraunces', 'Georgia', 'serif'],
+        },
+        colors: {
+          saf: {
+            primary:    '#B4451F',
+            dark:       '#6E2412',
+            light:      '#FCEFE7',
+            accent:     '#D99A16',
+            surface:    '#FBF7F2',
+            card:       '#FFFFFF',
+            text:       '#2A1D16',
+            muted:      '#7A6A5F',
+            success:    '#2E7D4F',
+            warning:    '#B7791F',
+            danger:     '#C0342B',
+            border:     '#EADFD4',
+          },
+        },
+        boxShadow: {
+          card:  '0 1px 2px rgba(78,40,20,0.04), 0 1px 3px rgba(78,40,20,0.06)',
+          pop:   '0 10px 30px -10px rgba(78,40,20,0.18), 0 4px 10px -4px rgba(78,40,20,0.08)',
+          drawer:'-20px 0 40px -10px rgba(78,40,20,0.18)',
+        },
+        keyframes: {
+          pulseRing: {
+            '0%':  { boxShadow: '0 0 0 0 rgba(192,52,43,0.55)' },
+            '70%': { boxShadow: '0 0 0 8px rgba(192,52,43,0)' },
+            '100%':{ boxShadow: '0 0 0 0 rgba(192,52,43,0)' },
+          },
+          // Calmer variant for the crisis-cluster card. This is a regulated-
+          // bank product; urgency should read as "this needs your attention,"
+          // not "this app is alarming." Smaller ring delta (4px vs 8px),
+          // slower cadence (2.6s vs 1.8s), lower alpha.
+          pulseRingSubtle: {
+            '0%':  { boxShadow: '0 0 0 0 rgba(192,52,43,0.35)' },
+            '70%': { boxShadow: '0 0 0 4px rgba(192,52,43,0)' },
+            '100%':{ boxShadow: '0 0 0 0 rgba(192,52,43,0)' },
+          },
+          shimmer: {
+            '0%':   { backgroundPosition: '-400px 0' },
+            '100%': { backgroundPosition: '400px 0' },
+          },
+          floatPulse: {
+            '0%,100%': { boxShadow: '0 8px 30px rgba(180,69,31,0.45), 0 0 0 0 rgba(217,154,22,0.6)' },
+            '50%':     { boxShadow: '0 8px 30px rgba(180,69,31,0.45), 0 0 0 16px rgba(217,154,22,0)' },
+          },
+          slideInRight: { '0%': { transform: 'translateX(110%)', opacity: 0 }, '100%': { transform: 'translateX(0)', opacity: 1 } },
+          slideDown:    { '0%': { transform: 'translateY(-6px)', opacity: 0 }, '100%': { transform: 'translateY(0)', opacity: 1 } },
+          fadeScale:    { '0%': { transform: 'scale(.96)', opacity: 0 }, '100%': { transform: 'scale(1)', opacity: 1 } },
+          checkDraw:    { '0%': { strokeDashoffset: 40 }, '100%': { strokeDashoffset: 0 } },
+          // One-shot ring spotlight applied to a signal card when the
+          // user navigates to it from the Overview screen's "top critical
+          // signal" panel. Two pulses, then settles to nothing — long
+          // enough to be noticed, short enough not to feel like an alarm.
+          spotlight: {
+            '0%, 100%': { boxShadow: '0 0 0 0 rgba(180,69,31,0)' },
+            '20%':      { boxShadow: '0 0 0 4px rgba(180,69,31,0.55)' },
+            '60%':      { boxShadow: '0 0 0 2px rgba(180,69,31,0.30)' },
+          },
+        },
+        animation: {
+          pulseRing:       'pulseRing 1.8s ease-out infinite',
+          pulseRingSubtle: 'pulseRingSubtle 2.6s ease-out infinite',
+          spotlight:       'spotlight 2s ease-out 1',
+          shimmer:      'shimmer 1.4s linear infinite',
+          floatPulse:   'floatPulse 2.4s ease-in-out infinite',
+          slideInRight: 'slideInRight .35s cubic-bezier(.2,.8,.2,1)',
+          slideDown:    'slideDown .25s ease-out',
+          fadeScale:    'fadeScale .25s ease-out',
+        },
+      },
+    },
+  };
+</script>
+<style>
+  html, body, #root { height: 100%; }
+  body {
+    margin: 0;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    background: #FBF7F2;
+    color: #2A1D16;
+    -webkit-font-smoothing: antialiased;
+    transition: background-color 200ms ease, color 200ms ease;
+  }
+  *:focus { outline: none; }
+  /* nicer scrollbars */
+  .nice-scroll::-webkit-scrollbar { width: 10px; height: 10px; }
+  .nice-scroll::-webkit-scrollbar-thumb { background: #EADFD4; border-radius: 8px; }
+  .nice-scroll::-webkit-scrollbar-thumb:hover { background: #D8C6B5; }
+  .nice-scroll::-webkit-scrollbar-track { background: transparent; }
+  /* shimmer skeleton */
+  .skeleton {
+    background: linear-gradient(90deg, #FCEFE7 0%, #FFF8F1 50%, #FCEFE7 100%);
+    background-size: 800px 100%;
+    animation: shimmer 1.4s linear infinite;
+    border-radius: 8px;
+  }
+  @keyframes shimmer {
+    0% { background-position: -400px 0; }
+    100% { background-position: 400px 0; }
+  }
+  /* directional helpers */
+  [dir="rtl"] .flip-x { transform: scaleX(-1); }
+  /* nice text-balance everywhere */
+  h1, h2, h3, h4 { text-wrap: balance; }
+  p { text-wrap: pretty; }
+  /* hide the lucide injected wrapper sizing issue */
+  svg { flex-shrink: 0; }
+  .tab-underline {
+    position: relative;
+  }
+  .tab-underline::after {
+    content: '';
+    position: absolute;
+    left: 0; right: 0; bottom: -1px;
+    height: 2px;
+    background: #B4451F;
+    transform: scaleX(0);
+    transition: transform .25s cubic-bezier(.2,.8,.2,1);
+    transform-origin: center;
+  }
+  .tab-underline.active::after { transform: scaleX(1); }
+  /* checkmark animation */
+  .check-svg path {
+    stroke-dasharray: 40;
+    stroke-dashoffset: 40;
+    animation: checkDraw .45s .1s ease-out forwards;
+  }
+  @keyframes checkDraw { to { stroke-dashoffset: 0; } }
+
+  /* ──────────────────────────────────────────────────────────────────
+     DARK MODE
+     ──────────────────────────────────────────────────────────────────
+     Strategy: keep the .jsx files using the same saf-* Tailwind utility
+     classes; remap their visual output under html.dark via CSS overrides.
+     Surfaces:
+       page bg    → #17110D  (slightly darker so cards lift visibly)
+       card bg    → #221913  (raised, with a real outline against page)
+       outline    → #41332A  (clearly readable as an edge on the card)
+     Text contrast (measured against the card, #221913):
+       text-saf-text     → #F2E9E1  (14.4 : 1)  AAA
+       text-saf-muted    → #B3A296  ( 7.0 : 1)  AAA
+       text-slate-*      → #B3A296  ( 7.0 : 1)  AAA
+       text-saf-primary  → #F0A07A  ( 8.2 : 1)  AAA
+  */
+  html.dark body { background-color: #17110D; color: #F2E9E1; }
+  html.dark .bg-white           { background-color: #221913; }
+  html.dark .bg-saf-card        { background-color: #221913; }
+  html.dark .bg-saf-surface     { background-color: #17110D; }
+  html.dark .bg-saf-surface\/80 { background-color: rgba(23,17,13, 0.80); }
+  html.dark .bg-saf-light       { background-color: rgba(180,69,31, 0.22); }
+  html.dark .bg-saf-light\/30   { background-color: rgba(180,69,31, 0.14); }
+  html.dark .bg-saf-light\/40   { background-color: rgba(180,69,31, 0.16); }
+  html.dark .bg-saf-light\/50   { background-color: rgba(180,69,31, 0.20); }
+  html.dark .bg-saf-light\/60   { background-color: rgba(180,69,31, 0.24); }
+
+  html.dark .text-saf-text      { color: #F2E9E1; }
+  html.dark .text-saf-dark      { color: #F0A07A; }  /* prevent chestnut-on-chestnut */
+  /* The terracotta primary (#B4451F) fails WCAG AA on the dark card at full
+     saturation (2.0 : 1). Lift to a warm apricot — 8.2 : 1 on the card,
+     9.0 : 1 on the page. Hover state stays interactive-feeling. */
+  html.dark .text-saf-primary   { color: #F0A07A; }
+  html.dark .hover\:text-saf-primary:hover { color: #F7C4A8; }
+  html.dark .text-saf-accent    { color: #F2C75C; }
+  html.dark .text-saf-muted     { color: #B3A296; }
+  html.dark .text-slate-400,
+  html.dark .text-slate-500,
+  html.dark .text-slate-600     { color: #B3A296; }
+
+  /* Strong, single source of truth for card outlines so every Card
+     reads as an outlined surface on the dark page. */
+  html.dark .border-saf-border  { border-color: #41332A; }
+  html.dark .ring-saf-border    { --tw-ring-color: #41332A; }
+  html.dark .divide-saf-border > * + * { border-color: #41332A; }
+
+  /* Soft tonal blocks used as section backgrounds */
+  html.dark .bg-emerald-50      { background-color: rgba(46,125,79,0.18); }
+  html.dark .bg-amber-50        { background-color: rgba(183,121,31,0.18); }
+  html.dark .bg-rose-50         { background-color: rgba(192,52,43,0.18); }
+  html.dark .text-emerald-700   { color: #86EFAC; }
+  html.dark .text-amber-700     { color: #FCD34D; }
+  html.dark .text-rose-700      { color: #FCA5A5; }
+  html.dark .text-emerald-600   { color: #6EE7B7; }
+  html.dark .text-amber-600     { color: #FBBF24; }
+  html.dark .text-rose-600      { color: #FCA5A5; }
+  html.dark .border-rose-100    { border-color: rgba(192,52,43,0.35); }
+  html.dark .border-saf-light   { border-color: rgba(180,69,31,0.35); }
+
+  /* Inputs */
+  html.dark input,
+  html.dark textarea,
+  html.dark select {
+    color: #F2E9E1;
+    background-color: transparent;
+  }
+  html.dark input::placeholder,
+  html.dark textarea::placeholder { color: #7A6A5F; }
+
+  /* Scrollbar in dark mode */
+  html.dark .nice-scroll::-webkit-scrollbar-thumb { background: #41332A; }
+  html.dark .nice-scroll::-webkit-scrollbar-thumb:hover { background: #6B5647; }
+
+  /* Shimmer skeleton recolour */
+  html.dark .skeleton {
+    background: linear-gradient(90deg, #221913 0%, #2E2219 50%, #221913 100%);
+    background-size: 800px 100%;
+  }
+
+  /* ─── Recharts dark theming ─────────────────────────────────────
+     These run as !important because Recharts emits inline stroke /
+     fill attributes from the JSX (XAxis stroke="#7A6A5F" etc.) which
+     CSS would otherwise lose against. */
+  html.dark .recharts-cartesian-grid line       { stroke: #2E2219 !important; }
+  html.dark .recharts-cartesian-axis-line,
+  html.dark .recharts-cartesian-axis-tick-line  { stroke: #6B5647 !important; }
+  html.dark .recharts-cartesian-axis-tick text,
+  html.dark .recharts-text                      { fill: #D8C9BC !important; }
+  html.dark .recharts-legend-item-text          { color: #D8C9BC !important; }
+  html.dark .recharts-tooltip-cursor            { fill: rgba(255,255,255,0.05) !important; }
+  /* Custom EngagementTooltip uses bg-white which already swaps to the
+     dark card; this catches any default Recharts tooltip too. */
+  html.dark .recharts-default-tooltip {
+    background-color: #221913 !important;
+    border: 1px solid #41332A !important;
+    color: #F2E9E1 !important;
+  }
+
+  /* Focus ring offset color matches the new dark page so the halo
+     reads as a clean separation, not a glow on a colored neighbour. */
+  html.dark *:focus-visible { outline-offset: 2px; }
+  html.dark .focus-visible\:ring-offset-2:focus-visible {
+    --tw-ring-offset-color: #17110D;
+  }
+</style>
+
+<script>
+  // Recharts 2.x emits React 18 deprecation warnings for defaultProps;
+  // they're harmless — silence to keep the console clean.
+  (function(){
+    const origError = console.error;
+    console.error = function(...args) {
+      const s = typeof args[0] === 'string' ? args[0] : '';
+      if (s.includes('defaultProps will be removed')) return;
+      return origError.apply(console, args);
+    };
+  })();
+</script>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<!-- Import map so that esm.sh modules below resolve `react` / `react-dom` to the
+     same UMD instance loaded above (single React instance — no hook errors). -->
+<script type="importmap">
+{
+  "imports": {
+    "react":     "data:text/javascript,const m=window.React;export default m;export const {useState,useEffect,useRef,useMemo,useContext,createContext,useCallback,useLayoutEffect,useReducer,useImperativeHandle,useDebugValue,useId,useSyncExternalStore,useTransition,useDeferredValue,forwardRef,Fragment,Children,cloneElement,createElement,isValidElement,memo,lazy,Suspense,Component,PureComponent,StrictMode,version}=m;",
+    "react-dom": "data:text/javascript,const m=window.ReactDOM;export default m;export const {createPortal,findDOMNode,flushSync,render,unmountComponentAtNode,version}=m;"
+  }
+}
+</script>
+<script type="module">
+  // Pull lucide & recharts as ES modules, with React externalised so they
+  // bind to the same window.React UMD instance.
+  const [L, R] = await Promise.all([
+    import('https://esm.sh/lucide-react@0.453.0?external=react,react-dom'),
+    import('https://esm.sh/recharts@2.12.7?external=react,react-dom'),
+  ]);
+  window.Lucide = L;
+  window.Recharts = R;
+  window.dispatchEvent(new Event('deps-ready'));
+</script>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" src="src/i18n.jsx"></script>
+<script type="text/babel" src="src/mock.jsx"></script>
+<script type="text/babel" src="src/ui.jsx"></script>
+<script type="text/babel" src="src/sidebar.jsx"></script>
+<script type="text/babel" src="src/topbar.jsx"></script>
+<script type="text/babel" src="src/page-dashboard.jsx"></script>
+<script type="text/babel" src="src/page-compose.jsx"></script>
+<script type="text/babel" src="src/page-analytics.jsx"></script>
+<script type="text/babel" src="src/page-history.jsx"></script>
+<script type="text/babel" src="src/page-approvals.jsx"></script>
+<script type="text/babel" src="src/page-scheduled.jsx"></script>
+<script type="text/babel" src="src/page-messages.jsx"></script>
+<script type="text/babel" src="src/page-reviews.jsx"></script>
+<script type="text/babel" src="src/page-settings.jsx"></script>
+<script type="text/babel" src="src/page-stubs.jsx"></script>
+<script type="text/babel" src="src/csv-util.jsx"></script>
+<!-- Listening sub-screens load before the shell so the shell's JSX
+     (which references SignalsScreen/OverviewScreen/TrendsScreen/
+     CompetitorsScreen by bare name) resolves correctly. -->
+<script type="text/babel" src="src/page-listening-signals.jsx"></script>
+<script type="text/babel" src="src/page-listening-overview.jsx"></script>
+<script type="text/babel" src="src/page-listening-trends.jsx"></script>
+<script type="text/babel" src="src/page-listening-competitors.jsx"></script>
+<script type="text/babel" src="src/page-listening-menu.jsx"></script>
+<script type="text/babel" src="src/page-listening.jsx"></script>
+<script type="text/babel" src="src/ai-assistant.jsx"></script>
+<script type="text/babel" src="src/app.jsx"></script>
+<script type="text/babel" data-presets="env,react">
+  // Bootstrap: wait until lucide is loaded then mount.
+  function mount() {
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  }
+  if (window.Lucide && window.Recharts) mount();
+  else window.addEventListener('deps-ready', mount, { once: true });
+</script>
+</body>
+</html>
