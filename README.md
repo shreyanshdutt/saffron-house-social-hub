@@ -58,8 +58,19 @@ explaining why.
 
 ## How it differs from a generic social hub
 
-Three things were restructured around restaurant reality rather than carried
+Four things were restructured around restaurant reality rather than carried
 over:
+
+- **Actions** (`src/page-recommendations.jsx`, engine in `src/recommend.jsx`) is
+  the "what should I do today" screen. Eleven rules run over the week's
+  reviews, menu conversation, listening signals, channel performance and
+  publishing queue, and produce a ranked list of concrete actions — post this
+  dish, fix the packing station, open a second Diwali seating, do not promote
+  that curry. Nothing executes: each action carries an owner, a place it
+  happens (kitchen, partner dashboard, composer) and a deadline. Every figure
+  behind a recommendation is shown with its real-world source and badged by
+  whether that source is live via API, needs a partner integration, or is
+  derived in-house.
 
 - **Reviews** (`src/page-reviews.jsx`) is a first-class screen, not a feed tab.
   Reviews arrive with a star rating, a dine-in/delivery context, and an SLA
@@ -109,6 +120,7 @@ src/             JSX modules, loaded in dependency order by index.html.
   csv-util.jsx   RFC 4180 CSV build + download
   sidebar.jsx    Left navigation
   topbar.jsx     Header, role switcher, notifications
+  recommend.jsx  Recommendation engine — rules, scoring, provenance
   page-*.jsx     One file per screen
   page-listening*.jsx  Listening shell + 5 sub-screens
   ai-assistant.jsx     Floating AI assistant
@@ -118,6 +130,14 @@ src/             JSX modules, loaded in dependency order by index.html.
 Each `src/*.jsx` runs in the global scope under Babel standalone — they share
 state through window globals rather than ES imports. Load order in
 `index.html` is therefore load-bearing.
+
+## Live data
+
+Every number here is fabricated. **[DATA-SOURCES.md](DATA-SOURCES.md)** maps
+each dataset to what would actually feed it in production and is deliberately
+honest about the gaps — the headline one being that three of the six channels
+(Zomato, Swiggy, District) have no public API, and reach a real build only via
+POS/aggregator middleware.
 
 ## Design tokens
 

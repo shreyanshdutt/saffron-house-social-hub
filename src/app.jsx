@@ -154,6 +154,7 @@ const PAGE_PERMS = {
   approvals:      'draft.create',
   analytics:      'notifications.read',
   reviews:        'review.read',
+  actions:        'dashboard',
   messages:       'inbox.read',
   team:           'inbox.read',
   scheduled:      'draft.create',
@@ -167,6 +168,7 @@ const PAGE_PERMS = {
   settings:       'dashboard',
 };
 const PAGE_LABEL = {
+  actions:        'Actions',
   reviews:        'Reviews',
   approvals:      'Approvals',
   inbox:          'Inbox',
@@ -192,6 +194,7 @@ function PageRouter({ page, go, composerInitial, openedPost, onOpenPost, onClose
     case 'compose':         return <ComposePage initialContent={composerInitial} />;
     case 'analytics':       return <AnalyticsPage onOpenPost={onOpenPost} />;
     case 'reviews':         return <ReviewsPage role={role} />;
+    case 'actions':         return <RecommendationsPage role={role} onNavigate={go} />;
     case 'messages':        return <MessagesPage role={role} />;
     case 'team':            return <TeamPage />;
     case 'listening':       return <ListeningPage />;
