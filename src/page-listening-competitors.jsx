@@ -97,13 +97,27 @@ function CatchmentHeader() {
       <span className="w-8 h-8 rounded-lg bg-saf-light text-saf-primary grid place-items-center shrink-0">
         <Icon name="MapPin" size={16} />
       </span>
-      <div>
-        <div className="text-[14.5px] font-semibold text-saf-text">
-          {c.label} · {c.pincode}
+      <div className="min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-[14.5px] font-semibold text-saf-text">
+            {c.label} · {c.pincode}
+          </span>
+          {c.isSampleData && (
+            <span className="inline-flex items-center gap-1 px-2 h-5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 text-[10.5px] font-semibold uppercase tracking-wide">
+              <Icon name="AlertTriangle" size={10} />
+              Sample data
+            </span>
+          )}
         </div>
         <div className="text-[12px] text-saf-muted">
           {c.radiusKm} km radius · {LISTENING_COMPETITORS.length} restaurants tracked · {c.note}
         </div>
+        {c.isSampleData && (
+          <p className="text-[11.5px] text-amber-700 mt-1 leading-relaxed">
+            These six restaurants are invented and the handles resolve to nothing. Replace them with
+            real establishments from Places Nearby Search before showing this to anyone outside the team.
+          </p>
+        )}
       </div>
     </div>
   );

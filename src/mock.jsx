@@ -891,11 +891,26 @@ const LISTENING_SIGNALS = [
 // `engagementRate` is DERIVED as interactions ÷ followers — an approximation,
 // but computed identically for us and for them, so the comparison is at least
 // like-for-like. The UI labels it as derived.
+//
+// ⚠ THESE SIX RESTAURANTS ARE INVENTED. None is a real establishment in
+// Sector 10 Market, Dwarka or anywhere else, and the handles below resolve to
+// nothing. Every follower count, rating, review total and post is fabricated.
+//
+// That matters more here than elsewhere in this file, because these are the
+// only records that name a THIRD PARTY. The names are plausible enough that
+// one could coincide with a real business, and this screen would then be
+// attaching invented ratings and "losing ground to them" claims to a real
+// restaurant. If this is ever shown outside a private demo, either replace
+// the list with real establishments pulled from Places Nearby Search, or
+// rename these to something unmistakably synthetic. The UI carries a visible
+// sample-data marker until you do.
 const COMPETITOR_CATCHMENT = {
   label: 'Sector 10 Market, Dwarka',
   pincode: '110075',
   radiusKm: 2.5,
-  note: 'Restaurants competing for the same table in the same market. Set by you — Google Places nearby search seeds the list, you curate it.',
+  // Flips to false once the list is populated from Places Nearby Search.
+  isSampleData: true,
+  note: 'Restaurants competing for the same table in the same market. Google Places nearby search seeds the list, you curate it.',
 };
 
 const LISTENING_COMPETITORS = [
