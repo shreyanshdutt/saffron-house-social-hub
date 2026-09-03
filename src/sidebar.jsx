@@ -59,6 +59,7 @@ const SIDEBAR_SECTIONS = [
       { route: 'brand',         icon: 'Palette',  perm: 'brand.manage',       labelKey: 'brand' },
       { route: 'users',         icon: 'Users',    perm: 'user.manage',        labelKey: 'users' },
       { route: 'audit',         icon: 'Shield',   perm: 'audit.read',         labelKey: 'audit' },
+      { route: 'data-sources',  icon: 'Database', perm: 'social.manage',      labelKey: 'data-sources' },
       { route: 'notifications', icon: 'Bell',     perm: 'notifications.read', labelKey: 'notifications' },
       { route: 'exports',       icon: 'Download', perm: 'notifications.read', labelKey: 'exports' },
     ],

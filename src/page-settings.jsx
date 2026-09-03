@@ -34,9 +34,6 @@ function AccountsTab() {
   const accounts = [
     { id: 'ig', handle: '@saffronhouse',            followers: '218K', status: 'expired',   last: '48 min ago' },
     { id: 'gg', handle: 'Saffron House · Khan Market', followers: '1.3K reviews', status: 'connected', last: 'just now' },
-    { id: 'zo', handle: 'Saffron House, Khan Market',  followers: '4.2K followers', status: 'connected', last: 'just now' },
-    { id: 'sw', handle: 'Saffron House',            followers: '2.8K followers', status: 'connected', last: '3 min ago' },
-    { id: 'di', handle: 'Saffron House',            followers: '14K',  status: 'connected', last: '5 min ago' },
     { id: 'wa', handle: '+91 11 4160 2200',         followers: '6.4K contacts', status: 'connected', last: '1 min ago' },
   ];
   return (

@@ -135,15 +135,19 @@ function PostDetailDrawer({ post, onClose }) {
 
         <section>
           <h4 className="text-[13px] font-medium text-saf-text mb-3">{t.history.metrics}</h4>
+          {/* Post-level performance is Instagram's — Google local posts report
+              only views and CTA clicks, which live on the Analytics screen.
+              Saying so beats implying these numbers are blended. */}
+          <p className="text-[11.5px] text-saf-muted -mt-2 mb-3">
+            From {PLATFORM_BY_ID[post.metricsFrom || 'ig'].api}
+          </p>
           <div className="grid grid-cols-3 gap-2">
-            <Metric label={t.history.m.imp}      value={post.metrics.impressions} />
+            <Metric label={t.history.m.views}    value={post.metrics.views} />
             <Metric label={t.history.m.reach}    value={post.metrics.reach} />
             <Metric label={t.history.m.likes}    value={post.metrics.likes} />
             <Metric label={t.history.m.comments} value={post.metrics.comments} />
             <Metric label={t.history.m.shares}   value={post.metrics.shares} />
             <Metric label={t.history.m.saves}    value={post.metrics.saves} />
-            <Metric label={t.history.m.clicks}   value={post.metrics.clicks} />
-            <Metric label={t.history.m.visits}   value={post.metrics.visits} />
             <Metric label={t.history.m.rate}     value={post.metrics.rate} suffix="%" highlight />
           </div>
         </section>

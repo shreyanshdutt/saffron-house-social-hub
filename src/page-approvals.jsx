@@ -34,18 +34,18 @@ const STATUS_TONE = {
 // Augmented mock with the 6-tab statuses (the base POSTS only had 4).
 const APPROVAL_POSTS = [
   ...POSTS,
-  { id: 'a-rev-1', platforms: ['ig','di'], status: 'in_review', date: '2026-09-04T08:30:00+05:30', author: 'Ananya Rao', content: 'Diwali menu — six courses, one seating a night, 24 seats, from 18 October. ₹4,500 per head. Bookings open Monday 9am on WhatsApp.', tags: ['#Diwali','#SaffronHouse'], media: { kind: 'image', label: 'Festive table setting, marigold and brass', tone: 'warm' }, metrics: { impressions: 0, reach: 0, likes: 0, comments: 0, shares: 0, saves: 0, clicks: 0, visits: 0, rate: 0 } },
-  { id: 'a-rev-2', platforms: ['gg','di'], status: 'in_review', date: '2026-09-04T07:45:00+05:30', author: 'Rohit Malhotra', content: 'Saffron House will host the Delhi Restaurant Week opening dinner on 12 October — Chef Meera cooking alongside three guest kitchens.', tags: ['#DelhiRestaurantWeek','#SaffronHouse'], metrics: { impressions: 0, reach: 0, likes: 0, comments: 0, shares: 0, saves: 0, clicks: 0, visits: 0, rate: 0 } },
-  { id: 'a-back-1', platforms: ['ig','zo'], status: 'sent_back', date: '2026-09-03T15:00:00+05:30', author: 'Ananya Rao', content: 'Free dessert with every order this weekend…', sendBackReason: 'The kitchen has not signed off on covering this, and it is not on the delivery menus. Confirm with Vikram and the platforms before this goes anywhere.', sendBackBy: 'Priya Menon', tags: ['#SaffronHouse','#WeekendOffer'], metrics: { impressions: 0, reach: 0, likes: 0, comments: 0, shares: 0, saves: 0, clicks: 0, visits: 0, rate: 0 } },
-  { id: 'a-rej-1', platforms: ['ig'], status: 'rejected', date: '2026-09-02T11:00:00+05:30', author: 'Ananya Rao', content: 'Voted the best restaurant in Delhi 🏆', rejectedReason: 'We were listed in the Delhi Top 50 — we did not win anything. Claiming an award we did not receive is the fastest way to lose the listing.', rejectedBy: 'Priya Menon', tags: ['#SaffronHouse'], metrics: { impressions: 0, reach: 0, likes: 0, comments: 0, shares: 0, saves: 0, clicks: 0, visits: 0, rate: 0 } },
+  { id: 'a-rev-1', platforms: ['ig','gg'], status: 'in_review', date: '2026-09-04T08:30:00+05:30', author: 'Ananya Rao', content: 'Diwali menu — six courses, one seating a night, 24 seats, from 18 October. ₹4,500 per head. Bookings open Monday 9am on WhatsApp.', tags: ['#Diwali','#SaffronHouse'], media: { kind: 'image', label: 'Festive table setting, marigold and brass', tone: 'warm' }, metrics: { views: 0, reach: 0, likes: 0, comments: 0, shares: 0, saves: 0, rate: 0 } },
+  { id: 'a-rev-2', platforms: ['gg'], status: 'in_review', date: '2026-09-04T07:45:00+05:30', author: 'Rohit Malhotra', content: 'Saffron House will host the Delhi Restaurant Week opening dinner on 12 October — Chef Meera cooking alongside three guest kitchens.', tags: ['#DelhiRestaurantWeek','#SaffronHouse'], metrics: { views: 0, reach: 0, likes: 0, comments: 0, shares: 0, saves: 0, rate: 0 } },
+  { id: 'a-back-1', platforms: ['ig','gg'], status: 'sent_back', date: '2026-09-03T15:00:00+05:30', author: 'Ananya Rao', content: 'Free dessert with every booking this weekend…', sendBackReason: 'The kitchen has not signed off on covering this and the floor is already behind on Saturdays. Confirm with Vikram before this goes anywhere.', sendBackBy: 'Priya Menon', tags: ['#SaffronHouse','#WeekendOffer'], metrics: { views: 0, reach: 0, likes: 0, comments: 0, shares: 0, saves: 0, rate: 0 } },
+  { id: 'a-rej-1', platforms: ['ig'], status: 'rejected', date: '2026-09-02T11:00:00+05:30', author: 'Ananya Rao', content: 'Voted the best restaurant in Delhi 🏆', rejectedReason: 'We were listed in the Delhi Top 50 — we did not win anything. Claiming an award we did not receive is the fastest way to lose the listing.', rejectedBy: 'Priya Menon', tags: ['#SaffronHouse'], metrics: { views: 0, reach: 0, likes: 0, comments: 0, shares: 0, saves: 0, rate: 0 } },
 ];
 
 const APPROVAL_TEMPLATES = [
-  { id: 'tpl-1', name: 'New dish — launch post',      platforms: ['ig','zo'],      useCount: 24, lastUsed: '28 Aug' },
+  { id: 'tpl-1', name: 'New dish — launch post',      platforms: ['ig','gg'],      useCount: 24, lastUsed: '28 Aug' },
   { id: 'tpl-2', name: 'Chef / team story',           platforms: ['ig'],           useCount: 11, lastUsed: '22 Aug' },
-  { id: 'tpl-3', name: 'Festive menu — full kit',     platforms: ['ig','gg','di'], useCount: 18, lastUsed: '14 Aug' },
-  { id: 'tpl-4', name: 'Set menu / offer',            platforms: ['zo','sw'],      useCount: 6,  lastUsed: '9 Aug' },
-  { id: 'tpl-5', name: 'Review reply — negative',     platforms: ['gg','zo'],      useCount: 92, lastUsed: 'today' },
+  { id: 'tpl-3', name: 'Festive menu — full kit',     platforms: ['ig','gg'],      useCount: 18, lastUsed: '14 Aug' },
+  { id: 'tpl-4', name: 'Set menu / offer',            platforms: ['ig'],           useCount: 6,  lastUsed: '9 Aug' },
+  { id: 'tpl-5', name: 'Review reply — negative',     platforms: ['gg'],           useCount: 92, lastUsed: 'today' },
 ];
 
 function ApprovalsPage({ role, openedPost, onCloseDrawer }) {

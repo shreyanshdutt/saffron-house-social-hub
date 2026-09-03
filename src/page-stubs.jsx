@@ -9,9 +9,6 @@
 const CHANNEL_HEALTH = [
   { id: 'ig', handle: '@saffronhouse',               followers: '218K',   state: 'down',     last: '48 min', incidents24h: 1 },
   { id: 'gg', handle: 'Saffron House · Khan Market',  followers: '1.3K',   state: 'ok',       last: 'just now', incidents24h: 0 },
-  { id: 'zo', handle: 'Saffron House, Khan Market',   followers: '4.2K',   state: 'degraded', last: '12 min', incidents24h: 2 },
-  { id: 'sw', handle: 'Saffron House',                followers: '2.8K',   state: 'ok',       last: '3 min',  incidents24h: 0 },
-  { id: 'di', handle: 'Saffron House',                followers: '14K',    state: 'ok',       last: '5 min',  incidents24h: 0 },
   { id: 'wa', handle: '+91 11 4160 2200',             followers: '6.4K',   state: 'ok',       last: '1 min',  incidents24h: 0 },
 ];
 const STATE_TONE = {
@@ -21,8 +18,8 @@ const STATE_TONE = {
 };
 const INCIDENTS = [
   { id: 'i1', t: '48 min ago', channel: 'ig', text: 'Instagram access token expired — the lunch-deal post failed to publish.', state: 'down' },
-  { id: 'i2', t: '12 min ago', channel: 'zo', text: 'Zomato menu sync delayed; four items showing as unavailable that are in stock.', state: 'degraded' },
-  { id: 'i3', t: 'Yesterday',  channel: 'sw', text: 'Swiggy partner API reconnected automatically after a 6-minute drop.', state: 'ok' },
+  { id: 'i2', t: '12 min ago', channel: 'gg', text: 'Business Profile review sync ran 40 minutes late — polling backlog cleared.', state: 'degraded' },
+  { id: 'i3', t: 'Yesterday',  channel: 'wa', text: 'WhatsApp webhook reconnected automatically after a 6-minute drop.', state: 'ok' },
   { id: 'i4', t: '31 Aug',     channel: 'gg', text: 'Brief Google Business Profile outage (07:00–07:18 IST).', state: 'ok' },
 ];
 
@@ -130,7 +127,7 @@ function BrandKitPage() {
   const copyBlocks = [
     { id: 'tag',      label: 'Master tagline',      body: 'Cooked the long way, in Khan Market.' },
     { id: 'book-cta', label: 'Booking CTA',         body: 'Book a table on WhatsApp — we answer in minutes.' },
-    { id: 'dish-cta', label: 'Delivery CTA',        body: 'On Zomato and Swiggy until 11:30pm.' },
+    { id: 'late-cta', label: 'Late kitchen CTA',    body: 'Kitchen open until 11:30pm, seven days.' },
     { id: 'hours',    label: 'Hours boilerplate',   body: 'Open seven days, 12pm to 11:30pm. Khan Market, New Delhi.' },
   ];
   return (

@@ -32,7 +32,7 @@ function OverviewScreen({ state, theme, onGoSignals, onGoTrends, onGoCompetitors
   // a small absolute shift; the reader cares about the absolute number).
   const sentimentDelta = kp.netSentiment.current - kp.netSentiment.baseline;
   // Share of voice is a fraction; show absolute point delta.
-  const sovPointsDelta = (kp.shareOfVoice.current - kp.shareOfVoice.baseline) * 100;
+  const dirChangePct = Math.round(((kp.directionRequests.current - kp.directionRequests.baseline) / kp.directionRequests.baseline) * 100);
 
   return (
     <div id="listening-overview" role="tabpanel" className="space-y-6">
@@ -67,12 +67,12 @@ function OverviewScreen({ state, theme, onGoSignals, onGoTrends, onGoCompetitors
           sparkColor="#2E7D4F"
         />
         <KpiCard
-          label={t.listening.overview.kpi.shareOfVoice}
-          value={Math.round(kp.shareOfVoice.current * 100) + '%'}
-          deltaText={(sovPointsDelta >= 0 ? '+' : '') + sovPointsDelta.toFixed(1) + 'pp'}
-          deltaUp={sovPointsDelta >= 0}
+          label={t.listening.overview.kpi.directionRequests}
+          value={fmt(kp.directionRequests.current)}
+          deltaText={(dirChangePct >= 0 ? '+' : '') + dirChangePct + '%'}
+          deltaUp={dirChangePct >= 0}
           subLabel={t.listening.overview.kpi.vsPrior}
-          sparkline={kp.shareOfVoice.sparkline.map(v => v * 100)}
+          sparkline={kp.directionRequests.sparkline}
           sparkColor="#B7791F"
         />
         <ActiveSignalsKpi

@@ -1,119 +1,340 @@
-// Analytics page.
+// Analytics.
+//
+// Structured as three per-channel sections rather than one blended table,
+// because the three APIs report genuinely different things:
+//
+//   Instagram Graph API  → reach, views, interactions, saves, follows
+//   GBP Performance API  → search/maps impressions, direction requests,
+//                          calls, website clicks, bookings
+//   WhatsApp Cloud API   → conversations and message counts
+//
+// Forcing those into a shared "likes / comments / shares" grid would mean
+// inventing numbers for two of the three. Google has no likes; WhatsApp has
+// no reach. The earlier version did exactly that, and it has been unpicked.
+//
+// A "total reach across all channels" figure is deliberately absent: adding
+// Instagram reach to Google impressions to WhatsApp conversations produces a
+// number with no meaning that an owner would nonetheless quote.
 
 function AnalyticsPage({ onOpenPost }) {
   const t = useT();
   const [range, setRange] = React.useState('7');
-  const [platformFilter, setPlatformFilter] = React.useState('all');
+  const { theme } = React.useContext(AppCtx);
 
-  // Filter platform data
-  const platformOrder = PLATFORMS.map(p => p.id);
-  const visiblePlatforms = platformFilter === 'all' ? platformOrder : [platformFilter];
-
-  // KPI totals
-  const totals = React.useMemo(() => {
-    const totalReach = ANALYTICS_TIME.reduce((sum, d) =>
-      sum + visiblePlatforms.reduce((s, p) => s + (d[p] || 0), 0), 0) * (range === '30' ? 4 : range === '90' ? 12 : 1);
-    const totalEng = ANALYTICS_PLATFORM.reduce((sum, row) => {
-      const p = PLATFORM_BY_ID[visiblePlatforms[0]].name;
-      if (platformFilter !== 'all' && row.p !== p) return sum;
-      return sum + row.likes + row.comments + row.shares;
-    }, 0);
-    return {
-      reach: totalReach,
-      eng:   totalEng,
-      posts: 84 * (range === '30' ? 4 : range === '90' ? 12 : 1),
-      rate:  5.4,
-    };
-  }, [range, platformFilter]);
+  const ig = ANALYTICS_IG, gg = ANALYTICS_GG, wa = ANALYTICS_WA;
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-saf-text">{t.analytics.title}</h1>
-        <p className="text-sm text-saf-muted mt-1">{t.analytics.subtitle}</p>
+      <div className="flex items-end justify-between flex-wrap gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-saf-text">{t.analytics.title}</h1>
+          <p className="text-sm text-saf-muted mt-1">{t.analytics.subtitle}</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <SegmentedControl
+            value={range}
+            onChange={setRange}
+            options={[
+              { value: '7',  label: t.analytics.filters.last7 },
+              { value: '30', label: t.analytics.filters.last30 },
+              { value: '90', label: t.analytics.filters.last90 },
+            ]}
+          />
+          <Button variant="secondary" leadingIcon="Download">Export</Button>
+        </div>
       </div>
 
-      {/* KPI cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <KpiCard label={t.analytics.kpis.reach}
-          value={totals.reach} delta={+12.4} sparkColor="#B4451F"
-          data={ANALYTICS_TIME.map(d => ({ x: d.d, v: visiblePlatforms.reduce((s,p) => s + (d[p]||0), 0) }))} />
-        <KpiCard label={t.analytics.kpis.eng}
-          value={totals.eng} delta={+8.1} sparkColor="#D99A16"
-          data={ANALYTICS_TIME.map((d, i) => ({ x: d.d, v: 8000 + i * 950 + (i % 2 ? 800 : 0) }))} />
-        <KpiCard label={t.analytics.kpis.posts}
-          value={totals.posts} delta={-2.6} sparkColor="#6E2412"
-          data={ANALYTICS_TIME.map((d, i) => ({ x: d.d, v: 8 + i * 1.5 }))} />
-        <KpiCard label={t.analytics.kpis.rate}
-          value={totals.rate} suffix="%" format={(v) => v.toFixed(1) + '%'} delta={+0.6} sparkColor="#2E7D4F"
-          data={ANALYTICS_TIME.map((d, i) => ({ x: d.d, v: 4 + Math.sin(i) * 1.4 + 1 }))} />
-      </div>
+      {/* ── Instagram ─────────────────────────────────────────────────── */}
+      <ChannelSection id="ig">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <KpiCard label="Reach"        value={ig.totals.reach}    delta={ig.change.reach}    sparkColor="#B4451F" data={ig.daily.map(d => ({ v: d.reach }))} />
+          <KpiCard label="Views"        value={ig.totals.views}    delta={ig.change.views}    sparkColor="#D99A16" data={ig.daily.map(d => ({ v: d.views }))} />
+          <KpiCard label="Interactions" value={ig.totals.likes + ig.totals.comments + ig.totals.shares + ig.totals.saves} delta={ig.change.likes} sparkColor="#6E2412" data={ig.daily.map(d => ({ v: d.interactions }))} />
+          <KpiCard label="New follows"  value={ig.totals.follows}  delta={ig.change.follows}  sparkColor="#2E7D4F" data={ig.daily.map(d => ({ v: d.interactions / 3 }))} />
+        </div>
 
-      {/* Filters */}
-      <Card padding="p-4" className="flex flex-wrap items-center gap-3">
-        <div className="text-[12px] text-saf-muted uppercase tracking-wider ltr:mr-2 rtl:ml-2">Filters</div>
-        <SegmentedControl
-          value={range}
-          onChange={setRange}
-          options={[
-            { value: '7',   label: t.analytics.filters.last7 },
-            { value: '30',  label: t.analytics.filters.last30 },
-            { value: '90',  label: t.analytics.filters.last90 },
-            { value: 'cu',  label: t.analytics.filters.custom },
-          ]}
-        />
-        <div className="h-6 w-px bg-saf-border mx-1" />
-        <button
-          onClick={() => setPlatformFilter('all')}
-          className={`h-8 px-3 rounded-full text-[12px] font-medium transition ${platformFilter === 'all' ? 'bg-saf-primary text-white' : 'bg-white border border-saf-border text-saf-muted hover:text-saf-text'}`}
-        >{t.analytics.filters.all}</button>
-        {PLATFORMS.map(p => (
-          <button
-            key={p.id}
-            onClick={() => setPlatformFilter(p.id)}
-            className={`h-8 px-3 inline-flex items-center gap-1.5 rounded-full text-[12px] font-medium transition ${platformFilter === p.id ? 'text-white' : 'bg-white border border-saf-border text-saf-muted hover:text-saf-text'}`}
-            style={platformFilter === p.id ? { background: p.color } : {}}
-          >
-            <PlatformGlyph id={p.id} size={12} />
-            {p.name}
-          </button>
-        ))}
-      </Card>
+        <div className="grid grid-cols-12 gap-4 mt-4">
+          <Card padding="p-5" className="col-span-12 xl:col-span-8">
+            <ChartHeader title="Reach and views" subtitle="Daily, from Instagram account insights" />
+            <IgChart data={ig.daily} />
+          </Card>
+          <Card padding="p-5" className="col-span-12 xl:col-span-4">
+            <ChartHeader title="Interaction mix" subtitle="Instagram media insights, trailing 7 days" />
+            <InteractionMix totals={ig.totals} />
+          </Card>
+        </div>
+      </ChannelSection>
 
-      {/* Charts row 1 */}
-      <div className="grid grid-cols-12 gap-4">
-        <Card padding="p-5" className="col-span-12 xl:col-span-8">
-          <ChartHeader title={t.analytics.ch.overTime} subtitle="Engagements per channel" />
-          <EngagementChart data={ANALYTICS_TIME} visible={visiblePlatforms} />
-        </Card>
-        <Card padding="p-5" className="col-span-12 xl:col-span-4">
-          <ChartHeader title={t.analytics.ch.breakdown} subtitle="Posts by format" />
-          <BreakdownChart />
-        </Card>
-      </div>
+      {/* ── Google ────────────────────────────────────────────────────── */}
+      <ChannelSection id="gg">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <KpiCard label="Search impressions" value={gg.totals.searchImpressions} delta={gg.change.searchImpressions} sparkColor="#B4451F" data={gg.daily.map(d => ({ v: d.searchImpressions }))} />
+          <KpiCard label="Maps impressions"   value={gg.totals.mapsImpressions}   delta={gg.change.mapsImpressions}   sparkColor="#D99A16" data={gg.daily.map(d => ({ v: d.mapsImpressions }))} />
+          <KpiCard label="Direction requests" value={gg.totals.directionRequests} delta={gg.change.directionRequests} sparkColor="#2E7D4F" data={gg.daily.map(d => ({ v: d.mapsImpressions / 6 }))} />
+          <KpiCard label="Bookings"           value={gg.totals.bookings}          delta={gg.change.bookings}          sparkColor="#6E2412" data={gg.daily.map(d => ({ v: d.searchImpressions / 20 }))} />
+        </div>
 
-      {/* Charts row 2 */}
+        <div className="grid grid-cols-12 gap-4 mt-4">
+          <Card padding="p-5" className="col-span-12 xl:col-span-8">
+            <ChartHeader title="Discovery" subtitle="Search vs Maps impressions, from the Business Profile Performance API" />
+            <GgChart data={gg.daily} />
+          </Card>
+          <Card padding="p-5" className="col-span-12 xl:col-span-4">
+            <ChartHeader title="Actions taken" subtitle="What people did after finding the listing" />
+            <ActionList rows={[
+              { label: 'Direction requests', value: gg.totals.directionRequests, change: gg.change.directionRequests, icon: 'Navigation' },
+              { label: 'Website clicks',     value: gg.totals.websiteClicks,     change: gg.change.websiteClicks,     icon: 'Link' },
+              { label: 'Calls',              value: gg.totals.callClicks,        change: gg.change.callClicks,        icon: 'Phone' },
+              { label: 'Bookings',           value: gg.totals.bookings,          change: gg.change.bookings,          icon: 'CalendarCheck' },
+            ]} />
+          </Card>
+        </div>
+      </ChannelSection>
+
+      {/* ── WhatsApp ──────────────────────────────────────────────────── */}
+      <ChannelSection id="wa">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <KpiCard label="Conversations"  value={wa.totals.conversations} delta={wa.change.conversations} sparkColor="#2E7D4F" data={wa.daily.map(d => ({ v: d.conversations }))} />
+          <KpiCard label="Messages in"    value={wa.totals.messagesIn}    delta={wa.change.messagesIn}    sparkColor="#B4451F" data={wa.daily.map(d => ({ v: d.messagesIn }))} />
+          <KpiCard label="Messages out"   value={wa.totals.messagesOut}   delta={wa.change.messagesOut}   sparkColor="#D99A16" data={wa.daily.map(d => ({ v: d.messagesOut }))} />
+          <KpiCard label="Templates sent" value={wa.totals.templatesSent} delta={wa.change.templatesSent} sparkColor="#6E2412" data={wa.daily.map(d => ({ v: d.conversations / 2 }))} />
+        </div>
+
+        <div className="grid grid-cols-12 gap-4 mt-4">
+          <Card padding="p-5" className="col-span-12 xl:col-span-8">
+            <ChartHeader title="Conversation volume" subtitle="Daily, from the WhatsApp Cloud API" />
+            <WaChart data={wa.daily} />
+          </Card>
+          <Card padding="p-5" className="col-span-12 xl:col-span-4">
+            <ChartHeader title="Responsiveness" subtitle="Your own timing over WhatsApp webhooks" />
+            <div className="mt-2">
+              <div className="text-[36px] font-bold text-saf-text leading-none tabular-nums">{wa.totals.medianResponseMins}<span className="text-[18px] text-saf-muted ms-1">min</span></div>
+              <div className="text-[12px] text-saf-muted mt-1">Median first reply</div>
+              <p className="text-[12px] text-saf-muted mt-4 leading-relaxed">
+                WhatsApp allows free-form replies for 24 hours after a guest messages you.
+                Outside that window you can only send an approved template, and it is billed
+                per message — which is why speed here is a cost control, not just a courtesy.
+              </p>
+            </div>
+          </Card>
+        </div>
+      </ChannelSection>
+
+      {/* ── Cross-channel, derived ────────────────────────────────────── */}
       <div className="grid grid-cols-12 gap-4">
         <Card padding="p-5" className="col-span-12 xl:col-span-7">
-          <ChartHeader title={t.analytics.ch.platforms} subtitle="Likes · Comments · Shares" />
-          <PlatformBarChart />
-        </Card>
-        <Card padding="p-5" className="col-span-12 xl:col-span-5">
-          <DemographicsCard />
-        </Card>
-      </div>
-
-      {/* Top posts + sentiment */}
-      <div className="grid grid-cols-12 gap-4">
-        <Card padding="p-5" className="col-span-12 xl:col-span-7">
-          <ChartHeader title={t.analytics.ch.top} subtitle="By engagement rate" />
+          <ChartHeader title={t.analytics.top} subtitle="Instagram media insights" />
           <TopPostsTable onOpen={onOpenPost} />
         </Card>
         <Card padding="p-5" className="col-span-12 xl:col-span-5">
-          <ChartHeader title={t.analytics.ch.sentiment} subtitle="Comment classification" />
+          <ChartHeader title={t.analytics.sentiment.title} subtitle="Derived in-house from the text each API returns" />
           <SentimentChart />
         </Card>
+        <Card padding="p-5" className="col-span-12 xl:col-span-5">
+          <ChartHeader title={t.analytics.breakdown} subtitle="Your own content tagging, weighted by Instagram reach" />
+          <BreakdownChart />
+        </Card>
+        <Card padding="p-5" className="col-span-12 xl:col-span-7">
+          <ChartHeader title="Instagram audience" subtitle="Followers and engaged accounts — not your guests" />
+          <AudienceCard />
+        </Card>
       </div>
+    </div>
+  );
+}
+
+// Section wrapper that names the channel AND the API behind it, so nobody has
+// to guess where a number came from.
+function ChannelSection({ id, children }) {
+  const { theme } = React.useContext(AppCtx);
+  const p = PLATFORM_BY_ID[id];
+  return (
+    <section aria-label={`${p.name} analytics`}>
+      <div className="flex items-center gap-2.5 mb-3">
+        <span
+          className="w-8 h-8 rounded-lg grid place-items-center text-white shrink-0"
+          style={{ background: p.color }}
+        >
+          <PlatformGlyph id={id} size={16} />
+        </span>
+        <div>
+          <h2 className="text-[16px] font-semibold text-saf-text leading-tight">{p.name}</h2>
+          <div className="text-[11.5px] text-saf-muted">{p.api}</div>
+        </div>
+      </div>
+      {children}
+    </section>
+  );
+}
+
+// Simple two-series area chart, reused with different keys per channel.
+function DualAreaChart({ data, series }) {
+  return (
+    <div style={{ width: '100%', height: 260 }}>
+      <Recharts.ResponsiveContainer>
+        <Recharts.AreaChart data={data} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+          <defs>
+            {series.map(s => (
+              <linearGradient key={s.key} id={`ana-${s.key}`} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%"   stopColor={s.color} stopOpacity={0.35} />
+                <stop offset="100%" stopColor={s.color} stopOpacity={0} />
+              </linearGradient>
+            ))}
+          </defs>
+          <Recharts.CartesianGrid strokeDasharray="3 3" stroke="#FCEFE7" vertical={false} />
+          <Recharts.XAxis dataKey="d" stroke="#7A6A5F" tick={{ fontSize: 12 }} />
+          <Recharts.YAxis stroke="#7A6A5F" tick={{ fontSize: 12 }} tickFormatter={(v) => fmt(v)} />
+          <Recharts.Tooltip content={<EngagementTooltip />} />
+          <Recharts.Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} iconType="circle" />
+          {series.map(s => (
+            <Recharts.Area
+              key={s.key}
+              type="monotone"
+              dataKey={s.key}
+              name={s.name}
+              stroke={s.color}
+              strokeWidth={2.4}
+              fill={`url(#ana-${s.key})`}
+              animationDuration={900}
+            />
+          ))}
+        </Recharts.AreaChart>
+      </Recharts.ResponsiveContainer>
+    </div>
+  );
+}
+
+
+// Shared chart tooltip. Used by the per-channel charts here and by the
+// dashboard's engagement chart.
+function EngagementTooltip({ active, payload, label }) {
+  if (!active || !payload) return null;
+  return (
+    <div className="bg-white border border-saf-border rounded-xl shadow-pop p-3 text-[12px]">
+      <div className="font-medium text-saf-text mb-1.5">{label}</div>
+      <div className="space-y-1">
+        {payload.map(p => (
+          <div key={p.dataKey} className="flex items-center justify-between gap-4">
+            <span className="inline-flex items-center gap-1.5 text-saf-muted">
+              <span className="w-2 h-2 rounded-full" style={{ background: p.color }} />
+              {p.name}
+            </span>
+            <span className="text-saf-text font-medium tabular-nums">{fmt(p.value)}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function IgChart({ data }) {
+  return <DualAreaChart data={data} series={[
+    { key: 'reach', name: 'Reach', color: '#B4451F' },
+    { key: 'views', name: 'Views', color: '#D99A16' },
+  ]} />;
+}
+
+function GgChart({ data }) {
+  return <DualAreaChart data={data} series={[
+    { key: 'searchImpressions', name: 'Search', color: '#B4451F' },
+    { key: 'mapsImpressions',   name: 'Maps',   color: '#D99A16' },
+  ]} />;
+}
+
+function WaChart({ data }) {
+  return <DualAreaChart data={data} series={[
+    { key: 'messagesIn',  name: 'Received', color: '#2E7D4F' },
+    { key: 'messagesOut', name: 'Sent',     color: '#D99A16' },
+  ]} />;
+}
+
+// Instagram interaction split. Saves are broken out deliberately — for a
+// restaurant a save is intent to visit, which a like is not.
+function InteractionMix({ totals }) {
+  const rows = [
+    { label: 'Likes',    value: totals.likes,    color: '#B4451F' },
+    { label: 'Saves',    value: totals.saves,    color: '#2E7D4F' },
+    { label: 'Shares',   value: totals.shares,   color: '#D99A16' },
+    { label: 'Comments', value: totals.comments, color: '#6E2412' },
+  ];
+  const max = Math.max(...rows.map(r => r.value));
+  return (
+    <div className="space-y-3 mt-2">
+      {rows.map(r => (
+        <div key={r.label}>
+          <div className="flex items-center justify-between text-[12px] mb-1">
+            <span className="text-saf-text font-medium">{r.label}</span>
+            <span className="text-saf-muted tabular-nums">{fmt(r.value)}</span>
+          </div>
+          <div className="h-2.5 rounded-full bg-saf-light overflow-hidden">
+            <div className="h-full rounded-full transition-all duration-700" style={{ width: `${(r.value / max) * 100}%`, background: r.color }} />
+          </div>
+        </div>
+      ))}
+      <p className="text-[11.5px] text-saf-muted pt-2 border-t border-saf-border mt-3 leading-relaxed">
+        Saves are the metric to watch: a like is applause, a save is someone
+        planning to come.
+      </p>
+    </div>
+  );
+}
+
+// Google "what happened next" list — the actions the Performance API reports.
+function ActionList({ rows }) {
+  return (
+    <div className="space-y-3 mt-2">
+      {rows.map(r => (
+        <div key={r.label} className="flex items-center gap-3">
+          <span className="w-8 h-8 rounded-lg bg-saf-light grid place-items-center text-saf-primary shrink-0">
+            <Icon name={r.icon} size={15} />
+          </span>
+          <span className="text-[13px] text-saf-text flex-1">{r.label}</span>
+          <span className="text-[14px] font-semibold text-saf-text tabular-nums">{fmt(r.value)}</span>
+          <span className={`text-[11.5px] tabular-nums w-12 text-end ${r.change >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
+            {r.change >= 0 ? '+' : ''}{r.change}%
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// Instagram audience demographics. Labelled precisely: these are followers and
+// engaged accounts, NOT the people who ate here. For a restaurant those differ
+// enormously, and presenting them as guest demographics would mislead.
+function AudienceCard() {
+  const [tab, setTab] = React.useState('age');
+  const a = ANALYTICS_IG.audience;
+  const data = a[tab === 'cities' ? 'cities' : tab];
+  const max = Math.max(...data.map(d => d.value));
+  return (
+    <div>
+      <SegmentedControl
+        value={tab}
+        onChange={setTab}
+        options={[
+          { value: 'age',    label: 'Age' },
+          { value: 'gender', label: 'Gender' },
+          { value: 'cities', label: 'Cities' },
+        ]}
+      />
+      <div className="mt-4 space-y-2.5">
+        {data.map(d => (
+          <div key={d.label} className="flex items-center gap-3">
+            <span className="w-32 text-[12px] text-saf-muted shrink-0">{d.label}</span>
+            <div className="flex-1 h-2.5 rounded-full bg-saf-light overflow-hidden">
+              <div className="h-full rounded-full bg-saf-primary transition-all duration-700" style={{ width: `${(d.value / max) * 100}%` }} />
+            </div>
+            <span className="w-10 text-end text-[12px] text-saf-text tabular-nums">{d.value}%</span>
+          </div>
+        ))}
+      </div>
+      <p className="text-[11.5px] text-saf-muted pt-3 border-t border-saf-border mt-4 leading-relaxed">
+        Instagram reports this for your followers and engaged accounts, and
+        suppresses it below a follower threshold. It is not a guest census —
+        plenty of followers have never eaten here, and plenty of guests do not
+        follow you.
+      </p>
     </div>
   );
 }
@@ -198,46 +419,6 @@ function KpiCard({ label, value, delta, suffix = '', sparkColor, data, format })
 }
 
 // ---------------------------------------------------------------------------
-function EngagementChart({ data, visible }) {
-  const palette = { fb: '#1877F2', ig: '#E1306C', tw: '#0F1419', li: '#0A66C2', yt: '#FF0000' };
-  return (
-    <div style={{ width: '100%', height: 280 }}>
-      <Recharts.ResponsiveContainer>
-        <Recharts.LineChart data={data} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
-          <Recharts.CartesianGrid strokeDasharray="3 3" stroke="#FCEFE7" />
-          <Recharts.XAxis dataKey="d" stroke="#7A6A5F" tick={{ fontSize: 12 }} />
-          <Recharts.YAxis stroke="#7A6A5F" tick={{ fontSize: 12 }} tickFormatter={(v) => fmt(v)} />
-          <Recharts.Tooltip content={<EngagementTooltip />} />
-          <Recharts.Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} iconType="circle" />
-          {visible.map(p => (
-            <Recharts.Line key={p} type="monotone" dataKey={p} stroke={palette[p]} strokeWidth={2.4} dot={false} activeDot={{ r: 4 }} animationDuration={900} name={PLATFORM_BY_ID[p].name} />
-          ))}
-        </Recharts.LineChart>
-      </Recharts.ResponsiveContainer>
-    </div>
-  );
-}
-
-function EngagementTooltip({ active, payload, label }) {
-  if (!active || !payload) return null;
-  return (
-    <div className="bg-white border border-saf-border rounded-xl shadow-pop p-3 text-[12px]">
-      <div className="font-medium text-saf-text mb-1.5">{label}</div>
-      <div className="space-y-1">
-        {payload.map(p => (
-          <div key={p.dataKey} className="flex items-center justify-between gap-4">
-            <span className="inline-flex items-center gap-1.5 text-saf-muted">
-              <span className="w-2 h-2 rounded-full" style={{ background: p.color }} />
-              {p.name}
-            </span>
-            <span className="text-saf-text font-medium tabular-nums">{fmt(p.value)}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 // ---------------------------------------------------------------------------
 function BreakdownChart() {
   const total = ANALYTICS_BREAKDOWN.reduce((s, x) => s + x.value, 0);
@@ -275,62 +456,7 @@ function BreakdownChart() {
 }
 
 // ---------------------------------------------------------------------------
-function PlatformBarChart() {
-  return (
-    <div style={{ width: '100%', height: 300 }}>
-      <Recharts.ResponsiveContainer>
-        <Recharts.BarChart data={ANALYTICS_PLATFORM} margin={{ top: 10, right: 16, left: 0, bottom: 0 }} barCategoryGap={24}>
-          <Recharts.CartesianGrid strokeDasharray="3 3" stroke="#FCEFE7" vertical={false} />
-          <Recharts.XAxis dataKey="p" stroke="#7A6A5F" tick={{ fontSize: 12 }} />
-          <Recharts.YAxis stroke="#7A6A5F" tick={{ fontSize: 12 }} tickFormatter={(v) => fmt(v)} />
-          <Recharts.Tooltip cursor={{ fill: '#FCEFE7' }} content={<EngagementTooltip />} />
-          <Recharts.Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} iconType="circle" />
-          <Recharts.Bar dataKey="likes"    name="Likes"    fill="#B4451F" radius={[6,6,0,0]} animationDuration={900} />
-          <Recharts.Bar dataKey="comments" name="Comments" fill="#D99A16" radius={[6,6,0,0]} animationDuration={1100} />
-          <Recharts.Bar dataKey="shares"   name="Shares"   fill="#6E2412" radius={[6,6,0,0]} animationDuration={1300} />
-        </Recharts.BarChart>
-      </Recharts.ResponsiveContainer>
-    </div>
-  );
-}
-
 // ---------------------------------------------------------------------------
-function DemographicsCard() {
-  const t = useT();
-  const [tab, setTab] = React.useState('age');
-  const data = ANALYTICS_DEMO[tab];
-  return (
-    <>
-      <ChartHeader title={t.analytics.ch.demo} subtitle="Audience composition" />
-      <Tabs
-        value={tab}
-        onChange={setTab}
-        tabs={[
-          { id: 'age',       label: t.analytics.demoTabs.age },
-          { id: 'gender',    label: t.analytics.demoTabs.gender },
-          { id: 'locations', label: t.analytics.demoTabs.locations },
-        ]}
-      />
-      <div className="mt-4 space-y-3">
-        {data.map((d) => (
-          <div key={d.label}>
-            <div className="flex items-center justify-between text-[12px] mb-1">
-              <span className="text-saf-text">{d.label}</span>
-              <span className="text-saf-muted tabular-nums">{d.value}%</span>
-            </div>
-            <div className="h-2 bg-saf-light rounded-full overflow-hidden">
-              <div
-                className="h-full bg-gradient-to-r from-saf-primary to-saf-accent rounded-full transition-all duration-700"
-                style={{ width: `${d.value * 2}%`, maxWidth: '100%' }}
-              />
-            </div>
-          </div>
-        ))}
-      </div>
-    </>
-  );
-}
-
 // ---------------------------------------------------------------------------
 function TopPostsTable({ onOpen }) {
   const t = useT();
@@ -442,4 +568,4 @@ function SentimentChart() {
   );
 }
 
-Object.assign(window, { AnalyticsPage });
+Object.assign(window, { AnalyticsPage, EngagementTooltip });

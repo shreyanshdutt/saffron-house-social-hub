@@ -45,8 +45,8 @@ const COMPETITOR_COLUMNS = [
   { id: 'channel',    sortable: true,  getValue: (c) => c.channel,                defaultDir: 'asc'  },
   { id: 'followers',  sortable: true,  getValue: (c) => c.followers,              defaultDir: 'desc' },
   { id: 'engagement', sortable: true,  getValue: (c) => c.engagementRate,         defaultDir: 'desc' },
-  { id: 'mentions',   sortable: true,  getValue: (c) => c.mentions7d,             defaultDir: 'desc' },
-  { id: 'sentiment',  sortable: true,  getValue: (c) => c.sentiment7d,            defaultDir: 'desc' },
+  { id: 'cadence',    sortable: true,  getValue: (c) => c.postsPerWeek,           defaultDir: 'desc' },
+  { id: 'rating',     sortable: true,  getValue: (c) => c.googleRating,           defaultDir: 'desc' },
   { id: 'trend',      sortable: false },
 ];
 
@@ -247,15 +247,16 @@ function CompetitorRow({ c, theme, t, inSelfCard }) {
         <ChangePctText pct={c.engagementChange7dPct} />
       </td>
 
-      {/* Mentions 7d */}
+      {/* Posting cadence — media_count over the window, from Business Discovery */}
       <td className="text-end px-3 py-3 hidden lg:table-cell" dir="ltr">
-        <div className="text-[13px] font-medium text-saf-text tabular-nums">{fmtCompact(c.mentions7d)}</div>
-        <ChangePctText pct={c.mentionsChange7dPct} />
+        <div className="text-[13px] font-medium text-saf-text tabular-nums">{c.postsPerWeek}</div>
+        <div className="text-[11px] text-saf-muted tabular-nums">{fmtCompact(c.avgInteractions)} avg</div>
       </td>
 
-      {/* Sentiment */}
+      {/* Google rating — Places API, public */}
       <td className="text-end px-3 py-3 hidden lg:table-cell" dir="ltr">
-        <SentimentValue value={c.sentiment7d} />
+        <div className="text-[13px] font-semibold text-saf-text tabular-nums">{c.googleRating.toFixed(1)}</div>
+        <div className="text-[11px] text-saf-muted tabular-nums">{fmtCompact(c.googleReviews)} reviews</div>
       </td>
 
       {/* Trend sparkline. Self-row uses the brand colour; peer rows use

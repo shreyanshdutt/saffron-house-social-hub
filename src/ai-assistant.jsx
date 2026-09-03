@@ -37,9 +37,6 @@ function AIAssistant({ onCopyToComposer }) {
       const platformHint = {
         ig: 'Instagram — one punchy line plus 3-5 relevant hashtags. Emojis sparingly.',
         gg: 'Google Business Profile — factual and useful. A guest reads this next to our hours and rating, so lead with the concrete detail (what, when, price).',
-        zo: 'Zomato — sits directly above an order button. Name the dish, give one reason to tap. No brand poetry.',
-        sw: 'Swiggy — same as Zomato but shorter. Delivery context: mention what travels well.',
-        di: 'District — an event listing. Lead with date, seating and what the guest actually gets.',
         wa: 'WhatsApp broadcast — write as a message to someone who opted in. Short, personal, no hashtags.',
       }[platform];
       const text = await window.claude.complete({

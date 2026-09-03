@@ -162,6 +162,7 @@ const PAGE_PERMS = {
   brand:          'brand.manage',
   users:          'user.manage',
   audit:          'audit.read',
+  'data-sources': 'social.manage',
   exports:        'notifications.read',
   notifications:  'notifications.read',
   listening:      'notifications.read',
@@ -169,6 +170,7 @@ const PAGE_PERMS = {
 };
 const PAGE_LABEL = {
   actions:        'Actions',
+  'data-sources': 'Data & access',
   reviews:        'Reviews',
   approvals:      'Approvals',
   inbox:          'Inbox',
@@ -206,6 +208,7 @@ function PageRouter({ page, go, composerInitial, openedPost, onOpenPost, onClose
     case 'users':           return <UsersPage role={role} />;
     case 'audit':           return <AuditPage />;
     case 'exports':         return <ExportsPage role={role} />;
+    case 'data-sources':    return <DataSourcesPage />;
     case 'settings':        return <SettingsPage />;
     default:                return <DashboardPage onNavigate={go} onOpenPost={onOpenPost} />;
   }

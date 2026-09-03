@@ -27,19 +27,29 @@ project just needs to be served over HTTP.
 
 ## What this models
 
-One restaurant, one location, six channels, four roles.
+One restaurant, one location, three channels, four roles.
+
+**Every field on screen is deliverable by a real API.** Anything that could not
+be fetched, derived from fetched text, or read from the restaurant's own
+systems has been removed rather than faked — see the in-app **Data & access**
+screen (Owner role) for the field-by-field map and the OAuth scopes to request.
 
 **Channels** (`PLATFORMS` in `src/mock.jsx`) each carry a `kind` that decides
 which screens they appear on:
 
-| Channel | id | kind | Where it shows up |
+| Channel | id | API | Capabilities |
 |---|---|---|---|
-| Instagram | `ig` | social | Compose, Scheduled, Analytics, Inbox |
-| Google Business Profile | `gg` | review | Reviews, Compose, Analytics |
-| Zomato | `zo` | review | Reviews, Compose, Analytics, Inbox |
-| Swiggy | `sw` | review | Reviews, Compose, Analytics, Inbox |
-| District | `di` | social | Compose, Scheduled, Analytics |
-| WhatsApp | `wa` | messaging | Inbox only — no feed to post to |
+| Instagram | `ig` | Instagram Graph API | publish, schedule, metrics, comments, DMs, mentions, audience, competitor |
+| Google Business Profile | `gg` | Business Profile APIs | publish, metrics, reviews, Q&A, competitor |
+| WhatsApp | `wa` | WhatsApp Cloud API | DMs, metrics, templates |
+
+Each channel carries a `caps` list of what its API genuinely supports, and the
+UI reads it: a channel without `publish` never appears in the composer, one
+without `metrics` never appears in a performance chart. That is the mechanism
+that keeps the product honest.
+
+Zomato, Swiggy and District were removed — none has a public API, and reaching
+them means a paid POS-middleware contract. See [DATA-SOURCES.md](DATA-SOURCES.md).
 
 **Roles.** The role *ids* are generic internal keys (`admin` / `executive` /
 `srexec` / `manager`) because they are referenced across every screen; what the

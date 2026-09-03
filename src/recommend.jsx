@@ -32,16 +32,16 @@ const REC_SOURCES = {
   gbp:       { label: 'Google Business Profile',    tier: 'api',     note: 'First-party, needs allowlisting' },
   gbpPerf:   { label: 'GBP Performance API',        tier: 'api',     note: 'Daily granularity' },
   wa:        { label: 'WhatsApp Cloud API',         tier: 'api',     note: 'Real-time webhooks' },
-  partner:   { label: 'Zomato / Swiggy partner',    tier: 'partner', note: 'Via POS middleware — no public API' },
+  gbpQanda:  { label: 'GBP Q&A API',                tier: 'api',     note: 'Public questions, polled' },
   nlp:       { label: 'Your NLP over guest text',   tier: 'derived', note: 'Computed from text you already hold' },
   pos:       { label: 'POS / booking system',       tier: 'own',     note: 'Your own system' },
   internal:  { label: 'This hub',                   tier: 'own',     note: 'Scheduling + reply state' },
-  publicApi: { label: 'Public listing data',        tier: 'partial', note: 'Competitor public metrics only' },
+  publicApi: { label: 'IG Business Discovery',      tier: 'partial', note: 'Competitor public counts only — no reach' },
 };
 
 const REC_TIER_LABEL = {
   api:     'Live via API',
-  partner: 'Needs partner integration',
+  partner: 'Needs partner integration',   // unused since the marketplaces were dropped
   derived: 'Derived in-house',
   own:     'Your own data',
   partial: 'Partial / approximate',
@@ -103,7 +103,7 @@ function buildRecommendationContext() {
     signals: LISTENING_SIGNALS,
     competitors: LISTENING_COMPETITORS,
     self: SAF_SELF_STATS,
-    analytics: ANALYTICS_TIME,
+    analytics: ANALYTICS_IG.daily,
     trends: LISTENING_TRENDS,
     medianReach: median(publishedReach),
     medianDishMentions: median(MENU_ITEMS.map(m => m.mentions7d)),
@@ -153,8 +153,8 @@ const REC_RULES = [
               : `${m.name} is up ${m.mentionsChange7dPct}% in guest conversation at ${m.sentiment.toFixed(2)} sentiment, and there is nothing published or scheduled about it. This is the cheapest post you can make this week.`,
             action: covered ? 'Shoot a second-angle reel' : 'Shoot and publish this week',
             owner: 'executive',
-            where: 'Instagram · District',
-            channels: covered ? ['ig'] : ['ig', 'di'],
+            where: 'Instagram · Google post',
+            channels: covered ? ['ig'] : ['ig', 'gg'],
             window: 'Within 3 days — momentum decays',
             projected: `~${proj.value.toLocaleString('en-IN')} reach`,
             projectedBasis: proj.basis,
@@ -216,7 +216,6 @@ const REC_RULES = [
       const byChannel = {};
       overdue.forEach(r => { byChannel[r.channel] = (byChannel[r.channel] || 0) + 1; });
       const worst = Object.entries(byChannel).sort((a, b) => b[1] - a[1])[0];
-      const worstMeta = ctx.reviewStats.byChannel.find(c => c.channel === worst[0]);
 
       return [{
         kind: 'reply',
@@ -234,8 +233,8 @@ const REC_RULES = [
         evidence: [
           { label: 'Past SLA', value: `${overdue.length} reviews`, source: 'internal' },
           { label: 'Rated 1–2★', value: `${critical.length}`, source: 'gbp' },
-          { label: 'Worst listing', value: `${PLATFORM_BY_ID[worst[0]].name} — ${worst[1]} overdue`, source: worst[0] === 'gg' ? 'gbp' : 'partner' },
-          ...(worstMeta ? [{ label: `${PLATFORM_BY_ID[worst[0]].name} audience`, value: `${worstMeta.count.toLocaleString('en-IN')} reviews on that listing`, source: worst[0] === 'gg' ? 'gbp' : 'partner' }] : []),
+          { label: 'Listing', value: `${PLATFORM_BY_ID[worst[0]].name} — ${worst[1]} overdue`, source: 'gbp' },
+          { label: 'Audience', value: `${ctx.reviewStats.total90d.toLocaleString('en-IN')} reviews on that listing`, source: 'gbp' },
           { label: 'Current response rate', value: `${Math.round(ctx.reviewStats.responseRate * 100)}% against a ${Math.round(ctx.reviewStats.responseRateTarget * 100)}% target`, source: 'internal' },
         ],
         impact: critical.length ? 0.9 : 0.6,
@@ -247,45 +246,37 @@ const REC_RULES = [
 
   // ---------------------------------------------------------------------
   {
-    id: 'delivery-quality',
-    title: 'Delivery quality cluster',
+    id: 'service-capacity',
+    title: 'Service failures clustering',
     run(ctx) {
       const crisis = ctx.signals.filter(s => s.kind === 'crisis_cluster' && s.severity === 'critical');
       if (!crisis.length) return [];
       const s = crisis[0];
-      // Corroborate the signal against the review themes rather than trusting
-      // it alone — a signal is a hypothesis, the reviews are the evidence.
-      const themed = ctx.reviews.filter(r =>
-        (r.themes || []).some(t => /packag|temperature|missing|late|cold/i.test(t))
-      );
-      // Compare the 90-day channel aggregates, not the handful of reviews in
-      // the current list. Google stands in for dine-in and the marketplaces
-      // for delivery — an approximation, and labelled as one in the evidence.
-      const gg = ctx.reviewStats.byChannel.find(c => c.channel === 'gg');
-      const marketplaces = ctx.reviewStats.byChannel.filter(c => c.channel !== 'gg');
-      const mktCount = marketplaces.reduce((a, c) => a + c.count, 0);
-      const mktAvg = mktCount
-        ? marketplaces.reduce((a, c) => a + c.avg * c.count, 0) / mktCount
-        : 0;
-      const gap = (gg ? gg.avg : 0) - mktAvg;
-      // If delivery is not actually worse, this recommendation is a lie.
-      if (gap < 0.15) return [];
+      // Corroborate the signal against the reviews rather than trusting it —
+      // a signal is a hypothesis, the review text is the evidence. Split the
+      // reviews on whether they mention a wait and compare the ratings; if
+      // the gap is not real, this recommendation does not fire.
+      const isWait = (r) => (r.themes || []).some(t => /wait|booking|staffing/i.test(t));
+      const waited = ctx.reviews.filter(isWait);
+      const rest = ctx.reviews.filter(r => !isWait(r));
+      const avg = (list) => list.length ? list.reduce((a, r) => a + r.rating, 0) / list.length : 0;
+      const gap = avg(rest) - avg(waited);
+      if (gap < 0.5 || waited.length < 2) return [];
 
       return [{
         kind: 'ops',
-        title: 'Delivery is dragging the rating; dine-in is not',
-        detail: `Delivery listings average ${mktAvg.toFixed(2)}★ against ${gg.avg.toFixed(1)}★ on Google — a ${gap.toFixed(2)} gap. The complaints are packing and handover, not cooking: ${themed.length} reviews name packaging, temperature or missing items. No amount of content fixes this, and promoting delivery right now buys you more of these reviews.`,
-        action: 'Insulated containers + a checklist at the packing station',
+        title: 'The kitchen is fine. The floor is losing you the rating.',
+        detail: `Reviews mentioning a wait average ${avg(waited).toFixed(1)}★; every other review averages ${avg(rest).toFixed(1)}★ — a ${gap.toFixed(1)} star gap, and none of it is about the food. Demand from the Top 50 listing is arriving faster than the floor can seat it. More marketing makes this worse, not better.`,
+        action: 'Add weekend floor cover and stop over-booking the 8pm slot',
         owner: 'admin',
-        where: 'Kitchen · packing station · rider handover',
+        where: 'Floor rota · booking system',
         channels: [],
-        window: 'This week — before the weekend peak',
+        window: 'Before Friday service',
         evidence: [
           { label: 'Signal', value: s.title, source: 'nlp' },
-          { label: 'Marketplace avg (delivery proxy)', value: `${mktAvg.toFixed(2)}★ across ${mktCount.toLocaleString('en-IN')} reviews`, source: 'partner' },
-          { label: 'Google avg (dine-in proxy)', value: `${gg.avg.toFixed(1)}★ across ${gg.count.toLocaleString('en-IN')} reviews`, source: 'gbp' },
-          { label: 'Reviews naming packing or temperature', value: `${themed.length}`, source: 'nlp' },
-          { label: 'Cluster reach', value: `${s.metrics.reach.toLocaleString('en-IN')} at ${s.metrics.sentiment.toFixed(2)} sentiment`, source: 'nlp' },
+          { label: 'Reviews mentioning a wait', value: `${waited.length}, averaging ${avg(waited).toFixed(1)}★`, source: 'gbp' },
+          { label: 'All other reviews', value: `${rest.length}, averaging ${avg(rest).toFixed(1)}★`, source: 'gbp' },
+          { label: 'Direction requests (7d)', value: `${ANALYTICS_GG.totals.directionRequests.toLocaleString('en-IN')} (+${ANALYTICS_GG.change.directionRequests}%)`, source: 'gbpPerf' },
         ],
         impact: 0.95,
         confidence: 0.85,
@@ -296,38 +287,37 @@ const REC_RULES = [
 
   // ---------------------------------------------------------------------
   {
-    id: 'menu-parity',
-    title: 'Demand that the delivery menu cannot serve',
+    id: 'menu-discoverability',
+    title: 'Dishes guests cannot find',
     run(ctx) {
-      const parity = ctx.reviews.filter(r => (r.themes || []).some(t => /parity|delivery menu/i.test(t)));
-      if (!parity.length) return [];
-      // A dish worth adding: strong sentiment, real volume, complaint about
-      // delivery availability.
+      // A well-loved dish whose main complaint is that people cannot find it
+      // is a menu-design problem wearing a marketing costume.
       const candidate = ctx.menu
-        .filter(m => m.sentiment >= 0.75 && /deliver|menu/i.test(m.topComplaint))
-        .sort((a, b) => b.mentions7d - a.mentions7d)[0]
-        || [...ctx.menu].sort((a, b) => b.sentiment - a.sentiment)[0];
+        .filter(m => m.sentiment >= 0.75 && /not obvious|not listed|menu|ask whether/i.test(m.topComplaint))
+        .sort((a, b) => b.sentiment - a.sentiment)[0];
+      if (!candidate) return [];
+      const asking = ctx.reviews.filter(r =>
+        (r.themes || []).some(t => candidate.name.toLowerCase().includes(t.toLowerCase()))
+      ).length;
 
       return [{
-        kind: 'promo',
-        title: `Put the ${candidate.name} on the delivery menu`,
-        detail: `Guests are discovering dishes on Instagram and then failing to find them when they go to order. ${candidate.name} runs at ${candidate.sentiment.toFixed(2)} sentiment and its most common complaint is availability, not quality — that is demand you are turning away at the checkout.`,
-        action: 'Add the item on both marketplace dashboards',
+        kind: 'menu',
+        title: `Guests cannot find the ${candidate.name}`,
+        detail: `It runs at ${candidate.sentiment.toFixed(2)} sentiment — the highest on the menu — and its most common complaint is not the dish, it is that people do not know it exists. Guests are asking in Instagram DMs and Google Q&A for something already on the menu. That is a printing problem, not a cooking one.`,
+        action: 'Give it its own line on the menu and pin an Instagram highlight',
         owner: 'manager',
-        where: 'Zomato partner dashboard · Swiggy partner dashboard',
-        channels: ['zo', 'sw'],
-        window: 'Before the weekend',
+        where: 'Menu design · Instagram profile',
+        channels: ['ig'],
+        window: 'Next menu print',
         evidence: [
-          { label: 'Reviews citing menu parity', value: `${parity.length}`, source: 'nlp' },
           { label: `${candidate.name} sentiment`, value: candidate.sentiment.toFixed(2), source: 'nlp' },
           { label: 'Its top complaint', value: candidate.topComplaint, source: 'nlp' },
-          { label: 'Mentions (7d)', value: `${candidate.mentions7d}`, source: 'nlp' },
+          { label: 'Mentions (7d)', value: `${candidate.mentions7d} (+${candidate.mentionsChange7dPct}%)`, source: 'nlp' },
+          { label: 'Reviews naming it', value: `${asking}`, source: 'gbp' },
         ],
-        impact: 0.75,
-        // One corroborating review is a hint, not a finding. Scale confidence
-        // with the evidence rather than asserting a flat 0.7.
-        confidence: Math.min(0.8, 0.45 + 0.12 * parity.length),
-        effort: 0.35,
+        impact: 0.7,
+        confidence: 0.7,
+        effort: 0.3,
       }];
     },
   },
@@ -347,16 +337,19 @@ const REC_RULES = [
             detail: `${s.body} Matching their format is the losing move — they went first and will win the comparison. Counter with what they cannot copy: the kitchen, the chef, the reason a dish is made the way it is.`,
             action: 'Counter-programme with a chef or provenance story',
             owner: 'manager',
-            where: 'Instagram · District',
-            channels: ['ig', 'di'],
+            where: 'Instagram · Google post',
+            channels: ['ig', 'gg'],
             window: 'Within the week',
             evidence: [
-              { label: 'Their reach on this move', value: s.metrics.reach.toLocaleString('en-IN'), source: 'publicApi' },
+              // Their reach is private. Public interaction counts and posting
+              // cadence are all Business Discovery gives, and that is what is
+              // shown — no invented reach figure.
               ...(mover ? [
-                { label: `${mover.name} engagement rate`, value: `${(mover.engagementRate * 100).toFixed(1)}% (${mover.engagementChange7dPct > 0 ? '+' : ''}${mover.engagementChange7dPct}% in 7d)`, source: 'publicApi' },
-                { label: 'Ours', value: `${(ctx.self.engagementRate * 100).toFixed(1)}% (${ctx.self.engagementChange7dPct > 0 ? '+' : ''}${ctx.self.engagementChange7dPct}% in 7d)`, source: 'ig' },
-              ] : []),
-              { label: 'Their mentions (7d)', value: `${s.metrics.mentions}`, source: 'nlp' },
+                { label: `${mover.name} interactions per post`, value: mover.avgInteractions.toLocaleString('en-IN'), source: 'publicApi' },
+                { label: 'Ours per post', value: ctx.self.avgInteractions.toLocaleString('en-IN'), source: 'ig' },
+                { label: `${mover.name} posting cadence`, value: `${mover.postsPerWeek}/week vs our ${ctx.self.postsPerWeek}`, source: 'publicApi' },
+                { label: 'Their Google rating', value: `${mover.googleRating.toFixed(1)} (${mover.googleReviews.toLocaleString('en-IN')} reviews)`, source: 'publicApi' },
+              ] : [{ label: 'Signal', value: s.title, source: 'nlp' }]),
             ],
             impact: 0.6,
             confidence: 0.55,
@@ -374,10 +367,7 @@ const REC_RULES = [
       // Rank weekdays by total reach, then find the best one with no post
       // scheduled in the coming week.
       const byDay = ctx.analytics
-        .map(d => ({
-          day: d.d,
-          reach: Object.entries(d).filter(([k]) => k !== 'd').reduce((s, [, v]) => s + v, 0),
-        }))
+        .map(d => ({ day: d.d, reach: d.reach }))
         .sort((a, b) => b.reach - a.reach);
 
       const scheduledDays = new Set(
@@ -395,14 +385,14 @@ const REC_RULES = [
       return [{
         kind: 'content',
         title: `Nothing scheduled for ${gap.day} — your #${byDay.findIndex(d => d.day === gap.day) + 1} reach day`,
-        detail: `${gap.day} carries ${gap.reach.toLocaleString('en-IN')} reach across channels, and the queue is empty. Weekend dining decisions get made on the day, so a post that lands in the afternoon converts differently from one that lands on a Tuesday.`,
+        detail: `${gap.day} carries ${gap.reach.toLocaleString('en-IN')} Instagram reach, and the queue is empty. Weekend dining decisions get made on the day, so a post that lands in the afternoon converts differently from one that lands on a Tuesday.`,
         action: 'Fill the slot — a dish photo will do',
         owner: 'executive',
         where: 'Composer → schedule queue',
         channels: ['ig'],
         window: `Before ${gap.day}`,
         evidence: [
-          { label: `${gap.day} reach`, value: gap.reach.toLocaleString('en-IN'), source: 'ig' },
+          { label: `${gap.day} Instagram reach`, value: gap.reach.toLocaleString('en-IN'), source: 'ig' },
           { label: 'Best day', value: `${byDay[0].day} (${byDay[0].reach.toLocaleString('en-IN')})`, source: 'ig' },
           { label: 'Scheduled this week', value: `${ctx.scheduled.length} posts, none on ${gap.day}`, source: 'internal' },
         ],
@@ -423,7 +413,7 @@ const REC_RULES = [
       // Capacity is hard-coded here; in production it comes from the booking system.
       const EVENT_SEATS_PER_NIGHT = 24;
       const eventSignal = ctx.signals.find(
-        s => s.channel === 'di' && s.kind === 'volume_spike' && s.metrics.mentions >= 300
+        s => s.channel === 'ig' && s.kind === 'volume_spike' && /sav(e|ed)/i.test(s.title)
       );
       if (!eventSignal) return [];
       const ratio = Math.round(eventSignal.metrics.mentions / EVENT_SEATS_PER_NIGHT);
@@ -431,17 +421,17 @@ const REC_RULES = [
       return [{
         kind: 'event',
         title: 'Diwali seating is over-subscribed before it opens',
-        detail: `${eventSignal.metrics.mentions} saves against ${EVENT_SEATS_PER_NIGHT} seats a night — roughly ${ratio} interested guests per seat. Either open a second seating, extend the run, or accept that you are under-priced for the demand. Deciding after bookings open means deciding badly.`,
+        detail: `${eventSignal.metrics.mentions} saves on the teaser against ${EVENT_SEATS_PER_NIGHT} seats a night — roughly ${ratio} interested guests per seat. Either open a second seating, extend the run, or accept that you are under-priced for the demand. Deciding after bookings open means deciding badly.`,
         action: 'Open a second seating or revisit the price',
         owner: 'admin',
-        where: 'Booking system · District listing',
-        channels: ['di'],
+        where: 'Booking system · Instagram',
+        channels: ['ig'],
         window: 'Before bookings open Monday',
         evidence: [
-          { label: 'Saves on the listing', value: `${eventSignal.metrics.mentions}`, source: 'publicApi' },
+          { label: 'Saves on the teaser', value: `${eventSignal.metrics.mentions}`, source: 'ig' },
           { label: 'Seats per night', value: `${EVENT_SEATS_PER_NIGHT}`, source: 'pos' },
           { label: 'Interest per seat', value: `~${ratio}×`, source: 'internal' },
-          { label: 'Listing sentiment', value: eventSignal.metrics.sentiment.toFixed(2), source: 'nlp' },
+          { label: 'Teaser sentiment', value: eventSignal.metrics.sentiment.toFixed(2), source: 'nlp' },
         ],
         impact: 0.8,
         confidence: 0.6,
@@ -534,8 +524,8 @@ const REC_RULES = [
         detail: `Sentiment is ${m.sentiment.toFixed(2)} — the dish is not the problem, the ₹${m.price} ticket is. Bundling it into a set menu moves the comparison away from the single line item, which is usually cheaper than discounting it.`,
         action: 'Build it into a set menu rather than discounting',
         owner: 'manager',
-        where: 'Menu · marketplace dashboards',
-        channels: ['zo', 'sw'],
+        where: 'Menu · Instagram',
+        channels: ['ig'],
         window: 'Next menu print',
         evidence: [
           { label: `${m.name} price`, value: `₹${m.price}`, source: 'pos' },

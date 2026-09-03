@@ -22,7 +22,7 @@
 const REVIEW_SLA_MINS = REVIEW_STATS.slaMins;
 
 const REVIEW_EXPORT_COLUMNS = [
-  'id', 'channel', 'author', 'rating', 'context', 'received_at',
+  'id', 'channel', 'author', 'rating', 'received_at',
   'replied', 'sla_state', 'themes', 'review_text', 'replied_by', 'reply_text',
 ];
 
@@ -57,6 +57,24 @@ function urgencyScore(r) {
   if (st === 'answered') return 1000 + minsSince(r.t) / 1000;
   const base = st === 'breached' ? 0 : st === 'due' ? 100 : 200;
   return base + r.rating * 10;
+}
+
+// Aggregate themes across all reviews, with the average rating of the reviews
+// carrying each — so "wait time" reads as a 1.5★ problem rather than just a
+// frequent word. Derived from the classification, not from Google.
+function topThemes(limit = 6) {
+  const acc = {};
+  REVIEWS.forEach(r => {
+    (r.themes || []).forEach(t => {
+      if (!acc[t]) acc[t] = { n: 0, sum: 0 };
+      acc[t].n += 1;
+      acc[t].sum += r.rating;
+    });
+  });
+  return Object.entries(acc)
+    .map(([t, v]) => [t, { n: v.n, avg: v.sum / v.n }])
+    .sort((a, b) => b[1].n - a[1].n || a[1].avg - b[1].avg)
+    .slice(0, limit);
 }
 
 function ReviewsPage({ role }) {
@@ -117,7 +135,7 @@ function ReviewsPage({ role }) {
         <div>
           <h1 className="text-2xl font-bold text-saf-text">Reviews</h1>
           <p className="text-sm text-saf-muted mt-1">
-            Every public rating across Google, Zomato and Swiggy — with the reply clock running.
+Every Google review, with the reply clock running.
           </p>
         </div>
         <Button
@@ -131,7 +149,6 @@ function ReviewsPage({ role }) {
                 PLATFORM_BY_ID[r.channel].name,
                 r.author,
                 r.rating,
-                r.context,
                 r.t,
                 r.replied ? 'yes' : 'no',
                 slaState(r),
@@ -155,11 +172,6 @@ function ReviewsPage({ role }) {
       <Card padding="p-3">
         <div className="flex items-center gap-2 flex-wrap">
           <div className="text-[12px] text-saf-muted uppercase tracking-wider me-2">Filters</div>
-
-          <FilterGroup label="Channel" value={channel} onChange={setChannel} options={[
-            { v: 'all', l: 'All channels' },
-            ...REVIEW_CHANNELS.map(id => ({ v: id, l: PLATFORM_BY_ID[id].name })),
-          ]} />
 
           <FilterGroup label="Rating" value={rating} onChange={setRating} options={[
             { v: 'all',  l: 'Any rating' },
@@ -289,29 +301,26 @@ function ReviewSummary({ breached, theme }) {
         </div>
       </Card>
 
-      {/* Per-channel */}
+      {/* Themes — derived, and the only cross-cut available on a single channel */}
       <Card className="col-span-12 lg:col-span-4">
-        <div className="text-[12px] text-saf-muted uppercase tracking-wider">By channel</div>
-        <div className="mt-3 space-y-3">
-          {s.byChannel.map(c => {
-            const p = PLATFORM_BY_ID[c.channel];
-            return (
-              <div key={c.channel} className="flex items-center gap-3">
-                <span style={{ color: platformColor(c.channel, theme) }}><PlatformGlyph id={c.channel} size={18} /></span>
-                <div className="min-w-0 flex-1">
-                  <div className="text-[13px] font-medium text-saf-text">{p.name}</div>
-                  <div className="text-[11px] text-saf-muted">{fmt(c.count)} reviews · {Math.round(c.responseRate * 100)}% answered</div>
-                </div>
-                <div className="text-end">
-                  <RatingBadge value={c.avg} size="sm" />
-                  <div className={`text-[11px] mt-0.5 tabular-nums ${c.change < 0 ? 'text-rose-700' : 'text-emerald-700'}`}>
-                    {c.change > 0 ? '+' : ''}{c.change.toFixed(1)}
-                  </div>
-                </div>
+        <div className="text-[12px] text-saf-muted uppercase tracking-wider">What reviews are about</div>
+        <div className="mt-3 space-y-2.5">
+          {topThemes().map(([theme, stat]) => (
+            <div key={theme} className="flex items-center gap-3">
+              <span className="w-28 text-[12.5px] text-saf-text truncate">{theme}</span>
+              <div className="flex-1 h-2 rounded-full bg-saf-light overflow-hidden">
+                <div
+                  className="h-full rounded-full"
+                  style={{ width: `${(stat.n / topThemes()[0][1].n) * 100}%`, background: stat.avg >= 4 ? '#2E7D4F' : stat.avg >= 3 ? '#D99A16' : '#C0342B' }}
+                />
               </div>
-            );
-          })}
+              <span className="w-16 text-end text-[11.5px] text-saf-muted tabular-nums">{stat.n} · {stat.avg.toFixed(1)}★</span>
+            </div>
+          ))}
         </div>
+        <p className="text-[11px] text-saf-muted mt-3 pt-2.5 border-t border-saf-border leading-relaxed">
+          Derived by classifying review text — Google returns the words, not the themes.
+        </p>
       </Card>
 
       {/* Response performance */}
@@ -373,8 +382,6 @@ function ReviewCard({ review, theme, canReply, canEscalate, onReply, onEscalate 
               <span style={{ color: platformColor(review.channel, theme) }}><PlatformGlyph id={review.channel} size={13} /></span>
               {p.name}
             </span>
-            <span className="text-saf-muted text-[12px]">·</span>
-            <span className="text-[12px] text-saf-muted capitalize">{review.context}</span>
             <span className="text-saf-muted text-[12px]">·</span>
             <span className="text-[12px] text-saf-muted">{relTime(review.t)}</span>
             <SlaBadge state={st} age={age} className="ms-auto" />
@@ -494,7 +501,7 @@ function ReplyModal({ review, role, canComp, onClose, onSubmit }) {
             <Avatar name={review.author} size={28} />
             <span className="text-[13px] font-semibold text-saf-text">{review.author}</span>
             <StarRow value={review.rating} size={12} />
-            <span className="text-[12px] text-saf-muted">· {relTime(review.t)} · {review.context}</span>
+            <span className="text-[12px] text-saf-muted">· {relTime(review.t)}</span>
           </div>
           <p className="mt-2 text-[13px] leading-relaxed text-saf-text">{review.text}</p>
         </div>

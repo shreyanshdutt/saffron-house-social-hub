@@ -411,18 +411,15 @@ function Field({ icon, label, children }) {
 // Per-channel preview cards.
 //
 // These are deliberately not five variations on one card. A guest reads a
-// Google post inside a business listing, a Zomato post inside an ordering
-// flow, and an Instagram post inside a feed — the same 200 characters land
-// completely differently in each, and the composer should show that.
+// Google post inside a business listing — next to the rating, the hours and
+// a Book button — and an Instagram post inside a feed. The same 200
+// characters land completely differently in each, and the composer shows that.
 function PlatformPreview({ platform, content, tags, media, dir }) {
   const fullContent = (content ? content.trim() : '') + (tags.length ? '\n\n' + tags.join(' ') : '');
   const props = { content: fullContent, media, dir };
   switch (platform) {
     case 'ig': return <PreviewInstagram {...props} />;
     case 'gg': return <PreviewGoogle    {...props} />;
-    case 'zo': return <PreviewZomato    {...props} />;
-    case 'sw': return <PreviewSwiggy    {...props} />;
-    case 'di': return <PreviewDistrict  {...props} />;
     default: return null;
   }
 }
@@ -491,69 +488,6 @@ function PreviewGoogle({ content, media, dir }) {
       <div className="px-3 py-2 border-t border-saf-border flex items-center gap-2">
         <span className="px-3 h-8 grid place-items-center rounded-full border border-saf-border text-[12px] font-medium text-saf-primary">Book a table</span>
         <span className="px-3 h-8 grid place-items-center rounded-full border border-saf-border text-[12px] font-medium text-saf-primary">Directions</span>
-      </div>
-    </div>
-  );
-}
-
-// Marketplace posts sit directly above an order button — the copy has to
-// carry a dish and a reason to tap, not a brand sentiment.
-function MarketplacePreview({ content, media, dir, channel, cta, meta }) {
-  const p = PLATFORM_BY_ID[channel];
-  return (
-    <div className="bg-white rounded-xl border border-saf-border overflow-hidden">
-      {media[0] && media[0].kind !== 'pdf'
-        ? <MockImage tone={media[0].tone} kind={media[0].kind} label={media[0].label} className="aspect-[16/9]" />
-        : <MockImage tone="warm" label="Add a dish photo" className="aspect-[16/9]" />}
-      <div className="p-3">
-        <div className="flex items-center gap-2">
-          <span style={{ color: p.color }}><PlatformGlyph id={channel} size={16} /></span>
-          <div className="text-[13px] font-semibold text-saf-text">Saffron House</div>
-          <span className="ml-auto inline-flex items-center gap-1 px-1.5 h-5 rounded bg-emerald-50 text-emerald-700 text-[11px] font-semibold">
-            <Icon name="Star" size={10} /> 4.3
-          </span>
-        </div>
-        <div className="text-[11px] text-saf-muted mt-0.5">{meta}</div>
-        <div dir={dir} className="mt-2 text-[13px] text-saf-text whitespace-pre-wrap">{content || '...'}</div>
-        <div className="mt-3 h-9 rounded-lg grid place-items-center text-[13px] font-semibold text-white" style={{ background: p.color }}>
-          {cta}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function PreviewZomato(props) {
-  return <MarketplacePreview {...props} channel="zo" cta="Order now" meta="North Indian · Awadhi · 32 min · ₹₹₹" />;
-}
-
-function PreviewSwiggy(props) {
-  return <MarketplacePreview {...props} channel="sw" cta="Add to cart" meta="North Indian · 28 min · Free delivery over ₹499" />;
-}
-
-// District is a going-out listing — the unit is an event with a date and a
-// finite number of seats, so the preview leads with those.
-function PreviewDistrict({ content, media, dir }) {
-  return (
-    <div className="bg-white rounded-xl border border-saf-border overflow-hidden">
-      {media[0] && media[0].kind !== 'pdf'
-        ? <MockImage tone={media[0].tone} kind={media[0].kind} label={media[0].label} className="aspect-[16/9]" />
-        : <MockImage tone="night" label="Add an event image" className="aspect-[16/9]" />}
-      <div className="p-3">
-        <div className="flex items-start gap-3">
-          <div className="w-11 shrink-0 rounded-lg border border-saf-border text-center overflow-hidden">
-            <div className="text-[9px] font-semibold uppercase tracking-wide bg-saf-light text-saf-primary py-0.5">Sep</div>
-            <div className="text-[16px] font-bold text-saf-text leading-tight py-0.5">06</div>
-          </div>
-          <div className="min-w-0">
-            <div dir={dir} className="text-[14px] font-medium text-saf-text leading-snug line-clamp-3">{content || 'Event title preview…'}</div>
-            <div className="text-[11px] text-saf-muted mt-1">Saffron House · Khan Market · 24 seats</div>
-          </div>
-        </div>
-        <div className="mt-3 flex items-center gap-2">
-          <span className="flex-1 h-9 rounded-lg grid place-items-center text-[13px] font-semibold text-white bg-saf-text">Book</span>
-          <span className="w-9 h-9 rounded-lg grid place-items-center border border-saf-border text-saf-muted"><Icon name="Bookmark" size={16} /></span>
-        </div>
       </div>
     </div>
   );
