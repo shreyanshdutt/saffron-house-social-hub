@@ -60,6 +60,14 @@ function CompetitorsScreen({ theme }) {
   const [syncTick, setSyncTick] = React.useState(0);
   const [report, setReport] = React.useState(null);
   const tracked = React.useMemo(() => trackedCompetitors(), [syncTick]);
+  // Our own row derives its changes from the reserved `saf-self` series by the
+  // same functions the peer rows use, so the two sides cannot be computed
+  // differently. Keyed on syncTick like everything else on this screen.
+  const self = React.useMemo(() => ({
+    ...SAF_SELF_STATS,
+    followerChange: followerChangeFor('saf-self'),
+    engagementChange: engagementChangeFor('saf-self'),
+  }), [syncTick]);
 
   const sortedRows = React.useMemo(() => {
     const col = COMPETITOR_COLUMNS.find(c => c.id === sort.field);
@@ -104,7 +112,7 @@ function CompetitorsScreen({ theme }) {
         : <EmptyCatchment />}
       {/* Saffron House sits above the peer table — internal-source data, our own
           baseline. The peer table below is purely external observation. */}
-      <SelfRowCard data={SAF_SELF_STATS} theme={theme} t={t} />
+      <SelfRowCard data={self} theme={theme} t={t} />
       <CompetitorsTable rows={sortedRows} sort={sort} onSort={onSort} theme={theme} t={t} />
       <SourceNote />
     </div>
@@ -777,7 +785,7 @@ function CompetitorRow({ c, theme, t, inSelfCard, expanded, onToggle }) {
         {isRatings ? <NotReadable reason={c.unreadableReason} /> : (
           <>
             <div className="text-[13px] font-medium text-saf-text tabular-nums">{fmtCompact(c.followers)}</div>
-            <ChangePctText pct={c.followersChange7dPct} />
+            <ChangeCell change={c.followerChange} what="follower" />
           </>
         )}
       </td>
@@ -787,7 +795,7 @@ function CompetitorRow({ c, theme, t, inSelfCard, expanded, onToggle }) {
         {isRatings ? <NotReadable reason={c.unreadableReason} /> : (
           <>
             <div className="text-[13px] font-semibold text-saf-text tabular-nums">{(c.engagementRate * 100).toFixed(1)}%</div>
-            <ChangePctText pct={c.engagementChange7dPct} />
+            <ChangeCell change={c.engagementChange} what="engagement" />
           </>
         )}
       </td>
@@ -1084,6 +1092,34 @@ function ChangePctText({ pct }) {
     <div className={`text-[11px] tabular-nums ${up ? 'text-emerald-700' : 'text-rose-700'}`}>
       {sign}{pct.toFixed(1)}%
     </div>
+  );
+}
+
+// Follower and engagement change carry the same three states as review
+// velocity, because they come from the same store by the same code path.
+// "Never observed" and "observed, window still too short" are different facts
+// and must not print the same text — and neither may print 0% or an em dash,
+// both of which read as a measured nothing (§11 trap 1). The window is on the
+// tooltip rather than in the cell: it is a table, and the number is the point.
+function ChangeCell({ change, what }) {
+  if (!change || change.state === 'none') {
+    return (
+      <Tooltip label={`No stored ${what} history. This is the difference between two Business Discovery snapshots — the API returns a count, never a change — so it needs two syncs at least ${VELOCITY_MIN_WINDOW_DAYS} days apart.`}>
+        <div className="text-[11px] text-saf-muted">no history</div>
+      </Tooltip>
+    );
+  }
+  if (change.state === 'measuring') {
+    return (
+      <Tooltip label={`Measuring: ${change.samples} readings over ${formatVelocityWindow(change.windowDays)}. Under ${VELOCITY_MIN_WINDOW_DAYS} days is too short a window to state a percentage.`}>
+        <div className="text-[11px] text-saf-muted">measuring</div>
+      </Tooltip>
+    );
+  }
+  return (
+    <Tooltip label={`${change.value >= 0 ? '+' : ''}${change.value.toFixed(1)}% over ${formatVelocityWindow(change.windowDays)}, from ${change.samples} stored readings.`}>
+      <ChangePctText pct={change.value} />
+    </Tooltip>
   );
 }
 

@@ -178,6 +178,49 @@ closing an item, not follow-up work.**
       tier is about Instagram, and velocity comes from Places — so those rows
       now carry a real velocity. — closed in this commit
 
+16. **`followersChange7dPct` and `engagementChange7dPct` were the same defect
+    as item 15, one layer over.** Seventeen literals — nine follower and six
+    engagement figures across `LISTENING_COMPETITORS`, plus both on
+    `SAF_SELF_STATS` — stated a rate of change that Business Discovery cannot
+    return. `DATA-SOURCES.md` lists that API as giving "Follower count, post
+    count": a SNAPSHOT. There is no change-over-7-days field, and the app
+    stored no follower history, so the percentages were invented and could
+    never move however many times a viewer synced. Three of them sat on
+    competitors marked `synced: false` — a seven-day follower trend for an
+    account that had never been pulled once. All seventeen are replaced by a
+    derivation over the stored series, sharing one `changeFromSeries()` path
+    with review velocity. **Note the count: the task brief said eighteen. It is
+    seventeen — `cmp-7`/`8`/`9` carry no `engagementChange7dPct`, because they
+    carry no `engagementRate` either.** — closed in this commit
+
+    Two things worth recording:
+    · `comp.followers` was never assigned anywhere, so deriving a change from
+      history alone would have produced a permanent 0%. Sync now nudges it the
+      way it already nudges the review count, and engagement moves as a
+      *consequence* — `applyCompetitorSync()` recomputes
+      `avgInteractions ÷ followers`, so the relationship is real rather than a
+      second invented number.
+    · The same reset trap as item 15 applied to follower counts;
+      `hydrateObservedCounts()` now replays those too.
+
+17. **`saf-sync-v2` gained two sample fields WITHOUT a key bump — a deliberate
+    exception to `CLAUDE.md` § 6, recorded here so it is not mistaken for
+    someone ignoring the rule.** § 6 requires a new `-vN` key when a persisted
+    SHAPE changes, because a returning viewer has the old shape in their
+    browser. That rule targets a change that *reinterprets* an existing field,
+    where old data read under new assumptions is silently wrong. This change
+    only *adds* two optional fields to a sample. Every reader filters to
+    samples carrying the field it needs, so a pre-existing reading stays fully
+    valid for review velocity and is correctly invisible to the follower
+    metrics — it reports `none`, which is exactly true: those readings never
+    observed a follower count. Bumping to `-v3` would have thrown away review
+    history viewers had already accumulated, a real and permanent loss, to
+    guard against a risk that does not exist here. Verified in a browser by
+    seeding a `v2` blob whose samples carry only `{ at, reviews }`: review
+    velocity still derived (110/month over its own 60-day window) while
+    follower and engagement change reported `none` with zero samples, and no
+    seeded follower count was zeroed. — recorded in this commit
+
 #### Open
 
 None.

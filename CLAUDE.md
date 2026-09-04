@@ -179,7 +179,7 @@ in `try/catch` because private-mode browsers throw on access; keep that.
 | `saf-role` | current role id | `app.jsx` |
 | `saf-theme` | `'light'` / `'dark'` | `app.jsx` + the pre-paint block in `index.html` |
 | `saf-tracked-v1` | tracked establishment ids | `trackedSave()` |
-| `saf-sync-v2` | last sync state **+ review-count history** | `syncStateSave()` |
+| `saf-sync-v2` | last sync state **+ observation history** | `syncStateSave()` |
 | ~~`saf-sync-v1`~~ | superseded — **not read, migrated or deleted** | — |
 | `saf-listening-v1` | dismissed / assignments / read / notes / tags / filter | `listeningSave()` |
 | `saf-recs-v1` | recommendation id → `accepted` / `done` / `dismissed` | `recsSave()` |
@@ -191,20 +191,41 @@ in their browser and will hit whatever the new code assumes.
 `saf-sync-v1` is the worked example. It held
 `{ lastSyncedAt, runs, velocityComparable }`; v2 holds
 `{ lastSyncedAt, runs, history }`, where `history` maps an establishment id —
-or the reserved key `saf-self` — to review-count readings ordered oldest →
-newest, capped at `REVIEW_HISTORY_CAP` with the oldest dropped. v1 is **left in
-place and never read**: its `runs` counter records how many pulls happened but
-nothing about what any of them returned, so there is no velocity recoverable
-from it and a migration would have to invent one.
+or the reserved key `saf-self` — to readings ordered oldest → newest, capped at
+`REVIEW_HISTORY_CAP` with the oldest dropped. v1 is **left in place and never
+read**: its `runs` counter records how many pulls happened but nothing about
+what any of them returned, so there is no velocity recoverable from it and a
+migration would have to invent one.
 
-**Stored counts are the source of truth for a review count.** `syncCompetitors()`
-mutates `e.google.reviews` in memory only, so a reload re-seeds it from
-`ESTABLISHMENTS` while the stored history keeps the higher reading — and the
-next sample would land *below* the one before it, producing a negative velocity
-out of nothing but a page refresh. `hydrateReviewCounts()` replays the newest
-stored reading into `ESTABLISHMENTS`, `LISTENING_COMPETITORS` and
-`SAF_SELF_STATS` at load to close that. It runs with the other hydrators,
-after `SAF_SELF_STATS` is declared, because it writes to all three.
+A reading is `{ at, reviews, followers, avgInteractions }` and **every field is
+optional**. Places Details writes `reviews`; Business Discovery writes the
+other two; a call that was skipped or failed leaves its fields absent. Absence
+is load-bearing — it is what lets `changeFromSeries()` tell "we never observed
+this" from "we observed it and it did not move", which an em dash or a zero
+would collapse (§11 trap 1).
+
+**Adding those two fields did NOT bump the key, and that is deliberate.** It is
+an additive change: a reading written before they existed simply lacks them,
+and every reader already filters to samples that carry the field it needs, so
+old readings stay valid for review velocity and are correctly invisible to the
+follower metrics. Bumping to `-v3` would have discarded review history a viewer
+had already accumulated — a real loss — to guard against a shape change that
+costs nothing. The §6 rule above still stands for a shape change that
+*reinterprets* an existing field; this one only adds. The reasoning is recorded
+in `CONVENTIONS.md` § 3 so the exception is not mistaken for someone ignoring
+the rule.
+
+**Stored readings are the source of truth for an observed count.**
+`syncCompetitors()` mutates `e.google.reviews` and `comp.followers` in memory
+only, so a reload re-seeds both while the stored history keeps the higher
+readings — and the next sample would land *below* the one before it, producing
+a negative velocity, and a negative follower change, out of nothing but a page
+refresh. `hydrateObservedCounts()` replays the newest stored reading into
+`ESTABLISHMENTS`, `LISTENING_COMPETITORS` and `SAF_SELF_STATS` at load to close
+that. It runs with the other hydrators, after `SAF_SELF_STATS` is declared,
+because it writes to all three. Where it moves a follower count it re-runs
+`applyCompetitorSync()` rather than restating the engagement-rate formula,
+because that function owns it.
 
 ## 7. Roles and permissions
 

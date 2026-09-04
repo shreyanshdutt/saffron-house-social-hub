@@ -126,6 +126,8 @@ obtained (their reach, mention volume and sentiment) are gone.
 | Field | Source | Availability |
 |---|---|---|
 | Follower count, post count | Instagram Business Discovery | API (public accounts) |
+| Their follower **change** | Business Discovery counts stored over time, differenced | Derived, needs history |
+| Their engagement-rate **change** | Stored interactions ÷ followers, differenced | Derived, needs history |
 | Their likes + comments per post | Instagram Business Discovery | API |
 | Their captions, format, timestamps, permalinks | Instagram Business Discovery `media` edge | API |
 | Their post themes + offer detection | Your classification of their captions | Derived |
@@ -144,7 +146,21 @@ obtained (their reach, mention volume and sentiment) are gone.
 carries no columns the peer rows lack. Our richer metrics live on Analytics,
 where they are not being compared to anyone.
 
-**Review velocity is the one figure here that no single call can return.**
+**Business Discovery returns a snapshot, not a delta.** It gives a follower
+count and the posts behind an interaction average as they are *right now*;
+there is no "change over the last 7 days" field in the API and no way to ask
+for one. So follower change and engagement-rate change are derived exactly like
+review velocity — the difference between two readings we stored — and they
+carry the same three states and the same 7-day floor. Until this was true, the
+app showed `followersChange7dPct` and `engagementChange7dPct` as measured
+figures; they were seeded literals, and three of them sat on competitors that
+had never been pulled at all.
+
+Engagement change is the percent change in interactions ÷ followers between the
+two readings. It needs both fields on a sample, so a reading that captured only
+one is not an observation of it.
+
+**Review velocity is the one Places figure that no single call can return.**
 Places Details gives a review count as a snapshot; the rate of change is the
 delta between two snapshots divided by the days between them. So the app keeps
 its own store of readings (`saf-sync-v2`, §6 of `CLAUDE.md`), appends one per
@@ -167,7 +183,12 @@ out and why.
 
 Velocity does NOT require a readable Instagram account, so a *ratings-only*
 establishment carries it on the same terms as a full-tier one — the tier is
-about Business Discovery, and this figure comes from Places.
+about Business Discovery, and this figure comes from Places. The reverse also
+holds and is why the two are stored together but derived separately: a
+ratings-only establishment never gets a Business Discovery call, so no sample
+of it ever carries a follower count and its follower and engagement change stay
+in the `none` state permanently. That is a fact about the API, not a gap in the
+data, and the screen says so rather than showing 0%.
 
 The Google Places terms restrict caching and storing most place content —
 review text especially. Storing a bare review COUNT plus a timestamp, which is
