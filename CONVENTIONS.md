@@ -74,35 +74,82 @@ Rules:
 - **Never edit a doc to agree with code you just wrote** without establishing
   which of the two is correct.
 
-### Known open drift (as of 2026-09-04, unfixed)
+- **When you close drift from a REMOVED feature, grep for its vocabulary, not
+  its name.** Removing Zomato/Swiggy/District left behind the word "blended"
+  on the Reviews screen, a "dine-in/delivery context" claim, a dead
+  `maskedOrder`, and an unreachable `partner` source tier — none of which
+  contain a channel name. `a38c4eb` grepped for the names and missed all of
+  them; they were found by a person looking at the screen. Grep the removed
+  CAPABILITY: what the feature let you claim, not what it was called.
 
-Recorded here so nobody "discovers" them as new, and so nobody treats them as
-licence to change the code back:
+### Drift register
 
-1. `README.md` § *How it differs* describes composer previews for a
-   **marketplace post** and a **District event post**. Those channels were
-   removed in `9f6e8ab`. The doc is stale; the code is correct.
-2. `README.md` § *Live data* says "three of the **six** channels (Zomato,
-   Swiggy, District) have no public API". There are three channels now, not
-   six. The doc is stale.
-3. `README.md` § *Seeded demo narrative* says "the **blended rating** slides
-   4.6 → 4.3" and "**Swiggy sentiment** falls hardest". `DATA-SOURCES.md`
-   states Google is now the only review channel, so there is nothing to blend
-   and no Swiggy sentiment. The doc is stale.
-4. `mock.jsx` `TRENDING_TAGS` still contains `#KhanMarket`. The restaurant
-   relocated to Sector 10 Market, Dwarka in `c747dd6`. The **code** is stale
-   here, not the doc.
-5. `index.html` carries a comment describing the `pulseRingSubtle` keyframe as
-   being for "a regulated-bank product" — carried over from the ARC prototype
-   this was replicated from. Stale comment; the calmer animation itself is a
-   deliberate choice and stays.
-6. `README.md` § *Design tokens* claims the Tailwind CDN "cannot generate
-   `dark:` variants for arbitrary token names". **Owner verified in a browser
-   on 2026-09-04 that it can** — the six `dark:` utilities in `src/`, including
-   `dark:bg-saf-primary/20` at `page-listening-competitors.jsx:477` and `:577`,
-   render correctly. The doc is wrong and must be corrected. The hold on new
-   `dark:` utilities is **lifted**; `CLAUDE.md` § 8 records when to use a
-   `dark:` utility and when the `html.dark` override block owns it instead.
+The register exists so that a closed defect is not re-discovered as new, and
+not reverted by someone who reads only the stale half. **A closed item stays
+listed, marked closed, with the commit that closed it.** Deleting the entry
+loses the second of those protections.
+
+This register itself went stale on 2026-09-05 — it still read "unfixed" after
+every item in it had been closed, and was by then the only source in the repo
+for the strings `KhanMarket` and `blended`. An audit reading it would have
+chased six defects that no longer existed. **Updating the register is part of
+closing an item, not follow-up work.**
+
+#### Closed
+
+1. `README.md` composer previews described a marketplace post and a District
+   event post. Channels removed in `9f6e8ab`. — closed `a38c4eb`
+2. `README.md` said "three of the **six** channels". There are three. —
+   closed `a38c4eb`
+3. `README.md` seeded-narrative cited a "blended rating" and "Swiggy
+   sentiment falls hardest". Google is the only review channel. —
+   closed `a38c4eb`
+4. `mock.jsx` `TRENDING_TAGS` carried `#KhanMarket`; the restaurant relocated
+   to Sector 10 Market, Dwarka in `c747dd6`. — closed `a38c4eb`.
+   Six further `#KhanMarket` sites in `POSTS`, `SCHEDULED` and the composer's
+   seeded chips were missed by that pass — closed `df34712`
+5. `index.html` described the `pulseRingSubtle` keyframe as being for "a
+   regulated-bank product", carried over from the ARC prototype. The calmer
+   animation itself was always deliberate and stays. — closed `a38c4eb`
+6. `README.md` claimed the Tailwind CDN "cannot generate `dark:` variants for
+   arbitrary token names". Owner verified in a browser 2026-09-04 that it
+   can. `CLAUDE.md` § 8 now records when a `dark:` utility is right and when
+   the `html.dark` override block owns the change instead. — closed `a38c4eb`
+7. `page-reviews.jsx` rendered a **"Blended rating"** KPI label, and its
+   header comment said the same, directly beneath a subtitle reading "Every
+   Google review" — while `DATA-SOURCES.md` states there is no blending. The
+   most visible instance of this defect class, and the one that survived
+   `a38c4eb` because that pass grepped only for channel names. —
+   closed `df34712`
+8. `page-compose.jsx` described the previews as "not five variations on one
+   card"; there are two. — closed `df34712`
+9. `page-listening-overview.jsx` carried a "Share of voice is a fraction"
+   comment above the line computing a percent change for direction requests.
+   Share of voice was removed and direction requests replaced it. —
+   closed `df34712`
+10. `CLAUDE.md` § 10 described the third act as a "delivery-temperature
+    crisis cluster". `sig-003` is booked tables not honoured. Written into
+    the standards from the stale README without checking the seed data. —
+    closed `df34712`
+11. `sig-003`'s body said "Four negative reports" while its `children` array
+    held three, and both crisis panels render `children.length` — so the
+    screen printed "3 related incidents" above "Four negative reports".
+    Fourth child added from `rv-4`. — closed `df34712`
+
+#### Open
+
+12. **`maskedOrder` is dead.** Defined `mock.jsx:38`, exported `:41`, used in
+    zero screens; `orderId` appears nowhere in `src/`. Left over from the
+    marketplace removal. Removing it is a two-file change — `CLAUDE.md` § 5
+    lists it in the `window.*` export set.
+13. **The `partner` recommendation source tier is unreachable.**
+    `REC_TIER_LABEL.partner` (`recommend.jsx:44`) is never looked up: no entry
+    in `REC_SOURCES` carries `tier: 'partner'`, so no rule can emit it. Unlike
+    `maskedOrder` it carries an inline comment explaining why it once existed,
+    so deleting it also deletes that record — decide which is worth more.
+14. **`page-reviews.jsx:138`** — the subtitle text sits flush at column 0
+    inside its `<p>`. Cosmetic; JSX collapses the whitespace and it renders
+    correctly. Noted so it is not mistaken for something load-bearing.
 
 ## 4. Scope discipline
 
