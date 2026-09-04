@@ -6,6 +6,20 @@ import { seriesFor, insertObservation, SELF_SUBJECT } from './observations.js';
 import { velocityFromSeries, changeFromSeries, newestWith } from './derive.js';
 import { nowIso } from './db.js';
 
+// "Do we hold Business Discovery content for this establishment." Keyed on the
+// DATA being present, not on the `source` label: the seed writes its
+// follower-carrying rows as `places` (flagged as an imprecision in 432ebc0
+// finding i), and a definition that disagreed with the seed would report every
+// seeded rival as never pulled. Follower count is the field only Business
+// Discovery can produce, so its presence is the evidence.
+export function hasContent(db, placeId) {
+  const row = db.prepare(
+    `SELECT 1 AS hit FROM observations
+      WHERE subject = ? AND followers IS NOT NULL LIMIT 1`
+  ).get(placeId);
+  return !!row;
+}
+
 export function socialFor(db, placeId) {
   return db.prepare(
     `SELECT platform, handle, account_type, readable, last_post_days_ago,
@@ -14,13 +28,49 @@ export function socialFor(db, placeId) {
   ).all(placeId);
 }
 
-export function listEstablishments(db) {
+// Filtering happens in SQL, not in the browser: `distance_km` and `rating` are
+// real columns, and a scan of a real catchment returns more rows than a client
+// should be shipped in order to throw most of them away.
+//
+// A TRACKED establishment is never filtered out. Hiding a competitor the user
+// has explicitly chosen, because a slider moved, is how someone ends up
+// comparing themselves against a set they think is complete and is not — and
+// the row that would go first is `est-4` The Curry Room at 3.8, a tracked
+// rival whose LOW rating is exactly why it is worth watching. Tracked rows
+// come back flagged `belowFilters` so the screen can say why they are there.
+export function listEstablishments(db, filters = {}) {
+  const where = [];
+  const args = [];
+  const maxDistanceKm = numOrNull(filters.maxDistanceKm);
+  const minRating = numOrNull(filters.minRating);
+
+  if (maxDistanceKm !== null) {
+    // A row with no distance is NOT silently dropped: unknown is not "far".
+    where.push('(e.distance_km IS NULL OR e.distance_km <= ?)');
+    args.push(maxDistanceKm);
+  }
+  if (minRating !== null) {
+    // Same for an unrated listing — a new restaurant with no rating yet has
+    // not failed the threshold, it has not been measured against it.
+    where.push('(e.rating IS NULL OR e.rating >= ?)');
+    args.push(minRating);
+  }
+  const filterSql = where.length ? `(${where.join(' AND ')})` : '1=1';
+
   const rows = db.prepare(
-    `SELECT e.*, (t.place_id IS NOT NULL) AS tracked
+    `SELECT e.*, (t.place_id IS NOT NULL) AS tracked,
+            (NOT (${filterSql})) AS below_filters
        FROM establishments e LEFT JOIN tracked t ON t.place_id = e.place_id
+      WHERE ${filterSql} OR t.place_id IS NOT NULL
       ORDER BY e.local_ref`
-  ).all();
+  ).all(...args, ...args);
   return rows.map(r => shapeEstablishment(db, r));
+}
+
+function numOrNull(v) {
+  if (v === undefined || v === null || v === '') return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
 }
 
 export function getEstablishment(db, placeId) {
@@ -67,7 +117,17 @@ function shapeEstablishment(db, row) {
     // handed a stale copy.
     fetchedAt: row.fetched_at,
     tracked: !!row.tracked,
+    // True only for a tracked row that the current filters would otherwise
+    // exclude. The screen says so rather than quietly showing it.
+    belowFilters: !!row.below_filters,
     availability: avail,
+    // "Has Business Discovery ever returned content for this establishment."
+    // Derived from the observations, NOT stored: `synced` used to live only on
+    // the in-memory LISTENING_COMPETITORS record in mock.jsx, so a reload lost
+    // it — the same observed-state-only-in-memory class as the two reset traps
+    // already closed. A business_discovery reading is the durable evidence
+    // that a pull happened, so that is the source.
+    synced: hasContent(db, row.place_id),
     social: social.map(s => ({
       platform: s.platform,
       handle: s.handle,
@@ -166,6 +226,11 @@ export function listCompetitors(db) {
       unreadableReason: est.availability.tier === 'ratings'
         ? (igReason ? igReason.text : 'Instagram cannot be read')
         : null,
+      // Full tier but no content pulled yet. The row is real and belongs on
+      // the table; its Instagram-derived cells have nothing in them, and they
+      // must say that rather than render null as "null" or an engagement rate
+      // of 0.0% — a rival nobody has pulled has not been measured at zero.
+      synced: est.synced,
     };
   });
 }
@@ -220,4 +285,77 @@ export function recordObservations(db, rows) {
     throw err;
   }
   return written;
+}
+
+// ---------------------------------------------------------------------------
+// Handle entry.
+//
+// THE TRAP THIS GUARDS: typing a handle tells you nothing about whether the
+// account can be read. Business Discovery reads public Business and Creator
+// accounts only, and the only way to find out which one this is, is to attempt
+// it. So a hand-entered handle is recorded as `unknown` / `readable NULL` /
+// `verified_at NULL`, and availability() already treats `unknown` as not
+// readable — an establishment does NOT become "full comparison" because
+// somebody typed something.
+//
+// Normalised to a leading '@' and lower case so the same account entered two
+// ways is one account.
+export function normaliseHandle(raw) {
+  if (typeof raw !== 'string') return null;
+  let h = raw.trim();
+  if (!h) return null;
+  // Accept a pasted profile URL as well as a bare handle.
+  const url = /(?:instagram\.com\/)([A-Za-z0-9._]+)/i.exec(h);
+  if (url) h = url[1];
+  h = h.replace(/^@+/, '').toLowerCase();
+  if (!/^[a-z0-9._]{1,30}$/.test(h)) return null;
+  return `@${h}`;
+}
+
+export function setInstagramHandle(db, placeId, rawHandle, { source = 'manual' } = {}) {
+  const handle = normaliseHandle(rawHandle);
+  if (!handle) {
+    throw new Error('handle must be 1-30 characters of letters, digits, dots or underscores');
+  }
+  db.prepare(
+    `INSERT INTO establishment_social
+       (place_id, platform, handle, account_type, readable, last_post_days_ago,
+        verified_at, verification_error, discovered_from)
+     VALUES (?, 'instagram', ?, 'unknown', NULL, NULL, NULL, NULL, ?)
+     ON CONFLICT (place_id, platform) DO UPDATE SET
+       handle = excluded.handle,
+       -- Reset the verification state. A corrected handle is a DIFFERENT
+       -- account; carrying the old account's readability across would be
+       -- asserting a fact about a profile nobody has looked at.
+       account_type = 'unknown',
+       readable = NULL,
+       last_post_days_ago = NULL,
+       verified_at = NULL,
+       verification_error = NULL,
+       discovered_from = excluded.discovered_from`
+  ).run(placeId, handle, source);
+  return handle;
+}
+
+// Removing a handle records that we LOOKED and there is none — `absent`, with
+// a `verified_at`. That is deliberately different from having no row at all,
+// which means nobody has looked yet (schema.sql, establishment_social).
+// Collapsing the two would lose the difference between "this restaurant has no
+// Instagram" and "we have not checked", and the tier reasons read differently
+// for each.
+export function clearInstagramHandle(db, placeId, { at = nowIso() } = {}) {
+  db.prepare(
+    `INSERT INTO establishment_social
+       (place_id, platform, handle, account_type, readable, last_post_days_ago,
+        verified_at, verification_error, discovered_from)
+     VALUES (?, 'instagram', NULL, 'absent', 0, NULL, ?, NULL, 'manual')
+     ON CONFLICT (place_id, platform) DO UPDATE SET
+       handle = NULL,
+       account_type = 'absent',
+       readable = 0,
+       last_post_days_ago = NULL,
+       verified_at = excluded.verified_at,
+       verification_error = NULL,
+       discovered_from = 'manual'`
+  ).run(placeId, at);
 }

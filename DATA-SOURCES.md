@@ -206,6 +206,15 @@ check the terms before you build either.
 | Business status (operational / closed) | Google Places | API |
 | Their Instagram handle | **No API maps a place to a social account** | Manual, once per establishment |
 | Whether their Instagram is readable | Business Discovery succeeds or returns nothing | API (by attempting it) |
+| Their Instagram **handle** | Website parse, or entered by hand | Derived / manual — **not** evidence of readability |
+
+**Knowing a handle is not the same as being able to read it.** A handle can be
+parsed off a website or typed in by hand; neither tells you whether the account
+is a Business, Creator, personal or private one, and the only way to find out is
+to attempt the call. So a hand-entered handle is stored as `unknown` with
+`readable` NULL and does not raise the availability tier — an establishment does
+not become a full comparison because somebody typed something. It becomes a
+lookup waiting to happen.
 
 Business Discovery reads **public Business and Creator accounts only**. A
 personal or private account returns nothing at all — not partial data, nothing

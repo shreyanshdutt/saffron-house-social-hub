@@ -122,9 +122,17 @@ over:
   median. There is no sentiment on competitor posts: Business Discovery returns
   comment counts, not comment text, so there is nothing to classify.
 - **Establishments** (`src/page-establishments.jsx`) is the candidate pool the
-  competitor set is chosen from — every restaurant Places Nearby Search returns
-  in the catchment, with a per-channel verdict on whether it can be analysed at
-  all. Three tiers: *full comparison* (Google listing + public Instagram
+  competitor set is chosen from, with a per-channel verdict on whether each can
+  be analysed at all. A **radius** and a **minimum rating** drive the query —
+  both are the user's, filtered server-side against real columns, and a rating
+  floor is off by default because one nobody asked for hides rivals silently. A
+  *tracked* establishment is never filtered out: it stays with an "Outside
+  filters" badge, because a slider should not quietly drop a rival out of the
+  comparison the rest of the product is built on. The screen states that it is
+  showing a seeded set rather than a catchment, and that a real Nearby Search
+  caps at 60 results over 3 pages. Each row takes an Instagram **handle** by
+  hand — recorded as *unverified*, which explicitly does **not** raise the
+  tier, because typing a handle is not evidence the account can be read. Three tiers: *full comparison* (Google listing + public Instagram
   Business/Creator account), *ratings only* (Google alone — their Instagram is
   personal, private, dormant or absent, and Business Discovery cannot read
   those), and *cannot track* (no Google listing, common for delivery-only
