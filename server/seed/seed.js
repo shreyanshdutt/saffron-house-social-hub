@@ -8,8 +8,22 @@
 import { openAndMigrate, nowIso } from '../src/db.js';
 import { insertObservation } from '../src/observations.js';
 import { config, loadDotEnv } from '../src/config.js';
-import { extractMock } from './extract-mock.js';
 import { pathToFileURL } from 'node:url';
+import { readFileSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+// The seed data now lives HERE, not in the client.
+//
+// It was extracted once from src/mock.jsx at commit 40c9100 — the commit
+// immediately before that data was deleted from the client — by the
+// throwaway `extract-mock.js`, which has been removed along with the coupling
+// it represented. The server no longer reads anything under src/, so
+// CLAUDE.md §2's "the server never imports from src/" now holds without an
+// exception. Regenerate with: git show 40c9100:src/mock.jsx
+const SEED_DATA = JSON.parse(
+  readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'seed-data.json'), 'utf8')
+);
 
 // Seeded establishments have no Places identity — they are invented. Giving
 // them a `sample:` prefixed key keeps them in the primary-key namespace
@@ -50,9 +64,11 @@ function socialRows(est) {
   return rows;
 }
 
-export function seed(db, repoRoot, { trackedBy = 'admin', now = Date.now() } = {}) {
-  const { ESTABLISHMENTS, OBSERVATION_HISTORY, TRACKED_DEFAULT, COMPETITOR_CATCHMENT } = extractMock(repoRoot);
-  const isSample = COMPETITOR_CATCHMENT.isSampleData ? 1 : 0;
+export function seed(db, _repoRoot, { trackedBy = 'admin', now = Date.now() } = {}) {
+  const ESTABLISHMENTS = SEED_DATA.establishments;
+  const OBSERVATION_HISTORY = SEED_DATA.observationHistory;
+  const TRACKED_DEFAULT = SEED_DATA.trackedDefault;
+  const isSample = SEED_DATA.isSampleData ? 1 : 0;
   const stamp = new Date(now).toISOString();
 
   const counts = { establishments: 0, social: 0, tracked: 0, observations: 0 };
@@ -65,9 +81,9 @@ export function seed(db, repoRoot, { trackedBy = 'admin', now = Date.now() } = {
 
     const insEst = db.prepare(
       `INSERT INTO establishments
-         (place_id, local_ref, is_sample, first_seen_at, fetched_at, name, category,
-          rating, user_ratings_total, business_status, formatted_address, lat, lng, website)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+         (place_id, local_ref, competitor_ref, is_sample, first_seen_at, fetched_at, name, category,
+          rating, user_ratings_total, business_status, formatted_address, lat, lng, website, distance_km)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     );
     const insSocial = db.prepare(
       `INSERT INTO establishment_social
@@ -82,14 +98,17 @@ export function seed(db, repoRoot, { trackedBy = 'admin', now = Date.now() } = {
     for (const e of ESTABLISHMENTS) {
       const pid = samplePlaceId(e.id);
       insEst.run(
-        pid, e.id, isSample, stamp, stamp,
+        pid, e.id, e.competitorId ?? null, isSample, stamp, stamp,
         e.name, e.category,
         e.google ? e.google.rating : null,
         e.google ? e.google.reviews : null,
         e.google ? e.google.status : null,
         null,          // formatted_address — mock.jsx has none
         null, null,    // lat / lng        — mock.jsx has none (see finding i)
-        null           // website          — mock.jsx has none (see finding i)
+        null,          // website          — mock.jsx has none (see finding i)
+        // Precomputed in mock.jsx. Carried across so the screen sorts
+        // identically; a real scan computes it from lat/lng instead.
+        e.distanceKm ?? null
       );
       counts.establishments++;
       for (const s of socialRows(e)) {

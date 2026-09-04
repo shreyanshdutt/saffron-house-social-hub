@@ -15,14 +15,28 @@
 //      listing, in a menu meeting. The screen's job is to say what to do,
 //      who owns it, where it happens, and to track whether it got done.
 
+// The engine reads the tracked competitor set, so this screen needs the
+// server snapshot loaded before any rule runs. Gating here is what lets
+// buildRecommendationContext() stay synchronous.
 function RecommendationsPage({ role, onNavigate }) {
+  return (
+    <RequiresServerData what="the recommendation inputs">
+      <RecommendationsPageInner role={role} onNavigate={onNavigate} />
+    </RequiresServerData>
+  );
+}
+
+function RecommendationsPageInner({ role, onNavigate }) {
   const { theme } = React.useContext(AppCtx);
   const toast = useToast();
 
   // Keyed on the sync version so recommendations regenerate against freshly
   // pulled competitor data rather than a stale snapshot.
   const all = React.useMemo(() => generateRecommendations(), [SYNC_VERSION.value]);
-  const syncState = syncStateLoad();
+  // "Has a sync ever run" is now a property of the stored observations, not of
+  // a localStorage blob: a competitor with any Business Discovery reading has
+  // been pulled at least once.
+  const syncState = { lastSyncedAt: serverData().lastSyncedAt };
   const [state, setState] = React.useState(() => recsLoad());
   const [kind, setKind] = React.useState('all');
   const [status, setStatus] = React.useState('open');

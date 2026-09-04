@@ -51,23 +51,56 @@ const COMPETITOR_COLUMNS = [
 ];
 
 function CompetitorsScreen({ theme }) {
+  return (
+    <RequiresServerData what="the competitor set">
+      {(data) => <CompetitorsScreenInner theme={theme} data={data} />}
+    </RequiresServerData>
+  );
+}
+
+// Joins the server's derived rows to the Instagram post content that still
+// lives in mock.jsx. `competitorRef` is that join — the client never rebuilds
+// it from a string pattern on an id.
+function mergeCompetitor(row) {
+  const content = row.competitorRef
+    ? LISTENING_COMPETITORS.find(c => c.id === row.competitorRef)
+    : null;
+  // Content first, server second: where both carry a field, the server's
+  // derived value wins, because it is the one computed from stored readings.
+  return {
+    ...(content || {}),
+    ...row,
+    id: row.placeId,
+    handle: content ? content.handle : null,
+    channel: content ? content.channel : null,
+    themes: content ? content.themes : [],
+    recentPosts: content ? content.recentPosts : null,
+    postsPerWeek: row.dataTier === 'full' && content ? content.postsPerWeek : undefined,
+    sparkEngagement: content ? content.sparkEngagement : null,
+    isMoment: content ? content.isMoment : false,
+  };
+}
+
+function CompetitorsScreenInner({ theme, data }) {
   const t = useT();
   const [sort, setSort] = React.useState({ field: 'engagement', dir: 'desc' });
-
-  // Driven by what is marked on the Establishments screen, so one choice
-  // controls both this table and the recommendation engine. Keyed on the sync
-  // version so a refresh propagates without a page reload.
-  const [syncTick, setSyncTick] = React.useState(0);
   const [report, setReport] = React.useState(null);
-  const tracked = React.useMemo(() => trackedCompetitors(), [syncTick]);
-  // Our own row derives its changes from the reserved `saf-self` series by the
-  // same functions the peer rows use, so the two sides cannot be computed
-  // differently. Keyed on syncTick like everything else on this screen.
+
+  // Derived on the server, merged with post content here. Keyed on the
+  // snapshot version so a completed sync propagates without a page reload.
+  const tracked = React.useMemo(
+    () => data.competitors.map(mergeCompetitor),
+    [data.version]
+  );
+  // Our own row. Its change objects come from the same server code path as
+  // every rival's, so the two sides of a comparison cannot be computed
+  // differently.
   const self = React.useMemo(() => ({
     ...SAF_SELF_STATS,
-    followerChange: followerChangeFor('saf-self'),
-    engagementChange: engagementChangeFor('saf-self'),
-  }), [syncTick]);
+    velocity: data.self ? data.self.velocity : null,
+    followerChange: data.self ? data.self.followerChange : null,
+    engagementChange: data.self ? data.self.engagementChange : null,
+  }), [data.version]);
 
   const sortedRows = React.useMemo(() => {
     const col = COMPETITOR_COLUMNS.find(c => c.id === sort.field);
@@ -103,12 +136,12 @@ function CompetitorsScreen({ theme }) {
     <div id="listening-competitors" role="tabpanel" className="space-y-4">
       <CatchmentHeader
         tracked={tracked}
-        onSynced={(r) => { setReport(r); setSyncTick(n => n + 1); }}
+        onSynced={(r) => setReport(r)}
       />
       {report && <SyncReport report={report} onDismiss={() => setReport(null)} />}
-      <PendingSyncNote key={syncTick} />
+      <PendingSyncNote key={data.version} establishments={data.establishments} />
       {tracked.length > 0
-        ? <CompetitorInsights theme={theme} peers={tracked} />
+        ? <CompetitorInsights theme={theme} peers={tracked} us={self} />
         : <EmptyCatchment />}
       {/* Saffron House sits above the peer table — internal-source data, our own
           baseline. The peer table below is purely external observation. */}
@@ -162,8 +195,7 @@ function CatchmentHeader({ tracked, onSynced }) {
 // The table shows numbers; the insight is in the gaps between them. Each of
 // these is computed from public fields only — Business Discovery counts and
 // Places ratings — and says what the gap means rather than just how big it is.
-function CompetitorInsights({ theme, peers }) {
-  const us = SAF_SELF_STATS;
+function CompetitorInsights({ theme, peers, us }) {
 
   // Filter to finite numbers BEFORE sorting, the way median() in
   // recommend.jsx does. A ratings-only peer carries undefined cadence and a
@@ -191,7 +223,7 @@ function CompetitorInsights({ theme, peers }) {
   // rival still inside the 7-day window has a real, measured delta but no
   // monthly rate, and lumping it in with rivals we have never sampled would
   // hide the difference. The median is over `rate` rivals ONLY.
-  const ourVelocity = reviewVelocity('saf-self');
+  const ourVelocity = us.velocity || { state: 'none', samples: 0, windowDays: null, delta: null, perMonth: null };
   const vel = (p) => p.velocity || { state: 'none' };
   const ratePeers = peers.filter(p => vel(p).state === 'rate');
   const measuringPeers = peers.filter(p => vel(p).state === 'measuring');
@@ -268,14 +300,14 @@ function CompetitorInsights({ theme, peers }) {
             ? `${ourVelocity.perMonth}`
             : `${ourVelocity.perMonth} vs ${num(medVelocity)}`,
       unit: ourVelocity.state === 'none'
-        ? `needs two readings ${VELOCITY_MIN_WINDOW_DAYS}+ days apart`
+        ? `needs two readings ${serverData().minWindowDays}+ days apart`
         : ourVelocity.state === 'measuring'
-          ? `over ${formatVelocityWindow(ourVelocity.windowDays)}`
+          ? `over ${formatObservationWindow(ourVelocity.windowDays)}`
           : 'new reviews/month',
       // The peer population is a fact about the rivals, not about us, so it is
       // stated in every state — the card is prefixed "over …" and a state
       // string here would read as nonsense.
-      population: `${peerWord(ratePeers.length)} with ${VELOCITY_MIN_WINDOW_DAYS}+ days of history` +
+      population: `${peerWord(ratePeers.length)} with ${serverData().minWindowDays}+ days of history` +
         (measuringPeers.length ? `, ${measuringPeers.length} still measuring` : '') +
         (noHistoryPeers.length ? `, ${noHistoryPeers.length} never sampled` : ''),
       comparable: ourVelocity.state === 'rate' && medVelocity !== null,
@@ -283,9 +315,9 @@ function CompetitorInsights({ theme, peers }) {
       note: ourVelocity.state === 'none'
         ? 'Velocity is the delta between two stored review counts and we hold fewer than two. Sync twice, at least a week apart, and it appears — it cannot be estimated from one reading.'
         : ourVelocity.state === 'measuring'
-          ? `Measuring: ${ourVelocity.delta} new ${ourVelocity.delta === 1 ? 'review' : 'reviews'} over ${formatVelocityWindow(ourVelocity.windowDays)}, across ${ourVelocity.samples} readings. Under ${VELOCITY_MIN_WINDOW_DAYS} days the window is too short to scale to a month without inventing the number.`
+          ? `Measuring: ${ourVelocity.delta} new ${ourVelocity.delta === 1 ? 'review' : 'reviews'} over ${formatObservationWindow(ourVelocity.windowDays)}, across ${ourVelocity.samples} readings. Under ${serverData().minWindowDays} days the window is too short to scale to a month without inventing the number.`
           : medVelocity === null
-            ? `Your own rate is measured over ${formatVelocityWindow(ourVelocity.windowDays)}, but no tracked rival has ${VELOCITY_MIN_WINDOW_DAYS}+ days of stored counts yet, so there is nothing to compare it against.`
+            ? `Your own rate is measured over ${formatObservationWindow(ourVelocity.windowDays)}, but no tracked rival has ${serverData().minWindowDays}+ days of stored counts yet, so there is nothing to compare it against.`
             : ourVelocity.perMonth >= medVelocity
               ? 'Keeping pace on volume.'
               : 'Falling behind on volume. Google weighs count as well as score, so this compounds.',
@@ -367,12 +399,12 @@ function SyncButton({ onSynced }) {
   const toast = useToast();
   const [busy, setBusy] = React.useState(false);
   const [current, setCurrent] = React.useState('');
-  const [state, setState] = React.useState(() => syncStateLoad());
+  const lastSyncedAt = serverData().lastSyncedAt;
 
   const run = async () => {
     if (busy) return;
     setBusy(true);
-    const targets = ESTABLISHMENTS.filter(e => new Set(trackedLoad()).has(e.id));
+    const targets = serverData().establishments.filter(e => e.tracked);
     try {
       // Walk the targets on screen before applying, so the pacing reflects
       // the real per-establishment call pattern rather than a fake spinner.
@@ -381,8 +413,7 @@ function SyncButton({ onSynced }) {
         await new Promise(r => setTimeout(r, 260));
       }
       setCurrent('Applying');
-      const report = syncCompetitors();
-      setState(syncStateLoad());
+      const report = await syncCompetitors();
       onSynced && onSynced(report);
       toast.push({
         title: `Synced ${targets.length} establishment${targets.length === 1 ? '' : 's'}`,
@@ -410,8 +441,8 @@ function SyncButton({ onSynced }) {
       <div className="text-[11px] text-saf-muted mt-1" aria-live="polite">
         {busy
           ? (current ? `Fetching ${current}…` : 'Working…')
-          : state.lastSyncedAt
-            ? `Last synced ${relTime(state.lastSyncedAt)}`
+          : lastSyncedAt
+            ? `Last synced ${relTime(lastSyncedAt)}`
             : 'Never synced'}
       </div>
     </div>
@@ -453,18 +484,19 @@ function SyncReport({ report, onDismiss }) {
             // counter: an establishment tracked today holds one reading no
             // matter how many times the button has been pressed before it, and
             // a counter would claim otherwise.
-            const history = report.state.history || {};
-            const states = Object.keys(history).map(k => velocityFromSeries(history[k]).state);
+            // Read off the snapshot the sync just reloaded — the server
+            // derived these, so the note cannot disagree with the table.
+            const states = serverData().competitors.map(c => c.velocity.state);
             const none = states.filter(v => v === 'none').length;
             const measuring = states.filter(v => v === 'measuring').length;
             if (!none && !measuring) return null;
             const parts = [];
             if (none) parts.push(`${none} now ${none === 1 ? 'holds' : 'hold'} a single reading, which is a baseline and not a velocity`);
-            if (measuring) parts.push(`${measuring} ${measuring === 1 ? 'has' : 'have'} a real delta measured over less than ${VELOCITY_MIN_WINDOW_DAYS} days, too short a window to scale to a month`);
+            if (measuring) parts.push(`${measuring} ${measuring === 1 ? 'has' : 'have'} a real delta measured over less than ${serverData().minWindowDays} days, too short a window to scale to a month`);
             return (
               <p className="text-[11.5px] text-saf-muted mt-1.5 leading-relaxed">
                 Review velocity is the delta between two stored review counts: {parts.join('; and ')}.
-                It becomes a monthly rate once two readings sit {VELOCITY_MIN_WINDOW_DAYS}+ days apart.
+                It becomes a monthly rate once two readings sit {serverData().minWindowDays}+ days apart.
               </p>
             );
           })()}
@@ -509,8 +541,12 @@ function SyncReport({ report, onDismiss }) {
 
 // Tracked and readable, but no content pulled yet. Saying so beats a silent
 // omission that reads as the feature being broken.
-function PendingSyncNote() {
-  const pending = trackedPendingEstablishments();
+function PendingSyncNote({ establishments }) {
+  // Tracked, readable, but no content pulled yet — the server has no
+  // Business Discovery observation for them.
+  const pending = (establishments || []).filter(e =>
+    e.tracked && e.availability.igReadable && !e.availability.stale &&
+    !serverData().competitors.some(c => c.placeId === e.placeId && c.followers !== null));
   if (!pending.length) return null;
   return (
     <div className="flex items-start gap-2 p-3 rounded-xl bg-saf-light border border-saf-primary/30">
@@ -1104,20 +1140,20 @@ function ChangePctText({ pct }) {
 function ChangeCell({ change, what }) {
   if (!change || change.state === 'none') {
     return (
-      <Tooltip label={`No stored ${what} history. This is the difference between two Business Discovery snapshots — the API returns a count, never a change — so it needs two syncs at least ${VELOCITY_MIN_WINDOW_DAYS} days apart.`}>
+      <Tooltip label={`No stored ${what} history. This is the difference between two Business Discovery snapshots — the API returns a count, never a change — so it needs two syncs at least ${serverData().minWindowDays} days apart.`}>
         <div className="text-[11px] text-saf-muted">no history</div>
       </Tooltip>
     );
   }
   if (change.state === 'measuring') {
     return (
-      <Tooltip label={`Measuring: ${change.samples} readings over ${formatVelocityWindow(change.windowDays)}. Under ${VELOCITY_MIN_WINDOW_DAYS} days is too short a window to state a percentage.`}>
+      <Tooltip label={`Measuring: ${change.samples} readings over ${formatObservationWindow(change.windowDays)}. Under ${serverData().minWindowDays} days is too short a window to state a percentage.`}>
         <div className="text-[11px] text-saf-muted">measuring</div>
       </Tooltip>
     );
   }
   return (
-    <Tooltip label={`${change.value >= 0 ? '+' : ''}${change.value.toFixed(1)}% over ${formatVelocityWindow(change.windowDays)}, from ${change.samples} stored readings.`}>
+    <Tooltip label={`${change.value >= 0 ? '+' : ''}${change.value.toFixed(1)}% over ${formatObservationWindow(change.windowDays)}, from ${change.samples} stored readings.`}>
       <ChangePctText pct={change.value} />
     </Tooltip>
   );

@@ -102,12 +102,17 @@ function buildRecommendationContext() {
     signals: LISTENING_SIGNALS,
     // Only what the user marked on the Establishments screen, so the
     // engine compares against the set they actually chose.
-    competitors: trackedCompetitors(),
+    // The tracked set and every rate over it are derived on the server. This
+    // stays synchronous because the Actions screen renders inside
+    // <RequiresServerData>, so the snapshot is loaded before any rule runs.
+    competitors: serverData().competitors.map(mergeCompetitor),
     self: SAF_SELF_STATS,
     // Our own velocity is derived from the same stored review-count history as
     // every rival's, under the reserved `saf-self` key, so both sides of the
     // comparison come from one code path.
-    selfVelocity: reviewVelocity('saf-self'),
+    selfVelocity: serverData().self
+      ? serverData().self.velocity
+      : { state: 'none', samples: 0, windowDays: null, delta: null, perMonth: null },
     analytics: ANALYTICS_IG.daily,
     trends: LISTENING_TRENDS,
     medianReach: median(publishedReach),
@@ -384,15 +389,15 @@ const REC_RULES = [
       return [{
         kind: 'ops',
         title: `${leader.name} is gaining Google reviews ${gap.toFixed(1)}× faster than you`,
-        detail: `They add roughly ${leader.velocity.perMonth} reviews a month against your ${us}. Google weighs volume as well as score, so this compounds quietly: ${faster.length} of the ${rated.length} rivals with ${VELOCITY_MIN_WINDOW_DAYS}+ days of stored review counts ${faster.length > 1 ? 'are' : 'is'} outpacing you${leader.googleReviews > ctx.self.googleReviews ? ' and already ahead on total count' : monthsToOvertake ? `, and at this rate they pass your total in about ${monthsToOvertake} months` : ''}. The fix is a review ask built into the end of service, not a campaign.`,
+        detail: `They add roughly ${leader.velocity.perMonth} reviews a month against your ${us}. Google weighs volume as well as score, so this compounds quietly: ${faster.length} of the ${rated.length} rivals with ${serverData().minWindowDays}+ days of stored review counts ${faster.length > 1 ? 'are' : 'is'} outpacing you${leader.googleReviews > ctx.self.googleReviews ? ' and already ahead on total count' : monthsToOvertake ? `, and at this rate they pass your total in about ${monthsToOvertake} months` : ''}. The fix is a review ask built into the end of service, not a campaign.`,
         action: 'Add a review ask to the bill drop and the WhatsApp thank-you',
         owner: 'admin',
         where: 'Floor process · WhatsApp template',
         channels: ['gg', 'wa'],
         window: 'This month',
         evidence: [
-          { label: 'Our review velocity', value: `${us}/month over ${formatVelocityWindow(ourVelocity.windowDays)} (${fmt(ctx.self.googleReviews)} total)`, source: 'gbp' },
-          { label: `${leader.name}`, value: `${leader.velocity.perMonth}/month over ${formatVelocityWindow(leader.velocity.windowDays)} (${fmt(leader.googleReviews)} total)`, source: 'publicApi' },
+          { label: 'Our review velocity', value: `${us}/month over ${formatObservationWindow(ourVelocity.windowDays)} (${fmt(ctx.self.googleReviews)} total)`, source: 'gbp' },
+          { label: `${leader.name}`, value: `${leader.velocity.perMonth}/month over ${formatObservationWindow(leader.velocity.windowDays)} (${fmt(leader.googleReviews)} total)`, source: 'publicApi' },
           { label: 'Faster than us', value: `${faster.length} of ${rated.length} rivals with a measurable rate`, source: 'publicApi' },
           { label: 'Their rating', value: `${leader.googleRating.toFixed(1)} vs our ${ctx.self.googleRating.toFixed(1)}`, source: 'publicApi' },
         ],

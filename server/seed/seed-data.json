@@ -1,0 +1,451 @@
+{
+  "_generated": "Extracted once from src/mock.jsx at commit 40c9100, immediately before that data was deleted from the client. Regenerate with: git show 40c9100:src/mock.jsx",
+  "establishments": [
+    {
+      "id": "est-1",
+      "competitorId": "cmp-1",
+      "name": "Dwarka Darbar",
+      "category": "North Indian",
+      "distanceKm": 0.2,
+      "google": {
+        "rating": 4.5,
+        "reviews": 3120,
+        "status": "OPERATIONAL"
+      },
+      "instagram": {
+        "handle": "@dwarkadarbar",
+        "accountType": "business"
+      },
+      "x": null
+    },
+    {
+      "id": "est-2",
+      "competitorId": "cmp-2",
+      "name": "Sector 10 Social",
+      "category": "Bar & kitchen",
+      "distanceKm": 0.3,
+      "google": {
+        "rating": 4.2,
+        "reviews": 2240,
+        "status": "OPERATIONAL"
+      },
+      "instagram": {
+        "handle": "@sector10social",
+        "accountType": "business"
+      },
+      "x": {
+        "handle": "@sector10social"
+      }
+    },
+    {
+      "id": "est-3",
+      "competitorId": "cmp-3",
+      "name": "Baoli Kitchen",
+      "category": "North Indian",
+      "distanceKm": 0.6,
+      "google": {
+        "rating": 4.4,
+        "reviews": 1180,
+        "status": "OPERATIONAL"
+      },
+      "instagram": {
+        "handle": "@baolikitchen",
+        "accountType": "business"
+      },
+      "x": null
+    },
+    {
+      "id": "est-4",
+      "competitorId": "cmp-4",
+      "name": "The Curry Room",
+      "category": "North Indian",
+      "distanceKm": 1.1,
+      "google": {
+        "rating": 3.8,
+        "reviews": 640,
+        "status": "OPERATIONAL"
+      },
+      "instagram": {
+        "handle": "@thecurryroom",
+        "accountType": "business"
+      },
+      "x": null
+    },
+    {
+      "id": "est-5",
+      "competitorId": "cmp-5",
+      "name": "Nawab & Sons",
+      "category": "Biryani",
+      "distanceKm": 0.4,
+      "google": {
+        "rating": 4.3,
+        "reviews": 810,
+        "status": "OPERATIONAL"
+      },
+      "instagram": {
+        "handle": "@nawabandsons",
+        "accountType": "business"
+      },
+      "x": null
+    },
+    {
+      "id": "est-6",
+      "competitorId": "cmp-6",
+      "name": "Chowk 21",
+      "category": "Street food",
+      "distanceKm": 0.2,
+      "google": {
+        "rating": 4,
+        "reviews": 1420,
+        "status": "OPERATIONAL"
+      },
+      "instagram": {
+        "handle": "@chowk21",
+        "accountType": "business"
+      },
+      "x": null
+    },
+    {
+      "id": "est-7",
+      "competitorId": "cmp-7",
+      "name": "Wok Republic",
+      "category": "Chinese",
+      "distanceKm": 0.5,
+      "google": {
+        "rating": 4.1,
+        "reviews": 960,
+        "status": "OPERATIONAL"
+      },
+      "instagram": {
+        "handle": "@wokrepublicdwarka",
+        "accountType": "business"
+      },
+      "x": {
+        "handle": "@wokrepublic"
+      }
+    },
+    {
+      "id": "est-8",
+      "competitorId": "cmp-8",
+      "name": "The Bread Room",
+      "category": "Bakery & cafe",
+      "distanceKm": 0.7,
+      "google": {
+        "rating": 4.6,
+        "reviews": 540,
+        "status": "OPERATIONAL"
+      },
+      "instagram": {
+        "handle": "@thebreadroom.dwk",
+        "accountType": "creator"
+      },
+      "x": null
+    },
+    {
+      "id": "est-9",
+      "competitorId": "cmp-9",
+      "name": "Tandoori Nights",
+      "category": "North Indian",
+      "distanceKm": 1.4,
+      "google": {
+        "rating": 4,
+        "reviews": 1120,
+        "status": "OPERATIONAL"
+      },
+      "instagram": {
+        "handle": "@tandoorinights10",
+        "accountType": "business"
+      },
+      "x": null
+    },
+    {
+      "id": "est-10",
+      "competitorId": null,
+      "name": "Punjabi Rasoi",
+      "category": "North Indian",
+      "distanceKm": 0.9,
+      "google": {
+        "rating": 4.2,
+        "reviews": 780,
+        "status": "OPERATIONAL"
+      },
+      "instagram": {
+        "handle": "@punjabirasoi.dwarka",
+        "accountType": "business",
+        "lastPostDaysAgo": 142
+      },
+      "x": null
+    },
+    {
+      "id": "est-11",
+      "competitorId": null,
+      "name": "Gupta Bhojnalaya",
+      "category": "North Indian",
+      "distanceKm": 0.3,
+      "google": {
+        "rating": 4.4,
+        "reviews": 2010,
+        "status": "OPERATIONAL"
+      },
+      "instagram": {
+        "handle": "@guptabhojnalaya",
+        "accountType": "personal"
+      },
+      "x": null
+    },
+    {
+      "id": "est-12",
+      "competitorId": null,
+      "name": "Cafe Mocha Lane",
+      "category": "Cafe",
+      "distanceKm": 0.8,
+      "google": {
+        "rating": 4.3,
+        "reviews": 690,
+        "status": "OPERATIONAL"
+      },
+      "instagram": {
+        "handle": "@mochalane",
+        "accountType": "private"
+      },
+      "x": null
+    },
+    {
+      "id": "est-13",
+      "competitorId": null,
+      "name": "Sethi Sweets & Namkeen",
+      "category": "Sweets",
+      "distanceKm": 0.1,
+      "google": {
+        "rating": 4.5,
+        "reviews": 3460,
+        "status": "OPERATIONAL"
+      },
+      "instagram": null,
+      "x": null
+    },
+    {
+      "id": "est-14",
+      "competitorId": null,
+      "name": "Grill & Chill",
+      "category": "Fast food",
+      "distanceKm": 1.9,
+      "google": {
+        "rating": 3.6,
+        "reviews": 420,
+        "status": "OPERATIONAL"
+      },
+      "instagram": {
+        "handle": "@grillandchill.dwk",
+        "accountType": "personal"
+      },
+      "x": null
+    },
+    {
+      "id": "est-15",
+      "competitorId": null,
+      "name": "Biryani Junction (cloud kitchen)",
+      "category": "Delivery only",
+      "distanceKm": 1.2,
+      "google": null,
+      "instagram": {
+        "handle": "@biryanijunction.ncr",
+        "accountType": "business"
+      },
+      "x": null
+    }
+  ],
+  "observationHistory": {
+    "est-1": [
+      {
+        "daysAgo": 90,
+        "reviews": 2676,
+        "followers": 39692,
+        "avgInteractions": 2213
+      },
+      {
+        "daysAgo": 60,
+        "reviews": 2810,
+        "followers": 40195,
+        "avgInteractions": 2670
+      },
+      {
+        "daysAgo": 30,
+        "reviews": 2965,
+        "followers": 40697,
+        "avgInteractions": 3127
+      },
+      {
+        "daysAgo": 0,
+        "reviews": 3120,
+        "followers": 41200,
+        "avgInteractions": 3584
+      }
+    ],
+    "est-2": [
+      {
+        "daysAgo": 90,
+        "reviews": 1952,
+        "followers": 33105,
+        "avgInteractions": 1245
+      },
+      {
+        "daysAgo": 60,
+        "reviews": 2046,
+        "followers": 33337,
+        "avgInteractions": 1292
+      },
+      {
+        "daysAgo": 30,
+        "reviews": 2144,
+        "followers": 33568,
+        "avgInteractions": 1339
+      },
+      {
+        "daysAgo": 0,
+        "reviews": 2240,
+        "followers": 33800,
+        "avgInteractions": 1386
+      }
+    ],
+    "est-3": [
+      {
+        "daysAgo": 90,
+        "reviews": 958,
+        "followers": 18810,
+        "avgInteractions": 1104
+      },
+      {
+        "daysAgo": 60,
+        "reviews": 1030,
+        "followers": 19073,
+        "avgInteractions": 1135
+      },
+      {
+        "daysAgo": 30,
+        "reviews": 1104,
+        "followers": 19337,
+        "avgInteractions": 1165
+      },
+      {
+        "daysAgo": 0,
+        "reviews": 1180,
+        "followers": 19600,
+        "avgInteractions": 1196
+      }
+    ],
+    "est-4": [
+      {
+        "daysAgo": 90,
+        "reviews": 577,
+        "followers": 11446,
+        "avgInteractions": 248
+      },
+      {
+        "daysAgo": 60,
+        "reviews": 597,
+        "followers": 11431,
+        "avgInteractions": 238
+      },
+      {
+        "daysAgo": 30,
+        "reviews": 618,
+        "followers": 11415,
+        "avgInteractions": 227
+      },
+      {
+        "daysAgo": 0,
+        "reviews": 640,
+        "followers": 11400,
+        "avgInteractions": 217
+      }
+    ],
+    "est-5": [
+      {
+        "daysAgo": 90,
+        "reviews": 636,
+        "followers": 8388,
+        "avgInteractions": 370
+      },
+      {
+        "daysAgo": 60,
+        "reviews": 692,
+        "followers": 8559,
+        "avgInteractions": 401
+      },
+      {
+        "daysAgo": 30,
+        "reviews": 750,
+        "followers": 8729,
+        "avgInteractions": 432
+      },
+      {
+        "daysAgo": 0,
+        "reviews": 810,
+        "followers": 8900,
+        "avgInteractions": 463
+      }
+    ],
+    "est-6": [
+      {
+        "daysAgo": 90,
+        "reviews": 1288,
+        "followers": 16200,
+        "avgInteractions": 557
+      },
+      {
+        "daysAgo": 60,
+        "reviews": 1330,
+        "followers": 16245,
+        "avgInteractions": 555
+      },
+      {
+        "daysAgo": 30,
+        "reviews": 1374,
+        "followers": 16178,
+        "avgInteractions": 553
+      },
+      {
+        "daysAgo": 0,
+        "reviews": 1420,
+        "followers": 16200,
+        "avgInteractions": 551
+      }
+    ],
+    "saf-self": [
+      {
+        "daysAgo": 90,
+        "reviews": 1098,
+        "followers": 28008,
+        "avgInteractions": 1662
+      },
+      {
+        "daysAgo": 60,
+        "reviews": 1158,
+        "followers": 28139,
+        "avgInteractions": 1688
+      },
+      {
+        "daysAgo": 30,
+        "reviews": 1220,
+        "followers": 28269,
+        "avgInteractions": 1713
+      },
+      {
+        "daysAgo": 0,
+        "reviews": 1284,
+        "followers": 28400,
+        "avgInteractions": 1739
+      }
+    ]
+  },
+  "trackedDefault": [
+    "est-1",
+    "est-2",
+    "est-3",
+    "est-4",
+    "est-5",
+    "est-6"
+  ],
+  "isSampleData": true
+}

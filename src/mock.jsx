@@ -1268,472 +1268,6 @@ function applyCompetitorSync(comp, nowMs) {
   }
 })();
 
-// --- Establishments in the catchment -----------------------------------------
-// The candidate pool the competitor set is picked from.
-//
-// In production this list comes from Google Places Nearby Search around the
-// market's coordinates:
-//
-//   GET /place/nearbysearch/json?location=LAT,LNG&radius=2500&type=restaurant
-//   → name, place_id, rating, user_ratings_total, vicinity, business_status,
-//     price_level, opening_hours
-//
-// Places gives you the storefront. It does NOT give you social handles — no
-// API maps a place_id to an Instagram account — so the handle is found by
-// hand once, then stored. That manual step is why this is a curated list
-// rather than a live feed.
-//
-// ⚠ INVENTED, like the competitor rows they feed. No establishment below is a
-// real business in Sector 10 Market, Dwarka. See COMPETITOR_CATCHMENT.
-//
-// Whether an establishment can actually be ANALYSED is the interesting part,
-// and it is not a yes/no — it is a tier:
-//
-//   full    — Google listing + a public Instagram Business/Creator account.
-//             Business Discovery works, so you get cadence, engagement and
-//             their actual posts.
-//   ratings — Google listing only. Their Instagram is personal, private, or
-//             does not exist, and Business Discovery CANNOT read personal or
-//             private accounts at all. You still get rating, review count and
-//             review velocity, which is enough to track a rival's trajectory.
-//   none    — no Google listing (delivery-only kitchens often have none).
-//             Nothing to analyse; cannot be tracked.
-//
-// X/Twitter is listed where a handle exists, but is deliberately not part of
-// the tier calculation. Reading another account's posts needs a paid API tier
-// — the free tier is effectively write-only — and the entry price is well
-// beyond a single-outlet restaurant's software budget. Pricing has also
-// changed repeatedly, so verify before planning around it. In practice almost
-// no neighbourhood restaurant in Delhi posts there anyway.
-const ESTABLISHMENTS = [
-  { id: 'est-1',  competitorId: 'cmp-1', name: 'Dwarka Darbar',            category: 'North Indian',   distanceKm: 0.2,
-    google: { rating: 4.5, reviews: 3120, status: 'OPERATIONAL' },
-    instagram: { handle: '@dwarkadarbar',    accountType: 'business' }, x: null },
-  { id: 'est-2',  competitorId: 'cmp-2', name: 'Sector 10 Social',         category: 'Bar & kitchen',  distanceKm: 0.3,
-    google: { rating: 4.2, reviews: 2240, status: 'OPERATIONAL' },
-    instagram: { handle: '@sector10social',  accountType: 'business' }, x: { handle: '@sector10social' } },
-  { id: 'est-3',  competitorId: 'cmp-3', name: 'Baoli Kitchen',            category: 'North Indian',   distanceKm: 0.6,
-    google: { rating: 4.4, reviews: 1180, status: 'OPERATIONAL' },
-    instagram: { handle: '@baolikitchen',    accountType: 'business' }, x: null },
-  { id: 'est-4',  competitorId: 'cmp-4', name: 'The Curry Room',           category: 'North Indian',   distanceKm: 1.1,
-    google: { rating: 3.8, reviews: 640,  status: 'OPERATIONAL' },
-    instagram: { handle: '@thecurryroom',    accountType: 'business' }, x: null },
-  { id: 'est-5',  competitorId: 'cmp-5', name: 'Nawab & Sons',             category: 'Biryani',        distanceKm: 0.4,
-    google: { rating: 4.3, reviews: 810,  status: 'OPERATIONAL' },
-    instagram: { handle: '@nawabandsons',    accountType: 'business' }, x: null },
-  { id: 'est-6',  competitorId: 'cmp-6', name: 'Chowk 21',                 category: 'Street food',    distanceKm: 0.2,
-    google: { rating: 4.0, reviews: 1420, status: 'OPERATIONAL' },
-    instagram: { handle: '@chowk21',         accountType: 'business' }, x: null },
-
-  // Trackable, but not currently in the competitor set.
-  { id: 'est-7',  competitorId: 'cmp-7',  name: 'Wok Republic',             category: 'Chinese',        distanceKm: 0.5,
-    google: { rating: 4.1, reviews: 960,  status: 'OPERATIONAL' },
-    instagram: { handle: '@wokrepublicdwarka', accountType: 'business' }, x: { handle: '@wokrepublic' } },
-  { id: 'est-8',  competitorId: 'cmp-8',  name: 'The Bread Room',           category: 'Bakery & cafe',  distanceKm: 0.7,
-    google: { rating: 4.6, reviews: 540,  status: 'OPERATIONAL' },
-    instagram: { handle: '@thebreadroom.dwk', accountType: 'creator' }, x: null },
-  { id: 'est-9',  competitorId: 'cmp-9',  name: 'Tandoori Nights',          category: 'North Indian',   distanceKm: 1.4,
-    google: { rating: 4.0, reviews: 1120, status: 'OPERATIONAL' },
-    instagram: { handle: '@tandoorinights10', accountType: 'business' }, x: null },
-  { id: 'est-10', competitorId: null,    name: 'Punjabi Rasoi',            category: 'North Indian',   distanceKm: 0.9,
-    google: { rating: 4.2, reviews: 780,  status: 'OPERATIONAL' },
-    // A business account that has not posted in months: Business Discovery
-    // works, but there is nothing to compare on.
-    instagram: { handle: '@punjabirasoi.dwarka', accountType: 'business', lastPostDaysAgo: 142 }, x: null },
-
-  // Ratings only — Instagram cannot be read.
-  { id: 'est-11', competitorId: null,    name: 'Gupta Bhojnalaya',         category: 'North Indian',   distanceKm: 0.3,
-    google: { rating: 4.4, reviews: 2010, status: 'OPERATIONAL' },
-    instagram: { handle: '@guptabhojnalaya', accountType: 'personal' }, x: null },
-  { id: 'est-12', competitorId: null,    name: 'Cafe Mocha Lane',          category: 'Cafe',           distanceKm: 0.8,
-    google: { rating: 4.3, reviews: 690,  status: 'OPERATIONAL' },
-    instagram: { handle: '@mochalane', accountType: 'private' }, x: null },
-  { id: 'est-13', competitorId: null,    name: 'Sethi Sweets & Namkeen',   category: 'Sweets',         distanceKm: 0.1,
-    google: { rating: 4.5, reviews: 3460, status: 'OPERATIONAL' },
-    instagram: null, x: null },
-  { id: 'est-14', competitorId: null,    name: 'Grill & Chill',            category: 'Fast food',      distanceKm: 1.9,
-    google: { rating: 3.6, reviews: 420,  status: 'OPERATIONAL' },
-    instagram: { handle: '@grillandchill.dwk', accountType: 'personal' }, x: null },
-
-  // Not trackable at all.
-  { id: 'est-15', competitorId: null,    name: 'Biryani Junction (cloud kitchen)', category: 'Delivery only', distanceKm: 1.2,
-    google: null,
-    instagram: { handle: '@biryanijunction.ncr', accountType: 'business' }, x: null },
-];
-
-// What can actually be analysed for an establishment, and why. Returns the
-// tier plus the reasons, because "you cannot track this" is only useful if it
-// says which door is closed.
-function establishmentAvailability(e) {
-  const reasons = [];
-  const hasGoogle = !!(e.google && e.google.status === 'OPERATIONAL');
-  const ig = e.instagram;
-  const igReadable = !!ig && (ig.accountType === 'business' || ig.accountType === 'creator');
-
-  if (hasGoogle) {
-    reasons.push({ ok: true, text: `Google listing — ${e.google.rating.toFixed(1)}★, ${e.google.reviews.toLocaleString('en-IN')} reviews` });
-  } else {
-    reasons.push({ ok: false, text: 'No Google listing — delivery-only kitchens often have none, and Places is the only way in' });
-  }
-
-  if (!ig) {
-    reasons.push({ ok: false, text: 'No Instagram account found' });
-  } else if (igReadable) {
-    const stale = ig.lastPostDaysAgo && ig.lastPostDaysAgo > 60;
-    reasons.push({
-      ok: !stale,
-      text: stale
-        ? `Instagram ${ig.accountType} account, but last posted ${ig.lastPostDaysAgo} days ago — readable, nothing to compare`
-        : `Instagram ${ig.accountType} account — Business Discovery can read it`,
-    });
-  } else {
-    reasons.push({
-      ok: false,
-      text: `Instagram account is ${ig.accountType} — Business Discovery cannot read ${ig.accountType} accounts at all`,
-    });
-  }
-
-  if (e.x) {
-    reasons.push({ ok: false, text: 'X handle exists, but reading posts needs a paid API tier — not counted toward availability' });
-  }
-
-  const stale = !!(ig && ig.lastPostDaysAgo && ig.lastPostDaysAgo > 60);
-  const tier = !hasGoogle ? 'none' : (igReadable && !stale ? 'full' : 'ratings');
-  return { tier, reasons, hasGoogle, igReadable, stale };
-}
-
-// --- Observation history -----------------------------------------------------
-// Every change-over-time figure in this product is DERIVED from stored
-// observations, never seeded. Both APIs involved return a SNAPSHOT: Places
-// Details gives a review count, Business Discovery gives a follower count and
-// the posts behind an interaction average. Neither returns a rate of change,
-// so a rate can only be the difference between two readings we kept.
-//
-// Seventeen literals used to state one anyway — ten `reviewVelocityPerMonth`
-// (removed in 3eb4344) and, until this commit, `followersChange7dPct` and
-// `engagementChange7dPct`. Three of the latter sat on competitors marked
-// `synced: false`, claiming a seven-day follower trend for an account that had
-// never been pulled even once.
-//
-// A sample is `{ at, reviews, followers, avgInteractions }` and each field is
-// present ONLY if the call that returns it actually ran. Places gives
-// `reviews`; Business Discovery gives the other two; a ratings-only
-// establishment never gets a Business Discovery call, so its samples carry
-// neither and its follower and engagement change stay `none` forever — which
-// is the truth, not a gap to be filled with 0%.
-//
-// The seed below is what a hub running for a quarter would already hold — four
-// readings per default-tracked rival, spanning 90 days and ending on the
-// values those records carry today. est-7/8/9 and est-10 upward deliberately
-// have NONE: they were never tracked, so no call was ever made for them, and
-// their figures must read "no history" rather than a number (§11 trap 4).
-//
-// Offsets are relative (`daysAgo`) and hydrated to ISO at load like every
-// other seeded timestamp here (§10), so the window stays 90 days wide however
-// long this file sits unopened.
-const OBSERVATION_HISTORY = {
-  'est-1': [
-    { daysAgo: 90, reviews: 2676, followers: 39692, avgInteractions: 2213 },
-    { daysAgo: 60, reviews: 2810, followers: 40195, avgInteractions: 2670 },
-    { daysAgo: 30, reviews: 2965, followers: 40697, avgInteractions: 3127 },
-    { daysAgo:  0, reviews: 3120, followers: 41200, avgInteractions: 3584 },
-  ],
-  'est-2': [
-    { daysAgo: 90, reviews: 1952, followers: 33105, avgInteractions: 1245 },
-    { daysAgo: 60, reviews: 2046, followers: 33337, avgInteractions: 1292 },
-    { daysAgo: 30, reviews: 2144, followers: 33568, avgInteractions: 1339 },
-    { daysAgo:  0, reviews: 2240, followers: 33800, avgInteractions: 1386 },
-  ],
-  'est-3': [
-    { daysAgo: 90, reviews:  958, followers: 18810, avgInteractions: 1104 },
-    { daysAgo: 60, reviews: 1030, followers: 19073, avgInteractions: 1135 },
-    { daysAgo: 30, reviews: 1104, followers: 19337, avgInteractions: 1165 },
-    { daysAgo:  0, reviews: 1180, followers: 19600, avgInteractions: 1196 },
-  ],
-  'est-4': [
-    { daysAgo: 90, reviews:  577, followers: 11446, avgInteractions:  248 },
-    { daysAgo: 60, reviews:  597, followers: 11431, avgInteractions:  238 },
-    { daysAgo: 30, reviews:  618, followers: 11415, avgInteractions:  227 },
-    { daysAgo:  0, reviews:  640, followers: 11400, avgInteractions:  217 },
-  ],
-  'est-5': [
-    { daysAgo: 90, reviews:  636, followers:  8388, avgInteractions:  370 },
-    { daysAgo: 60, reviews:  692, followers:  8559, avgInteractions:  401 },
-    { daysAgo: 30, reviews:  750, followers:  8729, avgInteractions:  432 },
-    { daysAgo:  0, reviews:  810, followers:  8900, avgInteractions:  463 },
-  ],
-  'est-6': [
-    { daysAgo: 90, reviews: 1288, followers: 16200, avgInteractions:  557 },
-    { daysAgo: 60, reviews: 1330, followers: 16245, avgInteractions:  555 },
-    { daysAgo: 30, reviews: 1374, followers: 16178, avgInteractions:  553 },
-    { daysAgo:  0, reviews: 1420, followers: 16200, avgInteractions:  551 },
-  ],
-  // Our own counts come from OUR Business Profile rather than a Places lookup
-  // of a rival, but they are the same kind of reading and feed the same
-  // comparison, so they share the store under a reserved key.
-  'saf-self': [
-    { daysAgo: 90, reviews: 1098, followers: 28008, avgInteractions: 1662 },
-    { daysAgo: 60, reviews: 1158, followers: 28139, avgInteractions: 1688 },
-    { daysAgo: 30, reviews: 1220, followers: 28269, avgInteractions: 1713 },
-    { daysAgo:  0, reviews: 1284, followers: 28400, avgInteractions: 1739 },
-  ],
-};
-
-// Seed hydrated to absolute timestamps once, at load.
-const SEEDED_OBSERVATION_SERIES = {};
-(function hydrateObservationHistory() {
-  const now = Date.now();
-  for (const key of Object.keys(OBSERVATION_HISTORY)) {
-    SEEDED_OBSERVATION_SERIES[key] = OBSERVATION_HISTORY[key].map(sample => ({
-      at: new Date(now - sample.daysAgo * 86_400_000).toISOString(),
-      reviews: sample.reviews,
-      followers: sample.followers,
-      avgInteractions: sample.avgInteractions,
-    }));
-  }
-})();
-
-// At most this many samples per key; the oldest are dropped. A quarter of
-// weekly syncs fits comfortably and the blob cannot grow without bound.
-const REVIEW_HISTORY_CAP = 24;
-
-// Below this the window is too short to scale to a month. Two readings four
-// minutes apart give a real delta and a meaningless rate; multiplying it out
-// would manufacture ten thousand a month from one extra review.
-const VELOCITY_MIN_WINDOW_DAYS = 7;
-
-// The stored series for a key, or the seed if sync has never written one.
-// Samples are ordered oldest → newest and may carry any subset of the
-// observable fields — see `changeFromSeries`.
-function observationsFor(key, st) {
-  const state = st || syncStateLoad();
-  const stored = state.history && state.history[key];
-  if (Array.isArray(stored) && stored.length) return stored;
-  return SEEDED_OBSERVATION_SERIES[key] || [];
-}
-
-// What each derivable metric reads off a sample, and how a first/last pair
-// becomes its headline figure. Adding a metric here is the whole job; the
-// state machine below is shared, so a new one cannot invent a fourth state or
-// a different floor by accident.
-const SERIES_METRICS = {
-  // Reviews scale to a monthly rate. Behaviour is unchanged from 3eb4344 and
-  // the numbers it produces must not move.
-  reviews: {
-    read: (s) => s.reviews,
-    compute: (first, last, windowDays, read) => Math.round(((read(last) - read(first)) / windowDays) * 30),
-  },
-  // Followers are a percent change across the window, not a rate — a follower
-  // count is a level, and "+3.8%" is what a level's movement means.
-  followers: {
-    read: (s) => s.followers,
-    compute: (first, last, windowDays, read) => +(((read(last) - read(first)) / read(first)) * 100).toFixed(1),
-  },
-  // Engagement is the percent change in interactions ÷ followers between the
-  // two readings. It needs BOTH fields on a sample: one without the other
-  // cannot produce a ratio, so such a sample is not an observation of this
-  // metric even though it is an observation of the other two.
-  engagement: {
-    read: (s) => (s.followers > 0 ? s.avgInteractions / s.followers : undefined),
-    compute: (first, last, windowDays, read) => +(((read(last) - read(first)) / read(first)) * 100).toFixed(1),
-  },
-};
-
-// The ONE derivation path, shared by all three metrics. Three states, and they
-// are not interchangeable:
-//   none      — under 2 OBSERVATIONS of this metric. Never measured at all.
-//   measuring — 2+ observations less than VELOCITY_MIN_WINDOW_DAYS apart. The
-//               delta is real and is reported; `value` stays null.
-//   rate      — 7+ days apart. `value` is the metric's computed figure.
-// "No history" and "measuring" are different facts, and the UI must render
-// neither as an em dash or a zero, both of which read as a measured nothing
-// (§11 trap 1).
-function changeFromSeries(series, metricId) {
-  const m = SERIES_METRICS[metricId];
-  // A sample written before this field existed, or by a sync whose call was
-  // skipped, simply does not carry it. That is "not observed" — drop it rather
-  // than letting `undefined` reach the arithmetic. This is also what makes the
-  // extended sample shape backward-compatible with samples already in a
-  // returning viewer's `saf-sync-v2` (CLAUDE.md §6).
-  const obs = (Array.isArray(series) ? series : []).filter(s => s && Number.isFinite(m.read(s)));
-  const samples = obs.length;
-  if (samples < 2) {
-    return { state: 'none', samples, windowDays: null, delta: null, value: null };
-  }
-  const first = obs[0];
-  const last = obs[samples - 1];
-  const windowDays = (Date.parse(last.at) - Date.parse(first.at)) / 86_400_000;
-  const delta = m.read(last) - m.read(first);
-  // Negated comparison so a NaN window falls to `measuring` rather than
-  // producing a NaN figure that fmt() would render as an em dash.
-  if (!(windowDays >= VELOCITY_MIN_WINDOW_DAYS)) {
-    return { state: 'measuring', samples, windowDays, delta, value: null };
-  }
-  return { state: 'rate', samples, windowDays, delta, value: m.compute(first, last, windowDays, m.read) };
-}
-
-// Review velocity keeps its own name and its `perMonth` field: the Insights
-// card, the sync report and the review-velocity rule all read that shape, and
-// this generalisation must not move any of them.
-function velocityFromSeries(series) {
-  const c = changeFromSeries(series, 'reviews');
-  return { state: c.state, samples: c.samples, windowDays: c.windowDays, delta: c.delta, perMonth: c.value };
-}
-
-function reviewVelocity(key, st) {
-  return velocityFromSeries(observationsFor(key, st));
-}
-
-function followerChangeFor(key, st) {
-  return changeFromSeries(observationsFor(key, st), 'followers');
-}
-
-function engagementChangeFor(key, st) {
-  return changeFromSeries(observationsFor(key, st), 'engagement');
-}
-
-// A window is minutes on the second sync of a session and months on a seeded
-// one; one formatter so the sync report and the insight card cannot disagree.
-function formatVelocityWindow(days) {
-  if (!Number.isFinite(days)) return 'an unknown span';
-  const mins = days * 1440;
-  if (mins < 90) return `${Math.max(1, Math.round(mins))} min`;
-  if (days < 2) return `${Math.round(days * 24)} hr`;
-  return `${Math.round(days)} days`;
-}
-
-// The follower half of the same line. Percent metrics have no per-month
-// scaling, so they report the raw movement until the window is wide enough.
-function describeChangeStep(c, what) {
-  if (!c || c.state === 'none') return `first ${what} reading recorded — a change needs a second`;
-  const moved = `${c.delta >= 0 ? '+' : ''}${c.delta} over ${formatVelocityWindow(c.windowDays)}`;
-  return c.state === 'rate'
-    ? `${moved} → ${c.value >= 0 ? '+' : ''}${c.value}%`
-    : `${moved} — under ${VELOCITY_MIN_WINDOW_DAYS} days, too short for a percentage`;
-}
-
-// The "what this pull bought us" line in the sync report.
-function describeVelocityStep(v) {
-  if (v.state === 'none') return 'first sample recorded — velocity needs a second';
-  const moved = `+${v.delta} over ${formatVelocityWindow(v.windowDays)}`;
-  return v.state === 'rate'
-    ? `${moved} → ${v.perMonth}/month`
-    : `${moved} — under ${VELOCITY_MIN_WINDOW_DAYS} days, too short for a monthly rate`;
-}
-
-// Which establishments are currently tracked as competitors. Persisted, and
-// read by both the Competitors screen and the recommendation engine so one
-// choice drives both.
-const TRACKED_KEY = 'saf-tracked-v1';
-// The six already pulled. est-7/8/9 also carry a competitorId now — they are
-// trackable and have a dormant record waiting — but they start untracked, so
-// adding one is a deliberate act that costs an API call on the next sync.
-const TRACKED_DEFAULT = ['est-1', 'est-2', 'est-3', 'est-4', 'est-5', 'est-6'];
-
-function trackedLoad() {
-  try {
-    const raw = localStorage.getItem(TRACKED_KEY);
-    if (!raw) return [...TRACKED_DEFAULT];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [...TRACKED_DEFAULT];
-  } catch (e) {
-    return [...TRACKED_DEFAULT];
-  }
-}
-function trackedSave(ids) {
-  try { localStorage.setItem(TRACKED_KEY, JSON.stringify(ids)); } catch (e) {}
-}
-
-// The competitor rows for the currently tracked establishments. Only rows we
-// hold full Business Discovery data for can appear on the Competitors table;
-// a ratings-only establishment is tracked but has no feed to show.
-// Tracked establishments we hold no feed for yet. In production, marking one
-// queues a Business Discovery fetch; here there is simply no seed data. Either
-// way the honest thing is to say "not synced", not to drop it silently.
-function trackedPendingEstablishments() {
-  const ids = new Set(trackedLoad());
-  return ESTABLISHMENTS.filter(e => {
-    if (!ids.has(e.id)) return false;
-    if (establishmentAvailability(e).tier !== 'full') return false;
-    const comp = e.competitorId && LISTENING_COMPETITORS.find(c => c.id === e.competitorId);
-    return !comp || !comp.synced;
-  });
-}
-
-// A tracked ratings-only establishment, expressed as a competitor row.
-//
-// It carries ONLY what Google Places actually returns for it, plus the reason
-// its Instagram cannot be read. No followers, engagement rate, cadence,
-// interactions, themes, posting peak, sparkline or feed — those come from
-// Business Discovery, and Business Discovery returns nothing for a personal,
-// private or dormant account. Absence is declared with `dataTier`, never left
-// to be inferred from a missing field: `fmt()` renders undefined as an em
-// dash, which reads as "empty" rather than "cannot be read" (CLAUDE.md §11
-// trap 1), and the difference is the entire point of this row.
-//
-// Velocity is NOT absent on this tier. It is the delta between two stored
-// Places review counts, and Places Details is exactly the call we can make for
-// a ratings-only establishment — the tier is defined by Instagram being
-// unreadable, which has nothing to do with review counts. So the row carries
-// the same derived `velocity` object as a full-tier one, in whichever of the
-// three states its own history puts it.
-function ratingsOnlyCompetitor(e) {
-  const avail = establishmentAvailability(e);
-  // Reuse the reason establishmentAvailability() already produced rather than
-  // writing a second copy that can drift from it.
-  const igReason = avail.reasons.find(r => /instagram/i.test(r.text));
-  return {
-    id: `est:${e.id}`,              // namespaced so it cannot collide with cmp-*
-    dataTier: 'ratings',
-    name: e.name,
-    handle: e.instagram ? e.instagram.handle : null,
-    googleRating: e.google.rating,
-    googleReviews: e.google.reviews,
-    velocity: reviewVelocity(e.id),
-    // Business Discovery never runs for this tier, so no sample ever carries a
-    // follower or interaction reading and both derive to `none`. Computed
-    // rather than hardcoded so the row cannot claim more than the store holds.
-    followerChange: followerChangeFor(e.id),
-    engagementChange: engagementChangeFor(e.id),
-    unreadableReason: igReason ? igReason.text : 'Instagram cannot be read',
-  };
-}
-
-// Every tracked establishment that yields a comparable row, of either tier.
-// Full-tier rows come from LISTENING_COMPETITORS and require a completed
-// Business Discovery pull (`synced`); ratings-only rows are synthesised from
-// the establishment itself, because Google Places is all there is for them.
-function trackedCompetitors() {
-  const ids = new Set(trackedLoad());
-  const tracked = ESTABLISHMENTS.filter(e => ids.has(e.id));
-
-  // History is keyed by establishment id, so a full-tier row is resolved back
-  // through the establishment that owns its competitor record rather than by
-  // its cmp-* id. Carry the whole state object — a consumer that only took
-  // `perMonth` could not tell "no history" from "measuring".
-  const estByCompetitorId = new Map(
-    tracked.filter(e => e.competitorId).map(e => [e.competitorId, e])
-  );
-  const wanted = new Set(estByCompetitorId.keys());
-  const full = LISTENING_COMPETITORS
-    .filter(c => wanted.has(c.id) && c.synced)
-    .map(c => {
-      const key = estByCompetitorId.get(c.id).id;
-      return {
-        ...c,
-        velocity: reviewVelocity(key),
-        followerChange: followerChangeFor(key),
-        engagementChange: engagementChangeFor(key),
-      };
-    });
-
-  const ratings = tracked
-    .filter(e => establishmentAvailability(e).tier === 'ratings')
-    .map(ratingsOnlyCompetitor);
-
-  return [...full, ...ratings];
-}
-
 // --- Sync --------------------------------------------------------------------
 // What a refresh actually does, and what it costs.
 //
@@ -1751,84 +1285,64 @@ function trackedCompetitors() {
 //
 // Review velocity is the one thing a single sync cannot produce: it is the
 // delta between this pull's review count and the last one, so it needs at
-// least two syncs, far enough apart to scale. Every pull appends a sample
-// here; `reviewVelocity()` is the only thing that reads them back.
+// least two syncs, far enough apart to scale. Every pull now POSTS its
+// readings to the server, and the server derives every rate from them.
 //
-// v2 because the shape gained `history` — the old blob has only
-// `{ lastSyncedAt, runs, velocityComparable }` and a returning viewer still
-// has it in their browser (§6). `saf-sync-v1` is deliberately NOT read,
-// migrated or deleted: its `runs` counter says how many pulls happened but not
-// what any of them returned, so there is nothing in it a velocity can be
-// derived from. It is left behind untouched.
-const SYNC_KEY = 'saf-sync-v2';
-const SYNC_STATE_EMPTY = { lastSyncedAt: null, runs: 0, history: {} };
-
-function syncStateLoad() {
-  try {
-    const raw = localStorage.getItem(SYNC_KEY);
-    if (!raw) return { ...SYNC_STATE_EMPTY };
-    const parsed = JSON.parse(raw);
-    if (!parsed || typeof parsed !== 'object') return { ...SYNC_STATE_EMPTY };
-    // A blob written before `history` existed, or one hand-edited, must not
-    // make every caller null-check it.
-    if (!parsed.history || typeof parsed.history !== 'object') parsed.history = {};
-    return parsed;
-  } catch (e) {
-    return { ...SYNC_STATE_EMPTY };
-  }
-}
-function syncStateSave(st) {
-  try { localStorage.setItem(SYNC_KEY, JSON.stringify(st)); } catch (e) {}
-}
-
-// Bumped on every completed sync. Screens that cache derived data key their
-// memo on this so a refresh actually propagates rather than needing a reload.
+// WHERE THIS RUNS, AND WHY (asked explicitly in the brief for this commit).
+// The orchestration stays CLIENT-SIDE. It has two halves and only one of them
+// moved: the Places half reads review counts, which now live on the server —
+// but the Business Discovery half rebuilds post feeds from
+// COMPETITOR_POST_SEEDS and recomputes postsPerWeek / avgInteractions /
+// engagementRate over LISTENING_COMPETITORS, and that content deliberately
+// STAYS in this file for now. Moving only the Places half would split one
+// operation across two workspaces, which is precisely "half-moved".
+//
+// So: the client orchestrates, and every READING it produces is persisted to
+// the server via POST /observations. Nothing is derived in both places — the
+// client computes no rate at all any more; it posts counts and re-reads
+// derived values. When the post seeds move server-side, this whole function
+// follows them in one piece.
 const SYNC_VERSION = { value: 0 };
 
-// Runs the pass and returns a per-establishment report. Synchronous over the
-// data; the UI paces it so a person can read what happened.
-function syncCompetitors() {
+// Runs the pass and returns a per-establishment report. Async now, because the
+// readings it produces have to reach the database before anything derives from
+// them; the UI already paced this call, so the await is invisible on screen.
+async function syncCompetitors() {
+  const data = serverData();
+  if (data.status !== 'ready') {
+    throw new Error('Cannot sync: the data service is unreachable.');
+  }
   const now = Date.now();
   const nowISO = new Date(now).toISOString();
-  // Loaded up front rather than at the end, because each Places pull appends
-  // its reading to the history carried on this object before it is saved.
-  const prev = syncStateLoad();
-  const history = { ...prev.history };
-  const trackedIds = new Set(trackedLoad());
-  const targets = ESTABLISHMENTS.filter(e => trackedIds.has(e.id));
+  const targets = data.establishments.filter(e => e.tracked);
   const steps = [];
+  const observations = [];
   let placesCalls = 0;
   let discoveryCalls = 0;
 
   for (const e of targets) {
-    const avail = establishmentAvailability(e);
-    const comp = e.competitorId && LISTENING_COMPETITORS.find(c => c.id === e.competitorId);
-
-    // ONE sample per establishment per sync, filled by whichever calls ran:
-    // Places writes `reviews`, Business Discovery writes `followers` and
-    // `avgInteractions`. A skipped or failed call leaves its fields ABSENT
-    // rather than zero — that absence is what lets `changeFromSeries()` tell
-    // "not observed" from "observed, and it did not move".
-    const sample = { at: nowISO };
-    let observed = false;
+    const avail = e.availability;
+    const comp = e.competitorRef && LISTENING_COMPETITORS.find(c => c.id === e.competitorRef);
+    // The server row is authoritative for a count. Seeding the in-memory
+    // competitor record from it is what replaces the old hydrateObservedCounts
+    // IIFE: there is no client-side history to replay any more.
+    const serverRow = data.competitors.find(c => c.placeId === e.placeId) || null;
+    if (comp && serverRow && Number.isFinite(serverRow.followers)) comp.followers = serverRow.followers;
 
     // Places Details — every tracked establishment with a listing.
     if (avail.hasGoogle) {
       placesCalls += 1;
       // A real pull would move these; the demo nudges the review count so the
       // "what changed" line is not always empty.
-      const gained = 1 + ((now / 60000 | 0) + e.id.length) % 3;
-      e.google.reviews += gained;
-      if (comp) comp.googleReviews = e.google.reviews;
-      // The reading is what persists. `e.google.reviews` is in-memory only and
-      // a reload re-seeds it, so without this the next delta would be measured
-      // against a count that had silently snapped backwards.
-      sample.reviews = e.google.reviews;
-      observed = true;
-      const vel = velocityFromSeries([...observationsFor(e.id, { history }), sample]);
+      const gained = 1 + ((now / 60000 | 0) + e.placeId.length) % 3;
+      const reviews = (serverRow ? serverRow.googleReviews : e.userRatingsTotal) + gained;
+      observations.push({
+        subject: e.placeId, observedAt: nowISO, source: 'places',
+        reviewCount: reviews, rating: e.rating, isSample: true,
+      });
       steps.push({
         establishment: e.name, api: 'Places Details', ok: true,
-        detail: `${e.google.rating.toFixed(1)}★, ${e.google.reviews.toLocaleString('en-IN')} reviews (+${gained}) · ${describeVelocityStep(vel)}`,
+        detail: `${Number(e.rating).toFixed(1)}★, ${reviews.toLocaleString('en-IN')} reviews (+${gained})`,
       });
     } else {
       steps.push({
@@ -1842,28 +1356,28 @@ function syncCompetitors() {
       discoveryCalls += 1;
       if (comp) {
         const wasSynced = comp.synced;
-        // Same stand-in as `gained` above: a real Business Discovery pull would
-        // move the follower count, so the demo nudges it deterministically.
-        // Engagement rate is deliberately NOT nudged — applyCompetitorSync()
-        // recomputes it as avgInteractions ÷ followers, so it moves as a
-        // CONSEQUENCE of this, which is the real relationship between them.
+        // Same stand-in as `gained`: a real pull would move the follower count.
+        // Engagement rate is NOT nudged — applyCompetitorSync() recomputes it
+        // from avgInteractions ÷ followers, so it moves as a CONSEQUENCE.
         const followersBefore = comp.followers;
         comp.followers += 5 + ((now / 60000 | 0) + comp.id.length) % 11;
         const ok = applyCompetitorSync(comp, now);
         if (ok) {
-          sample.followers = comp.followers;
-          sample.avgInteractions = comp.avgInteractions;
-          observed = true;
+          // A separate row from the Places one: they are different calls with
+          // different sources, and the schema records one source per reading.
+          observations.push({
+            subject: e.placeId, observedAt: nowISO, source: 'business_discovery',
+            followers: comp.followers, avgInteractions: comp.avgInteractions,
+            mediaCount: comp.recentPosts ? comp.recentPosts.length : null, isSample: true,
+          });
         } else {
-          // A failed pull observed nothing; do not keep the nudge.
-          comp.followers = followersBefore;
+          comp.followers = followersBefore;   // a failed pull observed nothing
         }
-        const fc = ok ? changeFromSeries([...observationsFor(e.id, { history }), sample], 'followers') : null;
         steps.push(ok ? {
           establishment: e.name, api: 'Business Discovery', ok: true,
           detail: wasSynced
-            ? `${comp.recentPosts.length} posts refreshed · ${comp.postsPerWeek}/week · ${fmtCompact(comp.followers)} followers (+${comp.followers - followersBefore}) · ${describeChangeStep(fc, 'follower')}`
-            : `First pull — ${comp.recentPosts.length} posts, ${(comp.followers / 1000).toFixed(1)}k followers · ${describeChangeStep(fc, 'follower')}`,
+            ? `${comp.recentPosts.length} posts refreshed · ${comp.postsPerWeek}/week · ${fmtCompact(comp.followers)} followers (+${comp.followers - followersBefore})`
+            : `First pull — ${comp.recentPosts.length} posts, ${(comp.followers / 1000).toFixed(1)}k followers`,
           isNew: !wasSynced,
         } : {
           establishment: e.name, api: 'Business Discovery', ok: false,
@@ -1875,10 +1389,11 @@ function syncCompetitors() {
           detail: 'Readable, but no seed content in this prototype',
         });
       }
-    } else if (e.instagram) {
+    } else if (avail.igReadable === false && e.social.some(x => x.platform === 'instagram' && x.handle)) {
+      const ig = e.social.find(x => x.platform === 'instagram');
       steps.push({
         establishment: e.name, api: 'Business Discovery', ok: false,
-        detail: `Skipped — ${e.instagram.accountType} accounts cannot be read, and the call would burn quota for nothing`,
+        detail: `Skipped — ${ig.accountType} accounts cannot be read, and the call would burn quota for nothing`,
       });
     } else {
       steps.push({
@@ -1886,31 +1401,22 @@ function syncCompetitors() {
         detail: 'Skipped — no Instagram account found',
       });
     }
-
-    // Appended once, after both calls, so the sample carries everything this
-    // sync actually saw. Nothing observed means nothing stored — an empty
-    // sample would be a reading that says the count is missing, not absent.
-    if (observed) {
-      history[e.id] = [...observationsFor(e.id, { history }), sample].slice(-REVIEW_HISTORY_CAP);
-    }
   }
 
   // Our own count is a Business Profile read, not part of the tracked loop,
   // but it is the other half of every comparison and has to advance with them.
-  const selfSeries = [...observationsFor('saf-self', { history }), {
-    at: nowISO,
-    reviews: SAF_SELF_STATS.googleReviews,
+  observations.push({
+    subject: 'saf-self', observedAt: nowISO, source: 'business_profile',
+    reviewCount: SAF_SELF_STATS.googleReviews,
     followers: SAF_SELF_STATS.followers,
     avgInteractions: SAF_SELF_STATS.avgInteractions,
-  }].slice(-REVIEW_HISTORY_CAP);
-  history['saf-self'] = selfSeries;
+    isSample: true,
+  });
 
-  const state = {
-    lastSyncedAt: nowISO,
-    runs: (prev.runs || 0) + 1,
-    history,
-  };
-  syncStateSave(state);
+  // Persist, then re-read. The server re-derives every rate from the stored
+  // readings; the client never computes one.
+  await postObservations(observations);
+  await loadServerData({ force: true });
   SYNC_VERSION.value += 1;
 
   return {
@@ -1919,7 +1425,7 @@ function syncCompetitors() {
     discoveryCalls,
     totalCalls: placesCalls + discoveryCalls,
     newlySynced: steps.filter(s => s.isNew).length,
-    state,
+    observationsWritten: observations.length,
   };
 }
 
@@ -2035,63 +1541,6 @@ function relativeTimeToISO(rel, now) {
   return new Date(now - ms).toISOString();
 }
 
-// The reset trap. `syncCompetitors()` bumps `e.google.reviews` and
-// `comp.followers` in memory only, so a reload re-seeds both from the arrays
-// above while the stored history keeps the higher readings — and the very next
-// sample would be BELOW the one before it, producing a negative velocity, and
-// now a negative follower change, out of nothing but a page refresh. The
-// stored history is the source of truth for an observed count, so replay it.
-//
-// This sits with the other hydrators rather than beside the history code
-// because it writes to ESTABLISHMENTS, LISTENING_COMPETITORS *and*
-// SAF_SELF_STATS, and SAF_SELF_STATS is not declared until above this line —
-// running it any earlier is a ReferenceError at module evaluation.
-(function hydrateObservedCounts() {
-  const newestFor = (key) => {
-    const series = observationsFor(key);
-    return series.length ? series[series.length - 1] : null;
-  };
-
-  const reviewsByCompetitorId = {};
-  const followersByCompetitorId = {};
-  for (const e of ESTABLISHMENTS) {
-    const newest = newestFor(e.id);
-    if (!newest) continue;
-    // Each field is replayed only if that call was ever observed — a
-    // ratings-only establishment has no follower reading and must not be given
-    // one, and a legacy sample predating this commit carries no followers.
-    if (e.google && Number.isFinite(newest.reviews)) {
-      e.google.reviews = newest.reviews;
-      if (e.competitorId) reviewsByCompetitorId[e.competitorId] = newest.reviews;
-    }
-    if (e.competitorId && Number.isFinite(newest.followers)) {
-      followersByCompetitorId[e.competitorId] = newest.followers;
-    }
-  }
-  for (const c of LISTENING_COMPETITORS) {
-    if (reviewsByCompetitorId[c.id] !== undefined) c.googleReviews = reviewsByCompetitorId[c.id];
-    if (followersByCompetitorId[c.id] !== undefined && c.followers !== followersByCompetitorId[c.id]) {
-      c.followers = followersByCompetitorId[c.id];
-      // engagementRate was computed against the pre-replay follower count by
-      // hydrateCompetitorFeeds() further up the file. Re-run the one function
-      // that owns that formula rather than restating it here and letting the
-      // two drift.
-      if (c.synced) applyCompetitorSync(c, Date.now());
-    }
-  }
-
-  const self = newestFor('saf-self');
-  if (self && Number.isFinite(self.reviews)) SAF_SELF_STATS.googleReviews = self.reviews;
-  // Guarded the same way as the competitor branch above: only recompute when
-  // the follower count actually moved. Recomputing unconditionally re-derives
-  // the seeded rate at a different precision (0.061 -> 0.0612) on a load where
-  // nothing changed, which is a diff for no reason.
-  if (self && Number.isFinite(self.followers) && SAF_SELF_STATS.followers !== self.followers) {
-    SAF_SELF_STATS.followers = self.followers;
-    SAF_SELF_STATS.engagementRate = +(SAF_SELF_STATS.avgInteractions / self.followers).toFixed(4);
-  }
-})();
-
 (function hydrateSignalTimestamps() {
   const now = Date.now();
   for (const s of LISTENING_SIGNALS) {
@@ -2156,8 +1605,7 @@ Object.assign(window, {
   LISTENING_SIGNALS, LISTENING_COMPETITORS, LISTENING_TRENDS, LISTENING_KPIS,
   LISTENING_KINDS, LISTENING_SEVERITIES, listeningLoad, listeningSave,
   SAF_HANDLE, SAF_SELF_STATS, COMPETITOR_CATCHMENT, COMPETITOR_POST_SEEDS,
-  ESTABLISHMENTS, establishmentAvailability, trackedLoad, trackedSave, trackedCompetitors,
-  trackedPendingEstablishments, syncCompetitors, syncStateLoad, SYNC_VERSION,
+  syncCompetitors, SYNC_VERSION,
   PlatformGlyph, Avatar,
   POSTS, SCHEDULED, CONVERSATIONS, POST_COMMENTS,
   REVIEWS, REVIEW_STATS, MENU_ITEMS,

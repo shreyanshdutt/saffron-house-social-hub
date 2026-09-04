@@ -163,9 +163,11 @@ one is not an observation of it.
 **Review velocity is the one Places figure that no single call can return.**
 Places Details gives a review count as a snapshot; the rate of change is the
 delta between two snapshots divided by the days between them. So the app keeps
-its own store of readings (`saf-sync-v2`, §6 of `CLAUDE.md`), appends one per
-establishment on every sync, and derives the rate from that store — there is no
-seeded velocity anywhere. This makes three genuinely different states, and the
+its own store of readings — the `observations` table in the server database —
+appends one per establishment on every sync, and derives the rate from that
+store. There is no seeded velocity anywhere, and since the move off
+`localStorage` there is no client-side derivation either: the server computes
+every rate and the client renders the result with its state attached. This makes three genuinely different states, and the
 UI distinguishes all three rather than collapsing them to a blank:
 
 | Stored readings | Window | Shown as |

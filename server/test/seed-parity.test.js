@@ -1,11 +1,16 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { seededDb, REPO_ROOT } from './helpers.js';
-import { extractMock } from '../seed/extract-mock.js';
 import { samplePlaceId } from '../seed/seed.js';
 import * as repo from '../src/repo.js';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
-const { ESTABLISHMENTS, TRACKED_DEFAULT } = extractMock(REPO_ROOT);
+// The frozen fixture is the source of truth now. It was taken from mock.jsx at
+// 40c9100; these tests pin the database to it.
+const SEED = JSON.parse(readFileSync(join(REPO_ROOT, 'server', 'seed', 'seed-data.json'), 'utf8'));
+const ESTABLISHMENTS = SEED.establishments;
+const TRACKED_DEFAULT = SEED.trackedDefault;
 
 test('all 15 establishments seed with identical name, rating and review count', () => {
   const db = seededDb();

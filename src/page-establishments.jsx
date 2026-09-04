@@ -49,63 +49,85 @@ const TIER_META = {
 // comparison stops being readable anyway.
 const TRACK_SOFT_CAP = 8;
 
+// The establishment list, the availability tiers and the tracked set all come
+// from the server now. The gate does the awaiting so everything below it stays
+// synchronous — and so an unreachable service shows as an unreachable service
+// rather than as a screen with no restaurants in it.
 function EstablishmentsPage({ onNavigate }) {
+  return (
+    <RequiresServerData what="the establishment list">
+      {(data) => <EstablishmentsScreenInner onNavigate={onNavigate} data={data} />}
+    </RequiresServerData>
+  );
+}
+
+function EstablishmentsScreenInner({ onNavigate, data }) {
   const toast = useToast();
-  const [tracked, setTracked] = React.useState(() => new Set(trackedLoad()));
+  const [busy, setBusy] = React.useState(null);
   const [tier, setTier] = React.useState('all');
   const [category, setCategory] = React.useState('all');
   const [openId, setOpenId] = React.useState(null);
 
-  // Computed inline, not memoised. syncCompetitors() mutates e.google.reviews
-  // on the module object, and a memo with [] deps kept showing pre-sync counts
-  // until this screen remounted. Fifteen rows is not worth a cache that can go
-  // stale against mutable data — and keying the memo on the mutation would
-  // mean inventing a signal for it.
-  const rows = ESTABLISHMENTS.map(e => ({ ...e, avail: establishmentAvailability(e) }));
+  // Straight from the server. The availability tier arrives already derived —
+  // there is no second implementation in the browser to disagree with it.
+  const rows = data.establishments;
+  const tracked = new Set(rows.filter(r => r.tracked).map(r => r.placeId));
 
   const categories = ['all', ...Array.from(new Set(rows.map(r => r.category)))];
 
   const filtered = React.useMemo(() => {
     return rows
-      .filter(r => tier === 'all' || (tier === 'tracked' ? tracked.has(r.id) : r.avail.tier === tier))
+      .filter(r => tier === 'all' || (tier === 'tracked' ? r.tracked : r.availability.tier === tier))
       .filter(r => category === 'all' || r.category === category)
       // Trackable first, then by distance — the nearest usable rival is the
-      // one that matters most.
+      // one that matters most. `distanceKm` is served, not recomputed here;
+      // see the column comment in the server schema for why it is stored.
       .sort((a, b) => {
         const rank = { full: 0, ratings: 1, none: 2 };
-        return rank[a.avail.tier] - rank[b.avail.tier] || a.distanceKm - b.distanceKm;
+        return rank[a.availability.tier] - rank[b.availability.tier] || a.distanceKm - b.distanceKm;
       });
-  }, [rows, tier, category, tracked]);
+  }, [rows, tier, category]);
 
-  const toggle = (row) => {
-    if (row.avail.tier === 'none') return;
-    setTracked(prev => {
-      const next = new Set(prev);
-      if (next.has(row.id)) {
-        next.delete(row.id);
+  // Tracking is a per-restaurant decision, so it is written to the server, not
+  // to this browser. A failure says so instead of leaving the row looking
+  // toggled — an optimistic flip that silently did not persist is exactly the
+  // kind of quiet lie this project fights.
+  const toggle = async (row) => {
+    if (row.availability.tier === 'none') return;
+    const wasTracked = row.tracked;
+    setBusy(row.placeId);
+    try {
+      if (wasTracked) {
+        await untrackEstablishment(row.placeId);
         toast.push({ title: `Stopped tracking ${row.name}`, kind: 'info' });
       } else {
-        next.add(row.id);
+        await trackEstablishment(row.placeId, 'admin');
         toast.push({
           title: `Tracking ${row.name}`,
-          desc: row.avail.tier === 'ratings'
+          desc: row.availability.tier === 'ratings'
             ? 'Ratings and review velocity only — no content comparison available.'
             : 'Full comparison available.',
           kind: 'success',
         });
       }
-      trackedSave([...next]);
-      return next;
-    });
+    } catch (err) {
+      toast.push({
+        title: `Could not ${wasTracked ? 'untrack' : 'track'} ${row.name}`,
+        desc: `The data service rejected the change: ${err.message}. Nothing was saved.`,
+        kind: 'error',
+      });
+    } finally {
+      setBusy(null);
+    }
   };
 
   const counts = {
-    full:    rows.filter(r => r.avail.tier === 'full').length,
-    ratings: rows.filter(r => r.avail.tier === 'ratings').length,
-    none:    rows.filter(r => r.avail.tier === 'none').length,
+    full:    rows.filter(r => r.availability.tier === 'full').length,
+    ratings: rows.filter(r => r.availability.tier === 'ratings').length,
+    none:    rows.filter(r => r.availability.tier === 'none').length,
   };
-  const trackedRows = rows.filter(r => tracked.has(r.id));
-  const withFeeds = trackedRows.filter(r => r.competitorId).length;
+  const trackedRows = rows.filter(r => r.tracked);
+  const withFeeds = trackedRows.filter(r => r.competitorRef).length;
   const overCap = trackedRows.length > TRACK_SOFT_CAP;
 
   return (
@@ -203,11 +225,12 @@ function EstablishmentsPage({ onNavigate }) {
       <div className="space-y-2">
         {filtered.map(row => (
           <EstablishmentRow
-            key={row.id}
+            key={row.placeId}
             row={row}
-            tracked={tracked.has(row.id)}
-            expanded={openId === row.id}
-            onToggleExpand={() => setOpenId(prev => (prev === row.id ? null : row.id))}
+            tracked={row.tracked}
+            busy={busy === row.placeId}
+            expanded={openId === row.placeId}
+            onToggleExpand={() => setOpenId(prev => (prev === row.placeId ? null : row.placeId))}
             onToggleTrack={() => toggle(row)}
           />
         ))}
@@ -249,8 +272,11 @@ function EstablishmentsPage({ onNavigate }) {
   );
 }
 
-function EstablishmentRow({ row, tracked, expanded, onToggleExpand, onToggleTrack }) {
-  const { avail } = row;
+function EstablishmentRow({ row, tracked, busy, expanded, onToggleExpand, onToggleTrack }) {
+  const avail = row.availability;
+  // The social rows arrive as a list; the screen reads two of them by name.
+  const ig = row.social.find(x => x.platform === 'instagram' && x.handle) || null;
+  const xr = row.social.find(x => x.platform === 'x' && x.handle) || null;
   const meta = TIER_META[avail.tier];
   const canTrack = avail.tier !== 'none';
 
@@ -282,24 +308,22 @@ function EstablishmentRow({ row, tracked, expanded, onToggleExpand, onToggleTrac
             <ChannelChip
               id="gg"
               ok={avail.hasGoogle}
-              label={avail.hasGoogle ? `${row.google.rating.toFixed(1)}★ · ${fmtCompact(row.google.reviews)}` : 'No listing'}
+              label={avail.hasGoogle ? `${Number(row.rating).toFixed(1)}★ · ${fmtCompact(row.userRatingsTotal)}` : 'No listing'}
             />
             <ChannelChip
               id="ig"
               // A dormant business account is readable but has nothing to
-              // compare on, so establishmentAvailability() downgrades it to
+              // compare on, so the server's availability() downgrades it to
               // ratings-only. The chip must agree with that tier — a green
               // tick beside an amber "Ratings only" badge read as a bug.
               ok={avail.igReadable && !avail.stale}
-              label={row.instagram
-                ? `${row.instagram.handle} · ${row.instagram.accountType}`
-                : 'None found'}
+              label={ig ? `${ig.handle} · ${ig.accountType}` : 'None found'}
             />
             <ChannelChip
               id="x"
               ok={false}
               muted
-              label={row.x ? `${row.x.handle} · paid tier` : 'None found'}
+              label={xr ? `${xr.handle} · paid tier` : 'None found'}
             />
           </div>
 
@@ -334,10 +358,10 @@ function EstablishmentRow({ row, tracked, expanded, onToggleExpand, onToggleTrac
             variant={tracked ? 'secondary' : 'primary'}
             leadingIcon={tracked ? 'Check' : 'Plus'}
             onClick={onToggleTrack}
-            disabled={!canTrack}
+            disabled={!canTrack || busy}
             title={canTrack ? undefined : 'No public data available to compare against'}
           >
-            {tracked ? 'Tracking' : 'Track'}
+            {busy ? 'Saving…' : tracked ? 'Tracking' : 'Track'}
           </Button>
         </div>
       </div>

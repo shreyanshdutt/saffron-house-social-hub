@@ -10,7 +10,23 @@ Single-page React app served from `index.html`, using CDN-hosted React 18,
 in-browser Babel for the JSX in `src/`, an importmap to bind ESM modules
 (`lucide-react`, `recharts`) to the same React instance, and Tailwind via CDN.
 
+Two workspaces, and the line between them is hard (CLAUDE.md § *The client /
+server boundary*): **`src/` + `index.html`** is the buildless client, and
+**`server/`** is a small Node service that owns the database and — later — the
+API credentials. They meet at HTTP and nowhere else. The establishment list,
+the tracked competitor set and the observation history that review velocity and
+follower change are derived from all live on the server; the client fetches
+them and renders. Everything else on screen still comes from `src/mock.jsx`.
+
 ## Run it locally
+
+The Competitors, Establishments and Actions screens need the data service
+running as well as the static client — they say so plainly rather than
+rendering an empty table if it is down. See [server/README.md](server/README.md).
+
+```
+cd server && npm start        # http://127.0.0.1:8787, no npm install needed
+```
 
 There is no build step. `index.html` uses ES modules, an importmap, and
 `<script type="text/babel">` — all of which require an HTTP origin. Opening

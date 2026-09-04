@@ -29,6 +29,13 @@ CREATE TABLE IF NOT EXISTS establishments (
   -- row is fabricated seed data or a real Places result. Once real rows land
   -- alongside the seeds, telling them apart is the whole ballgame.
   local_ref           TEXT UNIQUE,
+  -- The competitor record this establishment corresponds to, where one exists.
+  -- Instagram post content (captions, formats, per-post interactions) is not
+  -- modelled here — it stays in the client's LISTENING_COMPETITORS for now —
+  -- and this is the join between the two. Without it the client would have to
+  -- rebuild the link from a string pattern on local_ref, which breaks the day
+  -- local_ref stops being 'est-N'.
+  competitor_ref      TEXT,
   is_sample           INTEGER NOT NULL DEFAULT 0 CHECK (is_sample IN (0, 1)),
   first_seen_at       TEXT NOT NULL,
 
@@ -44,7 +51,17 @@ CREATE TABLE IF NOT EXISTS establishments (
   lng                 REAL,
   -- Not returned by Nearby Search; a Details call gives it. Step 5 parses it
   -- for social handles, which is why it is here before anything fetches it.
-  website             TEXT
+  website             TEXT,
+
+  -- Distance from the catchment centre, in km. NOT a Places field and NOT
+  -- derivable here yet: it is a haversine over `lat`/`lng` against the
+  -- catchment centre, and the seed has no coordinates because mock.jsx never
+  -- had any. Seeded from mock.jsx's precomputed `distanceKm` so the
+  -- Establishments screen keeps sorting as it did, and superseded the moment a
+  -- real Nearby Search fills lat/lng — at which point this column should be
+  -- dropped and the value computed. Demo data, live architecture
+  -- (CONVENTIONS.md §10).
+  distance_km         REAL
 );
 
 -- ---------------------------------------------------------------------------

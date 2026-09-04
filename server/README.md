@@ -6,17 +6,17 @@ stays buildless and holds nothing secret — see CLAUDE.md § *The client / serv
 boundary*.
 
 **This build makes no external API call.** There is no Places scan, no handle
-discovery and no sampler. It serves the data the client already has, from
-SQLite instead of from `mock.jsx`, so that the next commit can move the client
-across one risky step at a time.
+discovery and no sampler. It serves the establishment list, the tracked set and
+the observation history from SQLite, and derives every rate over them — the
+client renders those values and computes none of them itself.
 
 ## Run it
 
 ```
 cd server
 cp .env.example .env      # fill in nothing yet — no key is used by this build
-npm test                  # 26 tests, no network
-npm run seed              # loads the 15 establishments from ../src/mock.jsx
+npm test                  # 41 tests, no network
+npm run seed              # loads the 15 establishments from seed/seed-data.json
 npm start                 # http://127.0.0.1:8787
 ```
 
@@ -43,10 +43,12 @@ the keys with no values.
 | GET | `/health` | row counts per table |
 | GET | `/establishments` | every establishment with its availability tier and social rows |
 | GET | `/establishments/:placeId` | one of the above |
+| GET | `/competitors` | the tracked set with availability tier, review velocity, follower change and engagement change **already derived**, plus our own metrics and `minWindowDays` |
 | GET | `/tracked` | the tracked set |
 | GET | `/observations/:subject` | the observation series, oldest → newest |
 | POST | `/tracked` | `{ placeId, trackedBy }` — track one |
 | DELETE | `/tracked/:placeId` | untrack one |
+| POST | `/observations` | persist a batch of readings (the client's demo sync writes here) |
 
 `:subject` is a `place_id`, or the reserved `saf-self` for our own restaurant.
 
@@ -79,8 +81,10 @@ Stated rather than hidden — none of these is finished:
 - **No authentication whatsoever.** Every route is open to anyone who can reach
   the port. The server therefore binds to `127.0.0.1` only. This must be fixed
   before it is exposed anywhere, and before any credential is added to `.env`.
-- **No rate limiting, no request logging, no CORS policy.** The next commit,
-  which moves the client across, will need CORS or a same-origin proxy.
+- **CORS is wide open** (`access-control-allow-origin: *`) so the client on
+  another port can reach it. Deliberately without credentials, because there
+  are none yet. **When auth arrives this must become an allow-list.**
+- **No rate limiting and no request logging.**
 - **No external API calls, no scan, no handle discovery, no sampler.** Later
   commits.
 - **No migration framework.** `schema.sql` is applied with `CREATE TABLE IF NOT
@@ -88,10 +92,11 @@ Stated rather than hidden — none of these is finished:
   database is a local file that can be deleted and re-seeded, not fine later.
 - **`node:sqlite` is experimental** in Node 22 and prints a warning on import.
   It is quarantined in `src/db.js` so swapping to `better-sqlite3` is one file.
-- **The seed reads `../src/mock.jsx`.** That is the one place the server looks
-  at the client, it is a one-shot tool rather than part of the running service,
-  and it reads the file as text rather than importing it. See the header of
-  `seed/extract-mock.js`. Delete it once real Places data replaces the seeds.
+- **The seed data is frozen in `seed/seed-data.json`**, extracted once from
+  `src/mock.jsx` at commit `40c9100` immediately before that data was deleted
+  from the client. The server no longer reads anything under `src/`, so
+  CLAUDE.md §2's "the server never imports from `src/`" now holds with no
+  exception. Regenerate with `git show 40c9100:src/mock.jsx`.
 
 ## Layout
 
@@ -105,7 +110,8 @@ src/retention.js     the purge
 src/repo.js          queries
 src/http.js          routes
 src/index.js         boot
-seed/extract-mock.js reads src/mock.jsx as text, without importing it
+seed/seed-data.json  frozen seed, extracted from mock.jsx at 40c9100
 seed/seed.js         one-shot seeding
-test/                26 tests, node:test, no network
+src/derive.js        review velocity, follower change, engagement change
+test/                41 tests, node:test, no network
 ```
