@@ -346,20 +346,68 @@ that reasoning must not simply be lost. It goes, in order of preference:
 The nine existing commits are **not** rewritten. History before this file is
 history; the rule applies from the first commit after it.
 
-## 8. Git posture
+## 8. Git posture (remote adopted 2026-09-05)
 
-- **Local-only.** There is no remote configured on this repo and none is to be
-  added without an owner decision recorded here.
+### Remote
+
+- **`origin` is a PRIVATE GitHub repository.** Private is a deliberate choice,
+  not a default: `mock.jsx` invents six competitor restaurants in a real Delhi
+  neighbourhood and attaches invented ratings, follower counts and
+  "losing ground to them" claims to them. That risk is contained locally and
+  is not containable once indexed. Making the repo public requires replacing
+  those names with unmistakably synthetic ones FIRST, and an owner decision
+  recorded here.
+- **Never push a branch carrying a credential.** A secret that reaches origin
+  is compromised even if the next commit removes it — rotate it, do not just
+  delete the line (§10).
+
+### Who pushes what
+
+- **An agent may push ONE thing: the feature branch it just committed to.**
+  That is what puts a stacked pull request in front of the owner to review.
+  Nothing else.
+- **An agent NEVER** pushes `main`, force-pushes anything, rebases a branch
+  that has been pushed, opens or closes or merges a pull request, deletes a
+  remote branch, or changes any repository setting.
+- **The owner pushes `main` and the owner merges.** That has not changed and
+  is the rule this whole document is built around. Opening a pull request is
+  a publishing action and the merge button sits one click from it.
+- **A rejected push is a STOP, never a `--force`.** If `git push` is refused,
+  report what git said and stop. The remedy is never force; it is finding out
+  why the remote has something you do not.
+
+### Stacked pull requests
+
+Work already arrives as a stack — each branch cut from the last, each commit
+self-contained and reviewable alone. GitHub's stacked pull requests (public
+preview since August 2026) put a review surface over that. They change the
+review, not the sequencing; the discipline that produces reviewable commits
+is § 4 and § 6, not a GitHub feature.
+
+- **Each pull request targets its PARENT branch in the stack, not `main`.**
+  Only the bottom of the stack targets `main`.
+- **Merge bottom-up, one at a time.** After each merge, verify the next pull
+  request's base is what you expect before merging it — do not assume the
+  retarget happened, and do not assume it happened correctly. § 2.
+- **A stack is not a licence to grow one.** If the bottom of the stack is
+  ready, land it. Six unmerged commits was manageable; the reason to notice
+  is that each additional layer makes the one below harder to revert alone.
+- **Never rebase to "tidy" a stack that has been pushed.** The history a
+  reviewer has already read is not yours to rewrite.
+
+### Unchanged
+
 - **Branch before the first commit of a piece of work.** `main` is not
   committed to directly.
-- **STOP before merge.** The owner merges. Agents do not merge, do not
-  fast-forward `main`, do not rebase, do not `git push`, do not force-push,
-  and do not delete branches — not even to "clean up" or "sync".
+- **STOP before merge.** Report the branch and the commit; the owner takes it
+  from there.
 - **Never `git checkout .`, `git reset --hard`, `git stash drop`, or `git
-  clean`** on a working tree you did not create. Uncommitted work in this repo
-  has no backup anywhere.
+  clean`** on a working tree you did not create. Committed work now has a
+  backup on origin; **uncommitted work still has none anywhere.**
 - Verify actual git state before acting on a stated one: current branch, HEAD,
-  and `git status` — not what a prompt claims they are. § 2.
+  upstream, and `git status` — not what a prompt claims they are. § 2. A
+  prompt written before the last commit is a prompt describing a repo that no
+  longer exists.
 
 ## 9. Prompt discipline (applies to the planning side too)
 
