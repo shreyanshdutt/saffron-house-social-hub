@@ -239,23 +239,35 @@ None.
 - Never convert global-scope declarations to `window.*` exports or back as a
   side effect. That is a scope change dressed as a tidy-up.
 
-## 5. What is automated here: NOTHING
+## 5. What is automated here
 
-Read this literally before reporting anything as done.
+**The client: nothing.** `src/` and `index.html` have no build, no test suite,
+no CI, no linter and no type checker, and that is permanent (CLAUDE.md §2).
+Nothing there can fail; a commit cannot break a pipeline because there is no
+pipeline. **The entire verification story for a client change is one person
+loading the page in a browser and looking at it** — and every class of defect
+this codebase has actually shipped was silent: `NaN` rendered as an em dash, a
+missing script tag, a non-existent icon name, a dead link that 404s on a real
+domain, a red "behind the median" arrow beside "no history yet". None of them
+threw. None would have been caught by a test that does not exist. So for the
+client, a green anything is not available to be reported, and "it should work"
+is not a status. The only evidence that counts is § 6.
 
-There is **no test suite, no CI, no type checker, no linter, no build step and
-no server**. There is no `package.json`. Nothing in this repo can fail. A
-commit cannot break a pipeline, because there is no pipeline.
+**The server: tested, and not optionally.** `server/` has a toolchain, so it
+carries real tests. `npm test` in `server/` must be green before any commit
+that touches it, and **its actual output pasted in the report** — a claim that
+tests pass is not evidence that they ran. New behaviour arrives with a test; a
+bug fixed there arrives with a test that fails without the fix. There is still
+no CI, so "green" means green on the machine that made the commit, and the
+report says so.
 
-That is not a licence; it is the reason the rest of this document is strict.
-**The entire verification story is one person loading the page in a browser
-and looking at it**, and every class of defect this codebase has actually
-shipped was silent — `NaN` rendered as an em dash, a missing script tag, a
-non-existent icon name, a dead link that 404s on a real domain. None of them
-threw. None of them would have been caught by a test that does not exist.
+**Neither half's rule excuses the other.** A commit spanning both is verified
+twice: `npm test` for `server/`, a browser for `src/`.
 
-So: a green anything is not available to be reported, and "it should work" is
-not a status. The only evidence that counts is § 6.
+*(Rewritten 2026-09-05. Until the `server/` workspace existed this section read
+"What is automated here: NOTHING", which was true of the whole repo and is now
+true only of the client. Wording proposed by the implementing agent in the
+report for 1984107 and adopted by the owner.)*
 
 ## 6. Definition of Done
 
@@ -349,6 +361,21 @@ history; the rule applies from the first commit after it.
 - Verify actual git state before acting on a stated one: current branch, HEAD,
   and `git status` — not what a prompt claims they are. § 2.
 
+## 9. Prompt discipline (applies to the planning side too)
+
+These guards appear in EVERY implementation prompt written for this repo. A
+prompt missing them is incomplete and should not be dispatched:
+
+1. **Name the files and symbols** the work touches, by path and name. Never
+   "the competitor screen" alone.
+2. **Forbid invention explicitly**, and say what the honest empty state is for
+   the specific thing being built.
+3. **Require read-before-write with `file:line` evidence**, and require a STOP
+   on any premise that does not check out.
+4. **State the verification expected** from § 6 — which screens, which roles,
+   which theme — rather than "test it".
+5. **State the scope boundary**: what must NOT change.
+6. **Require the deviation self-report** (§ 6j) as part of the deliverable.
 ## 10. External data, secrets and retention (owner directive 2026-09-05)
 
 The `server/` workspace exists to hold the two things a browser cannot: other
@@ -395,19 +422,3 @@ people's credentials, and data that must outlive one person's browser.
 - Never call an API you know will return nothing. The existing rule — skip
   Business Discovery on personal and private accounts rather than spending
   quota to be told no — generalises.
-
-## 9. Prompt discipline (applies to the planning side too)
-
-These guards appear in EVERY implementation prompt written for this repo. A
-prompt missing them is incomplete and should not be dispatched:
-
-1. **Name the files and symbols** the work touches, by path and name. Never
-   "the competitor screen" alone.
-2. **Forbid invention explicitly**, and say what the honest empty state is for
-   the specific thing being built.
-3. **Require read-before-write with `file:line` evidence**, and require a STOP
-   on any premise that does not check out.
-4. **State the verification expected** from § 6 — which screens, which roles,
-   which theme — rather than "test it".
-5. **State the scope boundary**: what must NOT change.
-6. **Require the deviation self-report** (§ 6j) as part of the deliverable.
