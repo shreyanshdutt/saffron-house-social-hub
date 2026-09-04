@@ -56,6 +56,13 @@ the Reviews screen is the product's main promise — a 4-hour SLA against a
 With Google as the only review channel, the rating shown IS Google's — there is
 no blending, and nothing to explain away.
 
+**Our own review velocity comes from the same store as every rival's.** GBP
+returns a current review count, not a rate, so our figure is the delta between
+stored readings under the reserved key `saf-self` — the identical code path,
+so the two sides of the comparison cannot be computed differently. If our own
+history is too thin to give a rate, the review-velocity recommendation does
+not fire at all rather than comparing a known rival against an assumed us.
+
 ### Inbox (`CONVERSATIONS`)
 
 | Field | Source | Availability |
@@ -125,6 +132,7 @@ obtained (their reach, mention volume and sentiment) are gone.
 | Their per-post performance vs own median | Computed from public counts | Derived |
 | **Comment TEXT on their posts** | Not returned — counts only | ✗ **no competitor sentiment possible** |
 | Their star rating + review count | Google Places API | API |
+| Their review **velocity** (new reviews/month) | Places review counts stored over time, differenced | Derived, needs history |
 | Engagement **rate** | Computed as interactions ÷ followers | Derived, approximate |
 | Their **reach / impressions** | Private to them | ✗ — removed from the screen |
 | Their mention volume | Not visible | ✗ — removed from the screen |
@@ -136,9 +144,35 @@ obtained (their reach, mention volume and sentiment) are gone.
 carries no columns the peer rows lack. Our richer metrics live on Analytics,
 where they are not being compared to anyone.
 
+**Review velocity is the one figure here that no single call can return.**
+Places Details gives a review count as a snapshot; the rate of change is the
+delta between two snapshots divided by the days between them. So the app keeps
+its own store of readings (`saf-sync-v2`, §6 of `CLAUDE.md`), appends one per
+establishment on every sync, and derives the rate from that store — there is no
+seeded velocity anywhere. This makes three genuinely different states, and the
+UI distinguishes all three rather than collapsing them to a blank:
+
+| Stored readings | Window | Shown as |
+|---|---|---|
+| under 2 | — | "No history yet" — a baseline is not a rate |
+| 2 or more | under 7 days | the measured delta and its window, no monthly figure |
+| 2 or more | 7 days or more | the delta scaled to 30 days |
+
+The 7-day floor exists because two readings four minutes apart give a real
+delta and a meaningless rate: scaling it to a month would manufacture a figure
+of thousands from one extra review. A rival still inside that window is
+excluded from the catchment median and from the review-velocity
+recommendation, and the population line on the card says how many were left
+out and why.
+
+Velocity does NOT require a readable Instagram account, so a *ratings-only*
+establishment carries it on the same terms as a full-tier one — the tier is
+about Business Discovery, and this figure comes from Places.
+
 The Google Places terms restrict caching and storing most place content —
-review text especially. Check them before you build a competitor review
-archive.
+review text especially. Storing a bare review COUNT plus a timestamp, which is
+all the velocity store holds, is a much smaller ask than a review archive — but
+check the terms before you build either.
 
 ### Establishment discovery (`ESTABLISHMENTS`)
 

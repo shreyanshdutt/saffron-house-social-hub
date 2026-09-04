@@ -104,6 +104,10 @@ function buildRecommendationContext() {
     // engine compares against the set they actually chose.
     competitors: trackedCompetitors(),
     self: SAF_SELF_STATS,
+    // Our own velocity is derived from the same stored review-count history as
+    // every rival's, under the reserved `saf-self` key, so both sides of the
+    // comparison come from one code path.
+    selfVelocity: reviewVelocity('saf-self'),
     analytics: ANALYTICS_IG.daily,
     trends: LISTENING_TRENDS,
     medianReach: median(publishedReach),
@@ -354,37 +358,42 @@ const REC_RULES = [
     id: 'review-velocity',
     title: 'Losing ground on review volume',
     run(ctx) {
-      const us = ctx.self.reviewVelocityPerMonth;
-      if (!us) return [];
-      // Velocity is the delta between two stored review counts, so a rival we
-      // have pulled once has null and is not part of this population. The
-      // denominator counts rivals we can actually compare on, not everything
-      // tracked — otherwise "3 of 11" silently includes rivals with no figure.
-      const rated = ctx.competitors.filter(c => typeof c.reviewVelocityPerMonth === 'number');
+      // Both sides of the comparison have to be in state `rate`. If OUR own
+      // history is `none` or `measuring` there is no figure to be behind by,
+      // and firing on a half-known comparison would put a fabricated number in
+      // front of someone about to change how their floor staff work.
+      const ourVelocity = ctx.selfVelocity;
+      if (!ourVelocity || ourVelocity.state !== 'rate' || !ourVelocity.perMonth) return [];
+      const us = ourVelocity.perMonth;
+      // Same test on the rivals. A rival pulled once, or pulled twice inside
+      // the 7-day floor, is not part of this population — and the denominator
+      // counts only rivals we can genuinely compare on, so "3 of 11" cannot
+      // silently include rivals with no rate at all.
+      const rated = ctx.competitors.filter(c => c.velocity && c.velocity.state === 'rate');
       const faster = rated
-        .filter(c => c.reviewVelocityPerMonth > us)
-        .sort((a, b) => b.reviewVelocityPerMonth - a.reviewVelocityPerMonth);
+        .filter(c => c.velocity.perMonth > us)
+        .sort((a, b) => b.velocity.perMonth - a.velocity.perMonth);
       if (!faster.length) return [];
       const leader = faster[0];
-      const gap = leader.reviewVelocityPerMonth / us;
+      const gap = leader.velocity.perMonth / us;
       // Months until they overtake us on total review count, if nothing changes.
       const monthsToOvertake = leader.googleReviews > ctx.self.googleReviews
         ? null
-        : Math.ceil((ctx.self.googleReviews - leader.googleReviews) / (leader.reviewVelocityPerMonth - us));
+        : Math.ceil((ctx.self.googleReviews - leader.googleReviews) / (leader.velocity.perMonth - us));
 
       return [{
         kind: 'ops',
         title: `${leader.name} is gaining Google reviews ${gap.toFixed(1)}× faster than you`,
-        detail: `They add roughly ${leader.reviewVelocityPerMonth} reviews a month against your ${us}. Google weighs volume as well as score, so this compounds quietly: ${faster.length} of the ${rated.length} rivals we can measure ${faster.length > 1 ? 'are' : 'is'} outpacing you${leader.googleReviews > ctx.self.googleReviews ? ' and already ahead on total count' : monthsToOvertake ? `, and at this rate they pass your total in about ${monthsToOvertake} months` : ''}. The fix is a review ask built into the end of service, not a campaign.`,
+        detail: `They add roughly ${leader.velocity.perMonth} reviews a month against your ${us}. Google weighs volume as well as score, so this compounds quietly: ${faster.length} of the ${rated.length} rivals with ${VELOCITY_MIN_WINDOW_DAYS}+ days of stored review counts ${faster.length > 1 ? 'are' : 'is'} outpacing you${leader.googleReviews > ctx.self.googleReviews ? ' and already ahead on total count' : monthsToOvertake ? `, and at this rate they pass your total in about ${monthsToOvertake} months` : ''}. The fix is a review ask built into the end of service, not a campaign.`,
         action: 'Add a review ask to the bill drop and the WhatsApp thank-you',
         owner: 'admin',
         where: 'Floor process · WhatsApp template',
         channels: ['gg', 'wa'],
         window: 'This month',
         evidence: [
-          { label: 'Our review velocity', value: `${us}/month (${fmt(ctx.self.googleReviews)} total)`, source: 'gbp' },
-          { label: `${leader.name}`, value: `${leader.reviewVelocityPerMonth}/month (${fmt(leader.googleReviews)} total)`, source: 'publicApi' },
-          { label: 'Faster than us', value: `${faster.length} of ${rated.length} rivals with a stored history`, source: 'publicApi' },
+          { label: 'Our review velocity', value: `${us}/month over ${formatVelocityWindow(ourVelocity.windowDays)} (${fmt(ctx.self.googleReviews)} total)`, source: 'gbp' },
+          { label: `${leader.name}`, value: `${leader.velocity.perMonth}/month over ${formatVelocityWindow(leader.velocity.windowDays)} (${fmt(leader.googleReviews)} total)`, source: 'publicApi' },
+          { label: 'Faster than us', value: `${faster.length} of ${rated.length} rivals with a measurable rate`, source: 'publicApi' },
           { label: 'Their rating', value: `${leader.googleRating.toFixed(1)} vs our ${ctx.self.googleRating.toFixed(1)}`, source: 'publicApi' },
         ],
         impact: 0.75,

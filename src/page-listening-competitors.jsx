@@ -178,12 +178,21 @@ function CompetitorInsights({ theme, peers }) {
   // peers have them; every tracked rival has a Google rating; velocity exists
   // only where two review counts have been stored.
   const fullPeers = peers.filter(p => p.dataTier === 'full');
-  const velocityPeers = peers.filter(p => typeof p.reviewVelocityPerMonth === 'number');
+
+  // Velocity has three states per rival and only one of them is a number. A
+  // rival still inside the 7-day window has a real, measured delta but no
+  // monthly rate, and lumping it in with rivals we have never sampled would
+  // hide the difference. The median is over `rate` rivals ONLY.
+  const ourVelocity = reviewVelocity('saf-self');
+  const vel = (p) => p.velocity || { state: 'none' };
+  const ratePeers = peers.filter(p => vel(p).state === 'rate');
+  const measuringPeers = peers.filter(p => vel(p).state === 'measuring');
+  const noHistoryPeers = peers.filter(p => vel(p).state === 'none');
 
   const medCadence = med(fullPeers.map(p => p.postsPerWeek));
   const medEngagement = med(fullPeers.map(p => p.engagementRate));
   const medRating = med(peers.map(p => p.googleRating));
-  const medVelocity = med(velocityPeers.map(p => p.reviewVelocityPerMonth));
+  const medVelocity = med(ratePeers.map(p => p.velocity.perMonth));
 
   // Theme gap: what the catchment posts about that we do not, and vice versa.
   const peerThemes = {};
@@ -237,18 +246,41 @@ function CompetitorInsights({ theme, peers }) {
           ? 'At or above the local median.'
           : `${peers.filter(p => p.googleRating > us.googleRating).length} nearby restaurants rate higher.`,
     },
+    // Never an em dash on this card. "We have never sampled this" and "we are
+    // mid-measurement" are different facts, and an em dash would read as zero
+    // for both (§11 trap 1). Each state says which one it is, in words.
     {
       icon: 'TrendingUp',
       label: 'Review velocity',
-      value: medVelocity === null ? '—' : `${us.reviewVelocityPerMonth} vs ${num(medVelocity)}`,
-      unit: 'new reviews/month',
-      population: `${peerWord(velocityPeers.length)} with a stored history`,
-      good: medVelocity !== null && us.reviewVelocityPerMonth >= medVelocity,
-      note: medVelocity === null
-        ? 'Velocity is the delta between two stored review counts. No tracked rival has two yet.'
-        : us.reviewVelocityPerMonth >= medVelocity
-          ? 'Keeping pace on volume.'
-          : 'Falling behind on volume. Google weighs count as well as score, so this compounds.',
+      value: ourVelocity.state === 'none'
+        ? 'No history yet'
+        : ourVelocity.state === 'measuring'
+          ? `+${ourVelocity.delta} so far`
+          : medVelocity === null
+            ? `${ourVelocity.perMonth}`
+            : `${ourVelocity.perMonth} vs ${num(medVelocity)}`,
+      unit: ourVelocity.state === 'none'
+        ? `needs two readings ${VELOCITY_MIN_WINDOW_DAYS}+ days apart`
+        : ourVelocity.state === 'measuring'
+          ? `over ${formatVelocityWindow(ourVelocity.windowDays)}`
+          : 'new reviews/month',
+      // The peer population is a fact about the rivals, not about us, so it is
+      // stated in every state — the card is prefixed "over …" and a state
+      // string here would read as nonsense.
+      population: `${peerWord(ratePeers.length)} with ${VELOCITY_MIN_WINDOW_DAYS}+ days of history` +
+        (measuringPeers.length ? `, ${measuringPeers.length} still measuring` : '') +
+        (noHistoryPeers.length ? `, ${noHistoryPeers.length} never sampled` : ''),
+      comparable: ourVelocity.state === 'rate' && medVelocity !== null,
+      good: ourVelocity.state === 'rate' && medVelocity !== null && ourVelocity.perMonth >= medVelocity,
+      note: ourVelocity.state === 'none'
+        ? 'Velocity is the delta between two stored review counts and we hold fewer than two. Sync twice, at least a week apart, and it appears — it cannot be estimated from one reading.'
+        : ourVelocity.state === 'measuring'
+          ? `Measuring: ${ourVelocity.delta} new ${ourVelocity.delta === 1 ? 'review' : 'reviews'} over ${formatVelocityWindow(ourVelocity.windowDays)}, across ${ourVelocity.samples} readings. Under ${VELOCITY_MIN_WINDOW_DAYS} days the window is too short to scale to a month without inventing the number.`
+          : medVelocity === null
+            ? `Your own rate is measured over ${formatVelocityWindow(ourVelocity.windowDays)}, but no tracked rival has ${VELOCITY_MIN_WINDOW_DAYS}+ days of stored counts yet, so there is nothing to compare it against.`
+            : ourVelocity.perMonth >= medVelocity
+              ? 'Keeping pace on volume.'
+              : 'Falling behind on volume. Google weighs count as well as score, so this compounds.',
     },
   ];
 
@@ -264,12 +296,17 @@ function CompetitorInsights({ theme, peers }) {
             <div className="mt-1.5 flex items-baseline gap-1.5">
               <span className="text-[19px] font-bold text-saf-text tabular-nums">{c.value}</span>
               {/* Direction is carried by an icon and by the note text, never by
-                  colour alone. */}
-              <Icon
-                name={c.good ? 'ArrowUp' : 'ArrowDown'}
-                size={13}
-                className={c.good ? 'text-emerald-700' : 'text-rose-700'}
-              />
+                  colour alone — and only where there is a comparison to have a
+                  direction. A card with nothing to compare against renders no
+                  arrow at all: a red ArrowDown beside "No history yet" asserts
+                  we are behind, which is a claim we have not measured. */}
+              {c.comparable !== false && (
+                <Icon
+                  name={c.good ? 'ArrowUp' : 'ArrowDown'}
+                  size={13}
+                  className={c.good ? 'text-emerald-700' : 'text-rose-700'}
+                />
+              )}
             </div>
             <div className="text-[10.5px] text-saf-muted mt-0.5">{c.unit}</div>
             <div className="text-[10.5px] text-saf-muted/80 mt-0.5">over {c.population}</div>
@@ -403,12 +440,26 @@ function SyncReport({ report, onDismiss }) {
             </button>
           </div>
 
-          {!report.state.velocityComparable && (
-            <p className="text-[11.5px] text-saf-muted mt-1.5 leading-relaxed">
-              Review velocity needs two pulls on different days to mean anything — it is the delta
-              between review counts, so the first sync can only establish a baseline.
-            </p>
-          )}
+          {(() => {
+            // Computed from what this sync actually stored, not from a run
+            // counter: an establishment tracked today holds one reading no
+            // matter how many times the button has been pressed before it, and
+            // a counter would claim otherwise.
+            const history = report.state.history || {};
+            const states = Object.keys(history).map(k => velocityFromSeries(history[k]).state);
+            const none = states.filter(v => v === 'none').length;
+            const measuring = states.filter(v => v === 'measuring').length;
+            if (!none && !measuring) return null;
+            const parts = [];
+            if (none) parts.push(`${none} now ${none === 1 ? 'holds' : 'hold'} a single reading, which is a baseline and not a velocity`);
+            if (measuring) parts.push(`${measuring} ${measuring === 1 ? 'has' : 'have'} a real delta measured over less than ${VELOCITY_MIN_WINDOW_DAYS} days, too short a window to scale to a month`);
+            return (
+              <p className="text-[11.5px] text-saf-muted mt-1.5 leading-relaxed">
+                Review velocity is the delta between two stored review counts: {parts.join('; and ')}.
+                It becomes a monthly rate once two readings sit {VELOCITY_MIN_WINDOW_DAYS}+ days apart.
+              </p>
+            );
+          })()}
 
           <div className="mt-3 rounded-lg border border-saf-border overflow-hidden">
             <div className="overflow-x-auto">

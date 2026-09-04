@@ -156,6 +156,28 @@ closing an item, not follow-up work.**
 14. **`page-reviews.jsx` subtitle indentation** — text sat flush at column 0
     inside its `<p>`. Cosmetic; re-indented. — closed in this commit
 
+15. **`reviewVelocityPerMonth` was a stored derivation the app did not
+    store.** Ten seeded literals — nine in `LISTENING_COMPETITORS`, one in
+    `SAF_SELF_STATS` — stated a rate of change that no single API call can
+    return and that nothing in the repo computed: `syncCompetitors()` never
+    derived it from review counts, and the `velocityComparable` flag on
+    `saf-sync-v1` recorded only that a second sync had *happened*, not what it
+    read. So a figure the product presented as measured was written by hand,
+    which is the exact failure the honest-data thesis exists to prevent, and
+    the seeded number could never move no matter how many times a viewer
+    synced. Reported while closing item 13's neighbouring work and fixed here:
+    review counts are now stored per establishment in `saf-sync-v2`, and
+    `reviewVelocity()` is the single derivation path for every consumer.
+    Two consequences worth recording, because both were live defects rather
+    than tidy-ups:
+    · Nothing persisted the in-memory review-count bump, so a naive history
+      store would have gone **negative** after a reload. `hydrateReviewCounts()`
+      replays stored counts at load (`CLAUDE.md` § 6).
+    · A ratings-only rival was given `reviewVelocityPerMonth: null` on the
+      reasoning that its data was unreadable. That reasoning was wrong — the
+      tier is about Instagram, and velocity comes from Places — so those rows
+      now carry a real velocity. — closed in this commit
+
 #### Open
 
 None.

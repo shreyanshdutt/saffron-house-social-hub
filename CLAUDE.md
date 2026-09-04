@@ -179,13 +179,32 @@ in `try/catch` because private-mode browsers throw on access; keep that.
 | `saf-role` | current role id | `app.jsx` |
 | `saf-theme` | `'light'` / `'dark'` | `app.jsx` + the pre-paint block in `index.html` |
 | `saf-tracked-v1` | tracked establishment ids | `trackedSave()` |
-| `saf-sync-v1` | last sync state | `syncStateSave()` |
+| `saf-sync-v2` | last sync state **+ review-count history** | `syncStateSave()` |
+| ~~`saf-sync-v1`~~ | superseded — **not read, migrated or deleted** | — |
 | `saf-listening-v1` | dismissed / assignments / read / notes / tags / filter | `listeningSave()` |
 | `saf-recs-v1` | recommendation id → `accepted` / `done` / `dismissed` | `recsSave()` |
 
 Changing the SHAPE of a persisted value requires a new `-v2` key, not a
 silent reinterpretation of the old one — a returning viewer has the old shape
 in their browser and will hit whatever the new code assumes.
+
+`saf-sync-v1` is the worked example. It held
+`{ lastSyncedAt, runs, velocityComparable }`; v2 holds
+`{ lastSyncedAt, runs, history }`, where `history` maps an establishment id —
+or the reserved key `saf-self` — to review-count readings ordered oldest →
+newest, capped at `REVIEW_HISTORY_CAP` with the oldest dropped. v1 is **left in
+place and never read**: its `runs` counter records how many pulls happened but
+nothing about what any of them returned, so there is no velocity recoverable
+from it and a migration would have to invent one.
+
+**Stored counts are the source of truth for a review count.** `syncCompetitors()`
+mutates `e.google.reviews` in memory only, so a reload re-seeds it from
+`ESTABLISHMENTS` while the stored history keeps the higher reading — and the
+next sample would land *below* the one before it, producing a negative velocity
+out of nothing but a page refresh. `hydrateReviewCounts()` replays the newest
+stored reading into `ESTABLISHMENTS`, `LISTENING_COMPETITORS` and
+`SAF_SELF_STATS` at load to close that. It runs with the other hydrators,
+after `SAF_SELF_STATS` is declared, because it writes to all three.
 
 ## 7. Roles and permissions
 

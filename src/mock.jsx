@@ -919,7 +919,7 @@ const LISTENING_COMPETITORS = [
     followers: 41200,       followersChange7dPct: 3.8,
     postsPerWeek: 11,       avgInteractions: 3584,
     engagementRate: 0.087,  engagementChange7dPct: 56,
-    googleRating: 4.5,      googleReviews: 3120,  reviewVelocityPerMonth: 148,
+    googleRating: 4.5,      googleReviews: 3120,
     // Caption themes from Business Discovery media — public text, classified
     // by you. Not a platform field.
     themes: ['offers', 'family dining', 'thali'],
@@ -933,7 +933,7 @@ const LISTENING_COMPETITORS = [
     followers: 33800,       followersChange7dPct: 2.1,
     postsPerWeek: 9,        avgInteractions: 1386,
     engagementRate: 0.041,  engagementChange7dPct: 9,
-    googleRating: 4.2,      googleReviews: 2240,  reviewVelocityPerMonth: 96,
+    googleRating: 4.2,      googleReviews: 2240,
     themes: ['bar', 'late night', 'events'],
     postingPeak: '9–11pm',
     sparkEngagement: [0.037, 0.038, 0.039, 0.040, 0.040, 0.041, 0.041],
@@ -945,7 +945,7 @@ const LISTENING_COMPETITORS = [
     followers: 19600,       postsPerWeek: 8,   followersChange7dPct: 4.2,
     avgInteractions: 1196,
     engagementRate: 0.061,  engagementChange7dPct: 4,
-    googleRating: 4.4,      googleReviews: 1180,  reviewVelocityPerMonth: 74,
+    googleRating: 4.4,      googleReviews: 1180,
     themes: ['chef stories', 'north indian', 'kebabs'],
     postingPeak: '1–3pm',
     sparkEngagement: [0.058, 0.060, 0.059, 0.061, 0.060, 0.061, 0.061],
@@ -957,7 +957,7 @@ const LISTENING_COMPETITORS = [
     followers: 11400,       followersChange7dPct: -0.4,
     postsPerWeek: 3,        avgInteractions: 217,
     engagementRate: 0.019,  engagementChange7dPct: -12,
-    googleRating: 3.8,      googleReviews: 640,   reviewVelocityPerMonth: 21,
+    googleRating: 3.8,      googleReviews: 640,
     themes: ['offers', 'delivery'],
     postingPeak: '12–2pm',
     sparkEngagement: [0.024, 0.022, 0.021, 0.020, 0.020, 0.019, 0.019],
@@ -969,7 +969,7 @@ const LISTENING_COMPETITORS = [
     followers: 8900,        followersChange7dPct: 6.1,
     postsPerWeek: 6,        avgInteractions: 463,
     engagementRate: 0.052,  engagementChange7dPct: 18,
-    googleRating: 4.3,      googleReviews: 810,   reviewVelocityPerMonth: 58,
+    googleRating: 4.3,      googleReviews: 810,
     themes: ['biryani', 'value', 'family dining'],
     postingPeak: '7–9pm',
     sparkEngagement: [0.043, 0.045, 0.047, 0.048, 0.050, 0.051, 0.052],
@@ -981,7 +981,7 @@ const LISTENING_COMPETITORS = [
     followers: 16200,       followersChange7dPct: 0.0,
     postsPerWeek: 4,        avgInteractions: 551,
     engagementRate: 0.034,  engagementChange7dPct: -1,
-    googleRating: 4.0,      googleReviews: 1420,  reviewVelocityPerMonth: 44,
+    googleRating: 4.0,      googleReviews: 1420,
     themes: ['street food', 'offers'],
     postingPeak: '6–8pm',
     sparkEngagement: [0.034, 0.035, 0.034, 0.033, 0.034, 0.034, 0.034],
@@ -997,7 +997,7 @@ const LISTENING_COMPETITORS = [
     avatarColor: '#0D9488', synced: false,
     followers: 14800,       followersChange7dPct: 1.8,
     avgInteractions: 533,
-    googleRating: 4.1,      googleReviews: 960,   reviewVelocityPerMonth: 51,
+    googleRating: 4.1,      googleReviews: 960,
     themes: ['chinese', 'offers', 'late night'],
     postingPeak: '8–10pm',
     sparkEngagement: [0.031, 0.032, 0.033, 0.033, 0.034, 0.035, 0.036],
@@ -1008,7 +1008,7 @@ const LISTENING_COMPETITORS = [
     avatarColor: '#A16207', synced: false,
     followers: 9400,        followersChange7dPct: 5.2,
     avgInteractions: 677,
-    googleRating: 4.6,      googleReviews: 540,   reviewVelocityPerMonth: 38,
+    googleRating: 4.6,      googleReviews: 540,
     themes: ['bakes', 'coffee', 'chef stories'],
     postingPeak: '9–11am',
     sparkEngagement: [0.058, 0.061, 0.063, 0.066, 0.068, 0.070, 0.072],
@@ -1019,7 +1019,7 @@ const LISTENING_COMPETITORS = [
     avatarColor: '#9333EA', synced: false,
     followers: 12100,       followersChange7dPct: 0.6,
     avgInteractions: 375,
-    googleRating: 4.0,      googleReviews: 1120,  reviewVelocityPerMonth: 47,
+    googleRating: 4.0,      googleReviews: 1120,
     themes: ['kebabs', 'offers', 'family dining'],
     postingPeak: '7–9pm',
     sparkEngagement: [0.028, 0.028, 0.029, 0.029, 0.030, 0.030, 0.031],
@@ -1402,6 +1402,117 @@ function establishmentAvailability(e) {
   return { tier, reasons, hasGoogle, igReadable, stale };
 }
 
+// --- Review-count history ----------------------------------------------------
+// Review velocity is DERIVED, never seeded. It is the delta between two stored
+// Places review counts divided by the days between them, so nothing in this
+// file may state a velocity — only the counts it is computed from. The ten
+// `reviewVelocityPerMonth` literals that used to sit in LISTENING_COMPETITORS
+// and SAF_SELF_STATS were exactly the invention this product exists to avoid:
+// a stored derivation the app did not store.
+//
+// The seed below is what a hub running for a quarter would already hold — four
+// Places Details readings per default-tracked rival, spanning 90 days and
+// ending on the count `ESTABLISHMENTS` carries today. est-7/8/9 and est-10
+// upward deliberately have NONE: they were never tracked, so no call was ever
+// made for them, and their velocity must read "no history yet" rather than a
+// number (§11 trap 4).
+//
+// Offsets are relative (`daysAgo`) and hydrated to ISO at load like every
+// other seeded timestamp here (§10), so the window stays 90 days wide however
+// long this file sits unopened.
+const REVIEW_COUNT_HISTORY = {
+  'est-1':    [{ daysAgo: 90, reviews: 2676 }, { daysAgo: 60, reviews: 2810 }, { daysAgo: 30, reviews: 2965 }, { daysAgo: 0, reviews: 3120 }],
+  'est-2':    [{ daysAgo: 90, reviews: 1952 }, { daysAgo: 60, reviews: 2046 }, { daysAgo: 30, reviews: 2144 }, { daysAgo: 0, reviews: 2240 }],
+  'est-3':    [{ daysAgo: 90, reviews:  958 }, { daysAgo: 60, reviews: 1030 }, { daysAgo: 30, reviews: 1104 }, { daysAgo: 0, reviews: 1180 }],
+  'est-4':    [{ daysAgo: 90, reviews:  577 }, { daysAgo: 60, reviews:  597 }, { daysAgo: 30, reviews:  618 }, { daysAgo: 0, reviews:  640 }],
+  'est-5':    [{ daysAgo: 90, reviews:  636 }, { daysAgo: 60, reviews:  692 }, { daysAgo: 30, reviews:  750 }, { daysAgo: 0, reviews:  810 }],
+  'est-6':    [{ daysAgo: 90, reviews: 1288 }, { daysAgo: 60, reviews: 1330 }, { daysAgo: 30, reviews: 1374 }, { daysAgo: 0, reviews: 1420 }],
+  // Our own counts come from OUR Business Profile rather than a Places lookup
+  // of a rival, but they are the same kind of reading and feed the same
+  // comparison, so they share the store under a reserved key.
+  'saf-self': [{ daysAgo: 90, reviews: 1098 }, { daysAgo: 60, reviews: 1158 }, { daysAgo: 30, reviews: 1220 }, { daysAgo: 0, reviews: 1284 }],
+};
+
+// Seed hydrated to absolute timestamps once, at load.
+const SEEDED_REVIEW_SERIES = {};
+(function hydrateReviewHistory() {
+  const now = Date.now();
+  for (const key of Object.keys(REVIEW_COUNT_HISTORY)) {
+    SEEDED_REVIEW_SERIES[key] = REVIEW_COUNT_HISTORY[key].map(sample => ({
+      at: new Date(now - sample.daysAgo * 86_400_000).toISOString(),
+      reviews: sample.reviews,
+    }));
+  }
+})();
+
+// At most this many samples per key; the oldest are dropped. A quarter of
+// weekly syncs fits comfortably and the blob cannot grow without bound.
+const REVIEW_HISTORY_CAP = 24;
+
+// Below this the window is too short to scale to a month. Two readings four
+// minutes apart give a real delta and a meaningless rate; multiplying it out
+// would manufacture ten thousand a month from one extra review.
+const VELOCITY_MIN_WINDOW_DAYS = 7;
+
+// The stored series for a key, or the seed if sync has never written one.
+// Samples are ordered oldest → newest.
+function reviewHistoryFor(key, st) {
+  const state = st || syncStateLoad();
+  const stored = state.history && state.history[key];
+  if (Array.isArray(stored) && stored.length) return stored;
+  return SEEDED_REVIEW_SERIES[key] || [];
+}
+
+// The ONE derivation path. Three states, and they are not interchangeable:
+//   none      — under 2 samples. We have never measured a delta at all.
+//   measuring — 2+ samples less than VELOCITY_MIN_WINDOW_DAYS apart. The delta
+//               is real and is reported; `perMonth` stays null.
+//   rate      — 7+ days apart. `perMonth` is the delta scaled to 30 days.
+// "No history" and "measuring" are different facts, and the UI must render
+// neither as an em dash, which reads as zero (§11 trap 1).
+function velocityFromSeries(series) {
+  const samples = Array.isArray(series) ? series.length : 0;
+  if (samples < 2) {
+    return { state: 'none', samples, windowDays: null, delta: null, perMonth: null };
+  }
+  const first = series[0];
+  const last = series[samples - 1];
+  const windowDays = (Date.parse(last.at) - Date.parse(first.at)) / 86_400_000;
+  const delta = last.reviews - first.reviews;
+  // Negated comparison so a NaN window falls to `measuring` rather than
+  // producing a NaN rate that fmt() would render as an em dash.
+  if (!(windowDays >= VELOCITY_MIN_WINDOW_DAYS)) {
+    return { state: 'measuring', samples, windowDays, delta, perMonth: null };
+  }
+  return {
+    state: 'rate', samples, windowDays, delta,
+    perMonth: Math.round((delta / windowDays) * 30),
+  };
+}
+
+function reviewVelocity(key, st) {
+  return velocityFromSeries(reviewHistoryFor(key, st));
+}
+
+// A window is minutes on the second sync of a session and months on a seeded
+// one; one formatter so the sync report and the insight card cannot disagree.
+function formatVelocityWindow(days) {
+  if (!Number.isFinite(days)) return 'an unknown span';
+  const mins = days * 1440;
+  if (mins < 90) return `${Math.max(1, Math.round(mins))} min`;
+  if (days < 2) return `${Math.round(days * 24)} hr`;
+  return `${Math.round(days)} days`;
+}
+
+// The "what this pull bought us" line in the sync report.
+function describeVelocityStep(v) {
+  if (v.state === 'none') return 'first sample recorded — velocity needs a second';
+  const moved = `+${v.delta} over ${formatVelocityWindow(v.windowDays)}`;
+  return v.state === 'rate'
+    ? `${moved} → ${v.perMonth}/month`
+    : `${moved} — under ${VELOCITY_MIN_WINDOW_DAYS} days, too short for a monthly rate`;
+}
+
 // Which establishments are currently tracked as competitors. Persisted, and
 // read by both the Competitors screen and the recommendation engine so one
 // choice drives both.
@@ -1452,10 +1563,12 @@ function trackedPendingEstablishments() {
 // dash, which reads as "empty" rather than "cannot be read" (CLAUDE.md §11
 // trap 1), and the difference is the entire point of this row.
 //
-// `reviewVelocityPerMonth` is null, not a number. Velocity is the delta
-// between two stored review counts and we hold one; `syncCompetitors()`
-// already models that with `velocityComparable`. Seeding a plausible figure
-// here would be inventing the thing the product exists to avoid.
+// Velocity is NOT absent on this tier. It is the delta between two stored
+// Places review counts, and Places Details is exactly the call we can make for
+// a ratings-only establishment — the tier is defined by Instagram being
+// unreadable, which has nothing to do with review counts. So the row carries
+// the same derived `velocity` object as a full-tier one, in whichever of the
+// three states its own history puts it.
 function ratingsOnlyCompetitor(e) {
   const avail = establishmentAvailability(e);
   // Reuse the reason establishmentAvailability() already produced rather than
@@ -1468,7 +1581,7 @@ function ratingsOnlyCompetitor(e) {
     handle: e.instagram ? e.instagram.handle : null,
     googleRating: e.google.rating,
     googleReviews: e.google.reviews,
-    reviewVelocityPerMonth: null,
+    velocity: reviewVelocity(e.id),
     unreadableReason: igReason ? igReason.text : 'Instagram cannot be read',
   };
 }
@@ -1481,8 +1594,17 @@ function trackedCompetitors() {
   const ids = new Set(trackedLoad());
   const tracked = ESTABLISHMENTS.filter(e => ids.has(e.id));
 
-  const wanted = new Set(tracked.filter(e => e.competitorId).map(e => e.competitorId));
-  const full = LISTENING_COMPETITORS.filter(c => wanted.has(c.id) && c.synced);
+  // History is keyed by establishment id, so a full-tier row is resolved back
+  // through the establishment that owns its competitor record rather than by
+  // its cmp-* id. Carry the whole state object — a consumer that only took
+  // `perMonth` could not tell "no history" from "measuring".
+  const estByCompetitorId = new Map(
+    tracked.filter(e => e.competitorId).map(e => [e.competitorId, e])
+  );
+  const wanted = new Set(estByCompetitorId.keys());
+  const full = LISTENING_COMPETITORS
+    .filter(c => wanted.has(c.id) && c.synced)
+    .map(c => ({ ...c, velocity: reviewVelocity(estByCompetitorId.get(c.id).id) }));
 
   const ratings = tracked
     .filter(e => establishmentAvailability(e).tier === 'ratings')
@@ -1508,18 +1630,30 @@ function trackedCompetitors() {
 //
 // Review velocity is the one thing a single sync cannot produce: it is the
 // delta between this pull's review count and the last one, so it needs at
-// least two syncs on different days. Rows that have never been compared
-// report it as unavailable rather than guessing.
-const SYNC_KEY = 'saf-sync-v1';
+// least two syncs, far enough apart to scale. Every pull appends a sample
+// here; `reviewVelocity()` is the only thing that reads them back.
+//
+// v2 because the shape gained `history` — the old blob has only
+// `{ lastSyncedAt, runs, velocityComparable }` and a returning viewer still
+// has it in their browser (§6). `saf-sync-v1` is deliberately NOT read,
+// migrated or deleted: its `runs` counter says how many pulls happened but not
+// what any of them returned, so there is nothing in it a velocity can be
+// derived from. It is left behind untouched.
+const SYNC_KEY = 'saf-sync-v2';
+const SYNC_STATE_EMPTY = { lastSyncedAt: null, runs: 0, history: {} };
 
 function syncStateLoad() {
   try {
     const raw = localStorage.getItem(SYNC_KEY);
-    if (!raw) return { lastSyncedAt: null, runs: 0 };
+    if (!raw) return { ...SYNC_STATE_EMPTY };
     const parsed = JSON.parse(raw);
-    return parsed && typeof parsed === 'object' ? parsed : { lastSyncedAt: null, runs: 0 };
+    if (!parsed || typeof parsed !== 'object') return { ...SYNC_STATE_EMPTY };
+    // A blob written before `history` existed, or one hand-edited, must not
+    // make every caller null-check it.
+    if (!parsed.history || typeof parsed.history !== 'object') parsed.history = {};
+    return parsed;
   } catch (e) {
-    return { lastSyncedAt: null, runs: 0 };
+    return { ...SYNC_STATE_EMPTY };
   }
 }
 function syncStateSave(st) {
@@ -1534,6 +1668,11 @@ const SYNC_VERSION = { value: 0 };
 // data; the UI paces it so a person can read what happened.
 function syncCompetitors() {
   const now = Date.now();
+  const nowISO = new Date(now).toISOString();
+  // Loaded up front rather than at the end, because each Places pull appends
+  // its reading to the history carried on this object before it is saved.
+  const prev = syncStateLoad();
+  const history = { ...prev.history };
   const trackedIds = new Set(trackedLoad());
   const targets = ESTABLISHMENTS.filter(e => trackedIds.has(e.id));
   const steps = [];
@@ -1552,9 +1691,16 @@ function syncCompetitors() {
       const gained = 1 + ((now / 60000 | 0) + e.id.length) % 3;
       e.google.reviews += gained;
       if (comp) comp.googleReviews = e.google.reviews;
+      // The reading is what persists. `e.google.reviews` is in-memory only and
+      // a reload re-seeds it, so without this the next delta would be measured
+      // against a count that had silently snapped backwards.
+      const series = [...reviewHistoryFor(e.id, { history }), { at: nowISO, reviews: e.google.reviews }]
+        .slice(-REVIEW_HISTORY_CAP);
+      history[e.id] = series;
+      const vel = velocityFromSeries(series);
       steps.push({
         establishment: e.name, api: 'Places Details', ok: true,
-        detail: `${e.google.rating.toFixed(1)}★, ${e.google.reviews.toLocaleString('en-IN')} reviews (+${gained})`,
+        detail: `${e.google.rating.toFixed(1)}★, ${e.google.reviews.toLocaleString('en-IN')} reviews (+${gained}) · ${describeVelocityStep(vel)}`,
       });
     } else {
       steps.push({
@@ -1598,12 +1744,16 @@ function syncCompetitors() {
     }
   }
 
-  const prev = syncStateLoad();
+  // Our own count is a Business Profile read, not part of the tracked loop,
+  // but it is the other half of every comparison and has to advance with them.
+  const selfSeries = [...reviewHistoryFor('saf-self', { history }), { at: nowISO, reviews: SAF_SELF_STATS.googleReviews }]
+    .slice(-REVIEW_HISTORY_CAP);
+  history['saf-self'] = selfSeries;
+
   const state = {
-    lastSyncedAt: new Date(now).toISOString(),
+    lastSyncedAt: nowISO,
     runs: (prev.runs || 0) + 1,
-    // Velocity needs two pulls on different days to mean anything.
-    velocityComparable: (prev.runs || 0) >= 1,
+    history,
   };
   syncStateSave(state);
   SYNC_VERSION.value += 1;
@@ -1677,7 +1827,7 @@ const SAF_SELF_STATS = {
   followers: 28400,       followersChange7dPct: 1.4,
   postsPerWeek: 5,        avgInteractions: 1739,
   engagementRate: 0.061,  engagementChange7dPct: 3.2,
-  googleRating: 4.3,      googleReviews: 1284,  reviewVelocityPerMonth: 62,
+  googleRating: 4.3,      googleReviews: 1284,
   themes: ['chef stories', 'monsoon menu', 'team stories'],
   postingPeak: '6–8pm',
   sparkEngagement: [0.055, 0.056, 0.055, 0.058, 0.059, 0.060, 0.061],
@@ -1729,6 +1879,34 @@ function relativeTimeToISO(rel, now) {
            :                 n * 86_400_000;
   return new Date(now - ms).toISOString();
 }
+
+// The reset trap. `syncCompetitors()` bumps `e.google.reviews` in memory only,
+// so a reload re-seeds the count from ESTABLISHMENTS while the stored history
+// keeps the higher reading — and the very next sample would be BELOW the one
+// before it, producing a negative velocity out of nothing but a page refresh.
+// The stored history is the source of truth for a count, so replay it here.
+//
+// This sits with the other hydrators rather than beside the history code
+// because it writes to ESTABLISHMENTS, LISTENING_COMPETITORS *and*
+// SAF_SELF_STATS, and SAF_SELF_STATS is not declared until above this line —
+// running it any earlier is a ReferenceError at module evaluation.
+(function hydrateReviewCounts() {
+  const byCompetitorId = {};
+  for (const e of ESTABLISHMENTS) {
+    if (!e.google) continue;                       // no listing, nothing to replay
+    const series = reviewHistoryFor(e.id);
+    if (!series.length) continue;
+    const newest = series[series.length - 1].reviews;
+    if (!Number.isFinite(newest)) continue;
+    e.google.reviews = newest;
+    if (e.competitorId) byCompetitorId[e.competitorId] = newest;
+  }
+  for (const c of LISTENING_COMPETITORS) {
+    if (byCompetitorId[c.id] !== undefined) c.googleReviews = byCompetitorId[c.id];
+  }
+  const self = reviewHistoryFor('saf-self');
+  if (self.length) SAF_SELF_STATS.googleReviews = self[self.length - 1].reviews;
+})();
 
 (function hydrateSignalTimestamps() {
   const now = Date.now();
