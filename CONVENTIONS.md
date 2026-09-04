@@ -408,9 +408,50 @@ people's credentials, and data that must outlive one person's browser.
   rows came from which source.
 - The competitor review-count history built in `3eb4344` predates this
   section. Whether it may be retained beyond the Places window is an OWNER
-  decision, not an engineering one. Until the owner records an answer here,
-  build the store so the retention window is a single constant that can be
-  changed without touching the derivation.
+  decision, not an engineering one — see the gate below.
+
+### Demo data until UAT, architecture as if live (owner decision 2026-09-05)
+
+Until UAT, every establishment, rating, review count and follower figure in
+this product is **fabricated**, carries `is_sample = 1`, and is therefore not
+Google Maps Content. §14.3 does not apply to any of it, and the purge exempts
+it by design.
+
+That is a statement about the DATA, not a licence for the architecture. Build
+every layer as though the data were real:
+
+- The retention constant, the boot-time refusal of a window above the §14.3
+  ceiling, and the purge routine are all live and enforced. They are
+  architecture, not decoration, and must not be stubbed because nothing
+  currently trips them.
+- `place_id` remains the only permanently-stored Places field. Sample rows
+  carry a `sample:` prefix so a real 27-character Google id can never be
+  confused with one of ours.
+- Credentials, rate-limit accounting and call reporting are built for real
+  volumes from the start. A job states its call count before it runs.
+
+**GATE — before the first real Google Places call is made.** No commit may
+issue a live Places request until the owner has recorded an answer here to
+both of:
+
+1. **Volatile Places columns** (name, rating, `user_ratings_total`, address,
+   business status). §14.3 grants a 30-day window to latitude and longitude
+   *specifically*; the strict reading gives these columns no window at all.
+   Either they get a zero window and the Establishments screen fetches on
+   demand, or the owner knowingly accepts the 30-day treatment. The schema
+   currently applies the 30-day window, which is the more permissive reading.
+2. **Competitor review-count history.** Review velocity needs 90+ days of
+   `user_ratings_total` readings. Under the strict reading that history is not
+   lawfully derivable from Places at all, and the honest alternatives are to
+   derive velocity only for our own Business Profile listing, or to obtain
+   competitor data under different terms. `PURGE_PLACES_OBSERVATIONS` is
+   currently `false`, which preserves the status quo; flipping it to `true`
+   deletes competitor history past the window and degrades every competitor
+   velocity to `none` — which the UI already renders honestly.
+
+This is a legal and commercial question, not an engineering one. Until it is
+answered here, work that touches live Google data is blocked; work that does
+not is unaffected.
 - Meta's terms and rate limits apply the same way. Business Discovery reads
   public Business and Creator accounts only; scraping Instagram to fill the
   gap is out of the question regardless of how easy it looks.
