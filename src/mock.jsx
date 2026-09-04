@@ -1376,7 +1376,10 @@ async function syncCompetitors() {
         steps.push(ok ? {
           establishment: e.name, api: 'Business Discovery', ok: true,
           detail: wasSynced
-            ? `${comp.recentPosts.length} posts refreshed · ${comp.postsPerWeek}/week · ${fmtCompact(comp.followers)} followers (+${comp.followers - followersBefore})`
+            ? `${comp.recentPosts.length} posts refreshed · ${comp.postsPerWeek}/week · ${
+                Number.isFinite(comp.followers)
+                  ? `${fmtCompact(comp.followers)} followers (+${comp.followers - followersBefore})`
+                  : 'follower count not readable'}`
             : `First pull — ${comp.recentPosts.length} posts, ${(comp.followers / 1000).toFixed(1)}k followers`,
           isNew: !wasSynced,
         } : {

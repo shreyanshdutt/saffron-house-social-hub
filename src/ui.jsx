@@ -242,20 +242,61 @@ function useCountUp(target, duration = 1200) {
   return value;
 }
 
-// Format number with K/M
+// How absence renders, everywhere. NOT an em dash: an em dash reads as
+// "empty" rather than "cannot be obtained", and that ambiguity is exactly what
+// let a NaN competitor panel survive a whole commit (CLAUDE.md §11 trap 1).
+// This is the same wording the Competitors table already uses for a channel it
+// cannot read, so one absence reads the same wherever it appears.
+const NOT_READABLE = 'Not readable';
+
 // Compact number formatting: 1_234 -> "1.2k", 1_000_000 -> "1m".
 // Sibling of fmt(); use fmtCompact for at-a-glance KPI / metric chips
 // where exact precision matters less than scale, fmt() for tables and
 // places where you want full thousands separators.
+//
+// THE GUARD COMES FIRST, AND IT IS THE FLOOR. This function used to end with
+// `return String(n)`, so `fmtCompact(null)` rendered the literal word "null"
+// on screen and `fmtCompact(undefined)` rendered "undefined". A formatter must
+// never be able to emit a JavaScript value's default string form — whatever a
+// call site does or forgets to do, what comes out of here is either a number
+// or a stated absence.
+//
+// Returns a STRING, never JSX: several call sites interpolate it into template
+// literals (the sync report in mock.jsx, the Google chip in
+// page-establishments.jsx) where an element would render as "[object Object]"
+// — which is the very failure this guard exists to prevent.
 function fmtCompact(n) {
-  const abs = Math.abs(n);
-  if (abs >= 1_000_000) return (n / 1_000_000).toFixed(1).replace(/\.0$/, '') + 'm';
-  if (abs >= 1_000)     return (n / 1_000).toFixed(1).replace(/\.0$/, '') + 'k';
-  return String(n);
+  if (n === null || n === undefined || typeof n === 'boolean') return NOT_READABLE;
+  // Numeric strings are coerced, because that is what the old implementation
+  // did by accident and a present value must keep rendering exactly as it did.
+  const v = typeof n === 'number' ? n : (String(n).trim() === '' ? NaN : Number(n));
+  if (!Number.isFinite(v)) return NOT_READABLE;
+  const abs = Math.abs(v);
+  if (abs >= 1_000_000) return (v / 1_000_000).toFixed(1).replace(/\.0$/, '') + 'm';
+  if (abs >= 1_000)     return (v / 1_000).toFixed(1).replace(/\.0$/, '') + 'k';
+  return String(v);
+}
+
+// True when fmtCompact would report absence. Call sites that append a unit
+// noun ("… reviews", "… avg") ask this FIRST, because dropping the marker into
+// the middle of a sentence produces "Not readable reviews" — broken English,
+// which reads as a bug rather than as a stated absence. The whole phrase has
+// to become the marker, not just the number inside it.
+function isAbsent(n) {
+  return fmtCompact(n) === NOT_READABLE;
 }
 
 function fmt(n, opts = {}) {
-  if (n == null || isNaN(n)) return '—';
+  // `isNaN(Infinity)` is FALSE, so the original guard let Infinity through and
+  // produced "InfinityM" — the same class of defect as fmtCompact's "null".
+  // Number.isFinite() rejects null, undefined, NaN and both infinities in one
+  // test. The em dash is kept here rather than switched to NOT_READABLE
+  // because this function's callers are tables and inline figures whose
+  // existing rendering must not change (§4); fmtCompact is the one whose
+  // absence path was actually broken.
+  const asNum = typeof n === 'number' ? n : (n === null || n === undefined || String(n).trim() === '' ? NaN : Number(n));
+  if (!Number.isFinite(asNum)) return '—';
+  n = asNum;
   const abs = Math.abs(n);
   if (opts.compact !== false && abs >= 1_000_000) return (n / 1_000_000).toFixed(abs >= 10_000_000 ? 0 : 1) + 'M';
   if (opts.compact !== false && abs >= 1_000) return (n / 1_000).toFixed(abs >= 10_000 ? 0 : 1) + 'K';
@@ -493,4 +534,4 @@ function RatingBadge({ value, size = 'md', className = '' }) {
   );
 }
 
-Object.assign(window, { Icon, Button, Card, Pill, Modal, Drawer, ToastProvider, useToast, useCountUp, fmt, fmtCompact, AnimatedNumber, Tabs, Skeleton, PlatformBadge, fmtTime, relTime, MockImage, Switch, Tooltip, Sparkline, StarRow, RatingBadge });
+Object.assign(window, { Icon, Button, Card, Pill, Modal, Drawer, ToastProvider, useToast, useCountUp, fmt, fmtCompact, isAbsent, NOT_READABLE, AnimatedNumber, Tabs, Skeleton, PlatformBadge, fmtTime, relTime, MockImage, Switch, Tooltip, Sparkline, StarRow, RatingBadge });

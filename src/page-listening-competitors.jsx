@@ -857,7 +857,9 @@ function CompetitorRow({ c, theme, t, inSelfCard, expanded, onToggle }) {
             {c.synced ? (
               <>
                 <div className="text-[13px] font-medium text-saf-text tabular-nums">{c.postsPerWeek}</div>
-                <div className="text-[11px] text-saf-muted tabular-nums">{fmtCompact(c.avgInteractions)} avg</div>
+                <div className="text-[11px] text-saf-muted tabular-nums">
+                  {isAbsent(c.avgInteractions) ? 'Interactions not readable' : `${fmtCompact(c.avgInteractions)} avg`}
+                </div>
               </>
             ) : <NotPulled />}
           </>
@@ -867,7 +869,11 @@ function CompetitorRow({ c, theme, t, inSelfCard, expanded, onToggle }) {
       {/* Google rating — Places API, public */}
       <td className="text-end px-3 py-3 hidden lg:table-cell" dir="ltr">
         <div className="text-[13px] font-semibold text-saf-text tabular-nums">{c.googleRating.toFixed(1)}</div>
-        <div className="text-[11px] text-saf-muted tabular-nums">{fmtCompact(c.googleReviews)} reviews</div>
+        {/* Server-derived, so genuinely nullable: an establishment with no
+            Google listing has no review count at all. */}
+        <div className="text-[11px] text-saf-muted tabular-nums">
+          {isAbsent(c.googleReviews) ? 'Review count not readable' : `${fmtCompact(c.googleReviews)} reviews`}
+        </div>
       </td>
 
       {/* Trend sparkline. Self-row uses the brand colour; peer rows use
@@ -947,10 +953,14 @@ function CompetitorFeed({ c, theme }) {
           <span className="font-semibold text-saf-text">{Math.round(c.offerShare * 100)}%</span> are offers or discounts
         </div>
         <div className="text-[12px] text-saf-muted">
-          Median <span className="font-semibold text-saf-text">{fmtCompact(c.medianInteractions)}</span> interactions
+          {isAbsent(c.medianInteractions)
+            ? 'Median interactions not readable'
+            : <>Median <span className="font-semibold text-saf-text">{fmtCompact(c.medianInteractions)}</span> interactions</>}
         </div>
         <div className="text-[12px] text-saf-muted">
-          Best <span className="font-semibold text-saf-text">{fmtCompact(best.interactions)}</span> ({best.theme})
+          {isAbsent(best.interactions)
+            ? 'Best post interactions not readable'
+            : <>Best <span className="font-semibold text-saf-text">{fmtCompact(best.interactions)}</span> ({best.theme})</>}
         </div>
         <ExternalRef
           href={`https://instagram.com/${c.handle.replace('@', '')}`}

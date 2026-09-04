@@ -461,11 +461,18 @@ function SignalCard({ signal, theme, isDismissed, assignedTo, notes, tags, onDis
               <div className="text-[14px] font-medium text-saf-text mb-0.5">{signal.title}</div>
               <div className="text-[13px] text-saf-muted">{signal.body}</div>
               <div className="mt-2 flex items-center gap-4 flex-wrap text-[12px] text-saf-muted">
-                <span><strong className="text-saf-text font-medium">{fmtCompact(signal.metrics.mentions)}</strong> mentions</span>
+                {/* The unit noun is inside the conditional, not after it:
+                     "Not readable mentions" reads as broken English rather
+                     than as a stated absence. */}
+                <span>{isAbsent(signal.metrics.mentions)
+                  ? <span className="text-saf-muted">Mentions not readable</span>
+                  : <><strong className="text-saf-text font-medium">{fmtCompact(signal.metrics.mentions)}</strong> mentions</>}</span>
                 <span className={changeUp ? 'text-emerald-700' : 'text-rose-700'}>
                   {changeUp ? '+' : ''}{signal.metrics.changePct}%
                 </span>
-                <span>Reach <strong className="text-saf-text font-medium">{fmtCompact(signal.metrics.reach)}</strong></span>
+                <span>{isAbsent(signal.metrics.reach)
+                  ? 'Reach not readable'
+                  : <>Reach <strong className="text-saf-text font-medium">{fmtCompact(signal.metrics.reach)}</strong></>}</span>
                 <span>Sentiment <strong className="text-saf-text font-medium">{signal.metrics.sentiment >= 0 ? '+' : ''}{signal.metrics.sentiment.toFixed(2)}</strong></span>
               </div>
               <SignalChipRow
@@ -659,9 +666,9 @@ function CrisisClusterCard({ signal, theme, isDismissed, assignedTo, notes, tags
                 </ul>
               )}
               <div className="flex items-center gap-4 flex-wrap text-[12px] text-rose-700 font-medium">
-                <span>{fmtCompact(signal.metrics.mentions)} mentions</span>
+                <span>{isAbsent(signal.metrics.mentions) ? 'Mentions not readable' : `${fmtCompact(signal.metrics.mentions)} mentions`}</span>
                 <span>+{signal.metrics.changePct}%</span>
-                <span>Reach {fmtCompact(signal.metrics.reach)}</span>
+                <span>{isAbsent(signal.metrics.reach) ? 'Reach not readable' : `Reach ${fmtCompact(signal.metrics.reach)}`}</span>
                 <span>Sentiment {signal.metrics.sentiment.toFixed(2)}</span>
               </div>
               <SignalChipRow

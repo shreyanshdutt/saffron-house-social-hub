@@ -210,7 +210,9 @@ function PanelTopCompetitor({ signal, onClick, t }) {
       <div className="text-[14px] font-semibold text-saf-text mb-0.5">{signal.title}</div>
       <div className="text-[12px] text-saf-muted mb-3">{signal.body}</div>
       <div className="flex items-center gap-4 text-[12px] text-saf-muted">
-        <span><strong className="text-saf-text font-medium">{fmtCompact(signal.metrics.reach)}</strong> reach</span>
+        <span>{isAbsent(signal.metrics.reach)
+          ? <span className="text-saf-muted">Reach not readable</span>
+          : <><strong className="text-saf-text font-medium">{fmtCompact(signal.metrics.reach)}</strong> reach</>}</span>
         <span className="text-emerald-700">+{signal.metrics.changePct}%</span>
       </div>
     </PanelShell>
@@ -250,7 +252,7 @@ function PanelTopCritical({ signal, theme, onClick, t }) {
           <div className="text-[14px] font-semibold text-rose-700 mb-0.5">{signal.title}</div>
           <div className="text-[12px] text-saf-text">{signal.body}</div>
           <div className="mt-2 flex items-center gap-3 flex-wrap text-[11px] text-rose-700 font-medium">
-            <span>{fmtCompact(signal.metrics.mentions)} mentions</span>
+            <span>{isAbsent(signal.metrics.mentions) ? 'Mentions not readable' : `${fmtCompact(signal.metrics.mentions)} mentions`}</span>
             <span>+{signal.metrics.changePct}%</span>
             <span>Sentiment {signal.metrics.sentiment.toFixed(2)}</span>
           </div>

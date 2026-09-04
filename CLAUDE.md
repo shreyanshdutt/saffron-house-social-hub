@@ -394,15 +394,42 @@ signature: **the failure is silent.** Nothing throws, so a change looks
 finished and the defect is found later by eye. Where a trap is re-encountered,
 the reasoning belongs in a code comment at the site, not only in a report.
 
-1. **`fmt()` renders `NaN` as an em dash.** `fmt()` in `ui.jsx` opens with
-   `if (n == null || isNaN(n)) return '—'`. A whole panel of `NaN` therefore
-   reads as *merely empty*, not broken, and a `NaN` median is falsy so
-   downstream chips silently fall back to a default. This shipped once
-   (`83028ad`): dormant competitor records carried `followers` but no
-   `avgInteractions`, and `buildCompetitorFeed` multiplied `undefined` through
-   every post metric. **When a metric panel looks empty, check for `NaN`
-   before concluding there is no data.** `buildCompetitorFeed` now refuses
-   non-finite inputs rather than propagating them; keep that guard.
+1. **A formatter must never be able to emit a JavaScript value's default
+   string form.** This trap has cost two cycles and had two halves.
+
+   *`fmt()` renders absence as an em dash.* `fmt()` in `ui.jsx` guards its
+   input and returns `'—'`. A whole panel of `NaN` therefore reads as *merely
+   empty*, not broken, and a `NaN` median is falsy so downstream chips silently
+   fall back to a default. This shipped once (`83028ad`): dormant competitor
+   records carried `followers` but no `avgInteractions`, and
+   `buildCompetitorFeed` multiplied `undefined` through every post metric.
+   **When a metric panel looks empty, check for `NaN` before concluding there
+   is no data.** `buildCompetitorFeed` refuses non-finite inputs rather than
+   propagating them; keep that guard.
+
+   *`fmtCompact()` had no guard at all* and ended with `return String(n)`, so
+   it rendered absence as the literal word **"null"** on screen — and
+   `(null * 100).toFixed(1)` beside it rendered **"0.0%"**, which states that a
+   rival nobody has ever pulled has zero engagement. `dd6e53b` fixed the one
+   visible symptom at the call site; the function stayed broken for another
+   commit and sixteen other call sites. Fixed in `fix/format-absence`:
+   `fmtCompact` guards with `Number.isFinite` FIRST and returns
+   `NOT_READABLE`. `fmt()`'s own guard was insufficient too — `isNaN(Infinity)`
+   is `false`, so `fmt(Infinity)` produced `"InfinityM"` — and now uses
+   `Number.isFinite` as well.
+
+   **The rules that follow from it.** A formatter's guard comes first and is
+   the floor: whatever a call site does or forgets, what comes out is a number
+   or a stated absence, never `"null"`, `"undefined"`, `"NaN"` or
+   `"[object Object]"`. Absence in `fmtCompact` is the words **"Not readable"**
+   (`NOT_READABLE`), not an em dash — an em dash reads as "empty" rather than
+   "cannot be obtained", and that ambiguity is what let the NaN competitor bug
+   survive. And a guard inside the formatter is not sufficient on its own:
+   **a call site that appends a unit noun must test `isAbsent()` and replace
+   the WHOLE phrase**, because "Not readable reviews" reads as broken English
+   rather than as a stated absence. `fmtCompact` returns a string and must keep
+   doing so — several call sites interpolate it into template literals, where
+   a JSX element would render as `"[object Object]"`.
 
 2. **Fabricated handles must never produce a real URL.** "View on Instagram"
    once pointed at `instagram.com` URLs built from invented handles, so
