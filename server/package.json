@@ -1,0 +1,17 @@
+{
+  "name": "saffron-house-server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Data service for the Saffron House Social Hub client. Owns the database, the credentials and (later) the external API calls.",
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "seed": "node seed/seed.js",
+    "test": "node --test 'test/*.test.js'"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}
