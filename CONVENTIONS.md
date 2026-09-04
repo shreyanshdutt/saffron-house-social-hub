@@ -349,6 +349,53 @@ history; the rule applies from the first commit after it.
 - Verify actual git state before acting on a stated one: current branch, HEAD,
   and `git status` — not what a prompt claims they are. § 2.
 
+## 10. External data, secrets and retention (owner directive 2026-09-05)
+
+The `server/` workspace exists to hold the two things a browser cannot: other
+people's credentials, and data that must outlive one person's browser.
+
+**Secrets.**
+- No API key, access token or secret in any committed file, in either
+  workspace. Env only. `.gitignore` covers `node_modules/`, `.env*` and the
+  local database.
+- A secret that has ever been committed is compromised: rotate it, do not
+  just remove the line.
+- The client holds no credentials. It calls the server; the server calls
+  Google and Meta. Any design that puts a key in the browser is wrong even if
+  the key is "restricted".
+
+**Third-party terms are a build constraint, not a footnote.**
+- **Google Maps Platform Service Specific Terms §14.3** permits caching
+  latitude/longitude from the Places API for **up to 30 consecutive calendar
+  days**, after which it must be deleted. §A.3 permits caching `place_id`.
+  Name, rating, `user_ratings_total`, address and business status are granted
+  no caching permission there.
+- Consequence for this product: **`place_id` is the only Places field stored
+  permanently.** Everything else is fetched for display and held under an
+  explicit, configurable retention policy with the clause cited beside it in
+  code. A retention window is a named constant, never a number inlined at a
+  call site.
+- Our OWN listing is Google Business Profile, not Places. That data is the
+  restaurant's own and is not subject to §14.3 — `saf-self` history is
+  unaffected. Do not conflate the two in one store without labelling which
+  rows came from which source.
+- The competitor review-count history built in `3eb4344` predates this
+  section. Whether it may be retained beyond the Places window is an OWNER
+  decision, not an engineering one. Until the owner records an answer here,
+  build the store so the retention window is a single constant that can be
+  changed without touching the derivation.
+- Meta's terms and rate limits apply the same way. Business Discovery reads
+  public Business and Creator accounts only; scraping Instagram to fill the
+  gap is out of the question regardless of how easy it looks.
+
+**Rate limits and cost are correctness concerns.**
+- Every external call costs money or quota or both. A job that fans out over
+  tracked establishments states its call count before it runs, the way
+  `syncCompetitors()` already reports every call and every skip.
+- Never call an API you know will return nothing. The existing rule — skip
+  Business Discovery on personal and private accounts rather than spending
+  quota to be told no — generalises.
+
 ## 9. Prompt discipline (applies to the planning side too)
 
 These guards appear in EVERY implementation prompt written for this repo. A

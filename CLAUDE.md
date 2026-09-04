@@ -49,14 +49,38 @@ Consequences, all non-negotiable:
   a classic script into GLOBAL scope. There are currently zero imports in
   `src/`. Keep it that way. An `import` line does not fail loudly — it changes
   the module's scope and the symbols other files depend on silently vanish.
-- **No build step, no bundler, no `package.json`, no `npm install`, no
-  TypeScript.** Do not add one. If a change appears to require one, STOP and
-  ask the owner rather than introducing it.
+- **The CLIENT is buildless, permanently.** No build step, no bundler, no
+  `package.json`, no `npm install`, no TypeScript anywhere in `src/` or
+  `index.html`. This is not a stage the project grows out of — it is what lets
+  a file be edited and reloaded with nothing in between. If a change to the
+  client appears to require a toolchain, STOP and ask the owner.
+  *(Scoped to the client on 2026-09-05, when the `server/` workspace was
+  admitted. Before that it applied to the whole repo.)*
 - **`file://` does not work.** ES modules, the importmap and `text/babel` all
   need an HTTP origin. Serve with `python3 -m http.server 8000` from the repo
   root and open <http://localhost:8000/>.
-- **Everything is client-side and ephemeral.** The only persistence is
-  `localStorage` (§6). A page reload re-seeds from `mock.jsx`.
+- **Everything in the client is ephemeral.** The only client-side
+  persistence is `localStorage` (§6). A page reload re-seeds from `mock.jsx`.
+
+### The client / server boundary
+
+The repo holds two workspaces with different rules, and the line between them
+is hard:
+
+| | `src/` + `index.html` | `server/` |
+|---|---|---|
+| Toolchain | none, ever | its own `package.json`, its own deps |
+| Module system | global scope, no `import` | normal ESM/CJS |
+| Secrets | never | env only, never committed |
+| Talks to | the server's HTTP API | Google, Meta, the database |
+
+- **The client NEVER imports from `server/`, and the server never imports from
+  `src/`.** They meet at HTTP and nowhere else.
+- **No API key, token or secret may appear in `src/`, `index.html`, or any
+  committed file.** The client has no credentials; it asks the server, and the
+  server holds them in env. A key in the client is a key on the internet.
+- `server/` is not exempt from CONVENTIONS.md. Honest data, verify-before-
+  believing, scope discipline and commit hygiene apply identically.
 
 ## 3. The non-negotiables
 
