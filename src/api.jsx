@@ -53,6 +53,11 @@ const SERVER = {
   // stored observations server-side, not from a run counter in this browser.
   lastSyncedAt: null,
   refreshing: false,   // a background refresh of data we already hold
+  // Scan filters. These are SERVER query parameters, not a client-side
+  // .filter() — `distance_km` and `rating` are real columns, and a real
+  // catchment returns more rows than a browser should be shipped in order to
+  // throw most of them away. `null` means unset, which is not the same as 0.
+  filters: { maxDistanceKm: null, minRating: null },
   version: 0,          // bumped on every state change so React re-renders
 };
 
@@ -72,6 +77,14 @@ const listeners = new Set();
 function notify() {
   SERVER.version += 1;
   for (const fn of listeners) fn(SERVER.version);
+}
+
+function filterQuery(f) {
+  const q = new URLSearchParams();
+  if (f.maxDistanceKm !== null && f.maxDistanceKm !== undefined) q.set('maxDistanceKm', String(f.maxDistanceKm));
+  if (f.minRating !== null && f.minRating !== undefined) q.set('minRating', String(f.minRating));
+  const s = q.toString();
+  return s ? `?${s}` : '';
 }
 
 async function getJson(path) {
@@ -97,7 +110,7 @@ async function loadServerData({ force = false } = {}) {
   notify();
   try {
     const [ests, comps] = await Promise.all([
-      getJson('/establishments'),
+      getJson(`/establishments${filterQuery(SERVER.filters)}`),
       getJson('/competitors'),
     ]);
     SERVER.establishments = ests.establishments;
@@ -122,6 +135,14 @@ async function loadServerData({ force = false } = {}) {
   notify();
 }
 
+// Re-runs the establishment query with new filters. A filter change is a
+// REFRESH of data we already hold, so the screen keeps its rows while the new
+// set arrives rather than blanking on every slider tick.
+async function setFilters(next) {
+  SERVER.filters = { ...SERVER.filters, ...next };
+  await loadServerData({ force: true });
+}
+
 // --- writes ----------------------------------------------------------------
 // Each returns the reloaded snapshot, because the server owns the derivations
 // and a local guess at the new state would be a second implementation.
@@ -139,6 +160,30 @@ async function trackEstablishment(placeId, trackedBy) {
 async function untrackEstablishment(placeId) {
   const res = await fetch(`${apiBase()}/tracked/${encodeURIComponent(placeId)}`, { method: 'DELETE' });
   if (!res.ok) throw new Error(`untrack failed: ${res.status}`);
+  await loadServerData({ force: true });
+}
+
+// Records a hand-entered Instagram handle. It is stored UNVERIFIED — see
+// setInstagramHandle() in server/src/repo.js. This deliberately does not
+// change the availability tier, and the server is what enforces that.
+async function saveInstagramHandle(placeId, handle) {
+  const res = await fetch(`${apiBase()}/establishments/${encodeURIComponent(placeId)}/social/instagram`, {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ handle }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error || `save failed: ${res.status}`);
+  }
+  await loadServerData({ force: true });
+}
+
+// Records that we LOOKED and there is no account — not the same as never
+// having looked, which is the absence of a row entirely.
+async function clearInstagramHandle(placeId) {
+  const res = await fetch(`${apiBase()}/establishments/${encodeURIComponent(placeId)}/social/instagram`, { method: 'DELETE' });
+  if (!res.ok) throw new Error(`clear failed: ${res.status}`);
   await loadServerData({ force: true });
 }
 
@@ -239,6 +284,9 @@ function ServerUnreachable({ what, error }) {
 }
 
 window.formatObservationWindow = formatObservationWindow;
+window.setFilters = setFilters;
+window.saveInstagramHandle = saveInstagramHandle;
+window.clearInstagramHandle = clearInstagramHandle;
 window.serverData = serverData;
 window.loadServerData = loadServerData;
 window.trackEstablishment = trackEstablishment;

@@ -23,7 +23,7 @@ const ROLES = new Set(['admin', 'executive', 'srexec', 'manager']);
 // must become an allow-list, and the README says so.
 const CORS = {
   'access-control-allow-origin': '*',
-  'access-control-allow-methods': 'GET, POST, DELETE, OPTIONS',
+  'access-control-allow-methods': 'GET, POST, PUT, DELETE, OPTIONS',
   'access-control-allow-headers': 'content-type',
   'access-control-max-age': '600',
 };
@@ -67,7 +67,37 @@ export function createServer(db) {
         return send(res, 200, repo.health(db));
       }
       if (req.method === 'GET' && path === '/establishments') {
-        return send(res, 200, { establishments: repo.listEstablishments(db) });
+        // Filters are query parameters, applied in SQL. Absent means unset,
+        // not zero — an unset radius does not mean "within 0 km".
+        return send(res, 200, {
+          filters: {
+            maxDistanceKm: url.searchParams.get('maxDistanceKm'),
+            minRating: url.searchParams.get('minRating'),
+          },
+          establishments: repo.listEstablishments(db, {
+            maxDistanceKm: url.searchParams.get('maxDistanceKm'),
+            minRating: url.searchParams.get('minRating'),
+          }),
+        });
+      }
+      // Handle entry. PUT records a hand-entered handle as UNVERIFIED; DELETE
+      // records that we looked and there is none.
+      if ((req.method === 'PUT' || req.method === 'DELETE') && /^\/establishments\/.+\/social\/instagram$/.test(path)) {
+        const placeId = decodeURIComponent(path.slice('/establishments/'.length, path.length - '/social/instagram'.length));
+        if (!repo.getEstablishment(db, placeId)) {
+          return send(res, 404, { error: 'no such establishment', placeId });
+        }
+        try {
+          if (req.method === 'DELETE') {
+            repo.clearInstagramHandle(db, placeId);
+          } else {
+            const body = await readJson(req);
+            repo.setInstagramHandle(db, placeId, body.handle);
+          }
+        } catch (err) {
+          return send(res, 400, { error: err.message });
+        }
+        return send(res, 200, repo.getEstablishment(db, placeId));
       }
       if (req.method === 'GET' && path.startsWith('/establishments/')) {
         const id = decodeURIComponent(path.slice('/establishments/'.length));

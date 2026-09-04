@@ -97,6 +97,10 @@ function CompetitorsScreenInner({ theme, data }) {
   // differently.
   const self = React.useMemo(() => ({
     ...SAF_SELF_STATS,
+    // Our own figures come from our own account, not from a Business Discovery
+    // pull of someone else's — there is nothing to "not have pulled yet", so
+    // the not-pulled state never applies to this row.
+    synced: true,
     velocity: data.self ? data.self.velocity : null,
     followerChange: data.self ? data.self.followerChange : null,
     engagementChange: data.self ? data.self.engagementChange : null,
@@ -217,7 +221,11 @@ function CompetitorInsights({ theme, peers, us }) {
   // Cadence and engagement come from Business Discovery, so only full-tier
   // peers have them; every tracked rival has a Google rating; velocity exists
   // only where two review counts have been stored.
-  const fullPeers = peers.filter(p => p.dataTier === 'full');
+  // "Full tier" means the account CAN be read; `synced` means it HAS been.
+  // Cadence and engagement medians are over feeds we actually hold, and the
+  // population line beneath each card states that count — so a tracked rival
+  // nobody has pulled must not inflate it.
+  const fullPeers = peers.filter(p => p.dataTier === 'full' && p.synced);
 
   // Velocity has three states per rival and only one of them is a number. A
   // rival still inside the 7-day window has a real, measured delta but no
@@ -544,9 +552,11 @@ function SyncReport({ report, onDismiss }) {
 function PendingSyncNote({ establishments }) {
   // Tracked, readable, but no content pulled yet — the server has no
   // Business Discovery observation for them.
+  // `synced` is derived server-side from whether any stored observation carries
+  // follower data, so this survives a reload — it used to read an in-memory
+  // flag on LISTENING_COMPETITORS that a refresh reset.
   const pending = (establishments || []).filter(e =>
-    e.tracked && e.availability.igReadable && !e.availability.stale &&
-    !serverData().competitors.some(c => c.placeId === e.placeId && c.followers !== null));
+    e.tracked && e.availability.igReadable && !e.availability.stale && !e.synced);
   if (!pending.length) return null;
   return (
     <div className="flex items-start gap-2 p-3 rounded-xl bg-saf-light border border-saf-primary/30">
@@ -820,8 +830,10 @@ function CompetitorRow({ c, theme, t, inSelfCard, expanded, onToggle }) {
       <td className="text-end px-3 py-3" dir="ltr">
         {isRatings ? <NotReadable reason={c.unreadableReason} /> : (
           <>
-            <div className="text-[13px] font-medium text-saf-text tabular-nums">{fmtCompact(c.followers)}</div>
-            <ChangeCell change={c.followerChange} what="follower" />
+            {c.synced
+              ? <div className="text-[13px] font-medium text-saf-text tabular-nums">{fmtCompact(c.followers)}</div>
+              : <NotPulled />}
+            {c.synced && <ChangeCell change={c.followerChange} what="follower" />}
           </>
         )}
       </td>
@@ -830,8 +842,10 @@ function CompetitorRow({ c, theme, t, inSelfCard, expanded, onToggle }) {
       <td className="text-end px-3 py-3" dir="ltr">
         {isRatings ? <NotReadable reason={c.unreadableReason} /> : (
           <>
-            <div className="text-[13px] font-semibold text-saf-text tabular-nums">{(c.engagementRate * 100).toFixed(1)}%</div>
-            <ChangeCell change={c.engagementChange} what="engagement" />
+            {c.synced
+              ? <div className="text-[13px] font-semibold text-saf-text tabular-nums">{(c.engagementRate * 100).toFixed(1)}%</div>
+              : <NotPulled />}
+            {c.synced && <ChangeCell change={c.engagementChange} what="engagement" />}
           </>
         )}
       </td>
@@ -840,8 +854,12 @@ function CompetitorRow({ c, theme, t, inSelfCard, expanded, onToggle }) {
       <td className="text-end px-3 py-3 hidden lg:table-cell" dir="ltr">
         {isRatings ? <NotReadable reason={c.unreadableReason} /> : (
           <>
-            <div className="text-[13px] font-medium text-saf-text tabular-nums">{c.postsPerWeek}</div>
-            <div className="text-[11px] text-saf-muted tabular-nums">{fmtCompact(c.avgInteractions)} avg</div>
+            {c.synced ? (
+              <>
+                <div className="text-[13px] font-medium text-saf-text tabular-nums">{c.postsPerWeek}</div>
+                <div className="text-[11px] text-saf-muted tabular-nums">{fmtCompact(c.avgInteractions)} avg</div>
+              </>
+            ) : <NotPulled />}
           </>
         )}
       </td>
@@ -1096,6 +1114,24 @@ function PerformanceChip({ index }) {
 // (CLAUDE.md §11 trap 1). It says the value cannot be read, and carries the
 // specific reason — personal account, private account, dormant, absent — on
 // hover, because "cannot" is only useful if it names which door is closed.
+// Tracked, readable, but never pulled. Distinct from "not readable": the
+// account CAN be read, nobody has read it yet — so the fix is a sync, not a
+// different competitor. Before this existed the row rendered `fmtCompact(null)`
+// as the literal string "null" and `(null * 100).toFixed(1)` as "0.0%", which
+// stated that a rival we have never looked at has zero engagement. That is an
+// invented number on screen, the one thing §1 forbids (CLAUDE.md §11 trap 1 is
+// the same failure with an em dash instead of a zero).
+function NotPulled() {
+  return (
+    <Tooltip label="This establishment is tracked and its Instagram is readable, but Business Discovery has never returned content for it. Run a sync to fetch it. Nothing is shown here because nothing has been measured — not because the numbers are zero.">
+      <div className="text-[11px] text-saf-muted inline-flex items-center gap-1">
+        <Icon name="CloudOff" size={11} />
+        not pulled
+      </div>
+    </Tooltip>
+  );
+}
+
 function NotReadable({ reason }) {
   return (
     <Tooltip label={reason || 'Instagram cannot be read for this establishment'} side="top">

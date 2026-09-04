@@ -15,7 +15,7 @@ client renders those values and computes none of them itself.
 ```
 cd server
 cp .env.example .env      # fill in nothing yet — no key is used by this build
-npm test                  # 41 tests, no network
+npm test                  # 55 tests, no network
 npm run seed              # loads the 15 establishments from seed/seed-data.json
 npm start                 # http://127.0.0.1:8787
 ```
@@ -41,7 +41,7 @@ the keys with no values.
 | Method | Path | Returns |
 |---|---|---|
 | GET | `/health` | row counts per table |
-| GET | `/establishments` | every establishment with its availability tier and social rows |
+| GET | `/establishments?maxDistanceKm=&minRating=` | establishments with availability tier and social rows, filtered in SQL. A **tracked** establishment is never filtered out; it comes back flagged `belowFilters` |
 | GET | `/establishments/:placeId` | one of the above |
 | GET | `/competitors` | the tracked set with availability tier, review velocity, follower change and engagement change **already derived**, plus our own metrics and `minWindowDays` |
 | GET | `/tracked` | the tracked set |
@@ -49,6 +49,8 @@ the keys with no values.
 | POST | `/tracked` | `{ placeId, trackedBy }` — track one |
 | DELETE | `/tracked/:placeId` | untrack one |
 | POST | `/observations` | persist a batch of readings (the client's demo sync writes here) |
+| PUT | `/establishments/:placeId/social/instagram` | record a hand-entered handle as **unverified** (`unknown` / `readable NULL`) |
+| DELETE | `/establishments/:placeId/social/instagram` | record that we looked and there is no account (`absent`) |
 
 `:subject` is a `place_id`, or the reserved `saf-self` for our own restaurant.
 
@@ -86,7 +88,12 @@ Stated rather than hidden — none of these is finished:
   are none yet. **When auth arrives this must become an allow-list.**
 - **No rate limiting and no request logging.**
 - **No external API calls, no scan, no handle discovery, no sampler.** Later
-  commits.
+  commits. The Establishments screen's "Re-run nearby search" button is wired
+  to nothing on purpose and says what it is blocked on.
+- **A hand-entered handle is never verified by this build.** It is stored
+  `unknown` / `readable NULL` / `verified_at NULL` and does NOT raise the
+  availability tier. Only a real Business Discovery attempt can resolve it,
+  which needs Instagram Graph credentials.
 - **No migration framework.** `schema.sql` is applied with `CREATE TABLE IF NOT
   EXISTS`; there is no versioning and no down-migration. Fine while the only
   database is a local file that can be deleted and re-seeded, not fine later.
@@ -113,5 +120,5 @@ src/index.js         boot
 seed/seed-data.json  frozen seed, extracted from mock.jsx at 40c9100
 seed/seed.js         one-shot seeding
 src/derive.js        review velocity, follower change, engagement change
-test/                41 tests, node:test, no network
+test/                55 tests, node:test, no network
 ```
