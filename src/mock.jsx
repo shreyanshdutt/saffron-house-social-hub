@@ -914,7 +914,7 @@ const COMPETITOR_CATCHMENT = {
 
 const LISTENING_COMPETITORS = [
   {
-    id: 'cmp-1', synced: true, name: 'Dwarka Darbar', handle: '@dwarkadarbar', channel: 'ig',
+    id: 'cmp-1', dataTier: 'full', synced: true, name: 'Dwarka Darbar', handle: '@dwarkadarbar', channel: 'ig',
     avatarColor: '#7C3AED',
     followers: 41200,       followersChange7dPct: 3.8,
     postsPerWeek: 11,       avgInteractions: 3584,
@@ -928,7 +928,7 @@ const LISTENING_COMPETITORS = [
     isMoment: true,
   },
   {
-    id: 'cmp-2', synced: true, name: 'Sector 10 Social', handle: '@sector10social', channel: 'ig',
+    id: 'cmp-2', dataTier: 'full', synced: true, name: 'Sector 10 Social', handle: '@sector10social', channel: 'ig',
     avatarColor: '#0EA5E9',
     followers: 33800,       followersChange7dPct: 2.1,
     postsPerWeek: 9,        avgInteractions: 1386,
@@ -940,7 +940,7 @@ const LISTENING_COMPETITORS = [
     isMoment: false,
   },
   {
-    id: 'cmp-3', synced: true, name: 'Baoli Kitchen', handle: '@baolikitchen', channel: 'ig',
+    id: 'cmp-3', dataTier: 'full', synced: true, name: 'Baoli Kitchen', handle: '@baolikitchen', channel: 'ig',
     avatarColor: '#10B981',
     followers: 19600,       postsPerWeek: 8,   followersChange7dPct: 4.2,
     avgInteractions: 1196,
@@ -952,7 +952,7 @@ const LISTENING_COMPETITORS = [
     isMoment: false,
   },
   {
-    id: 'cmp-4', synced: true, name: 'The Curry Room', handle: '@thecurryroom', channel: 'ig',
+    id: 'cmp-4', dataTier: 'full', synced: true, name: 'The Curry Room', handle: '@thecurryroom', channel: 'ig',
     avatarColor: '#F59E0B',
     followers: 11400,       followersChange7dPct: -0.4,
     postsPerWeek: 3,        avgInteractions: 217,
@@ -964,7 +964,7 @@ const LISTENING_COMPETITORS = [
     isMoment: false,
   },
   {
-    id: 'cmp-5', synced: true, name: 'Nawab & Sons', handle: '@nawabandsons', channel: 'ig',
+    id: 'cmp-5', dataTier: 'full', synced: true, name: 'Nawab & Sons', handle: '@nawabandsons', channel: 'ig',
     avatarColor: '#EC4899',
     followers: 8900,        followersChange7dPct: 6.1,
     postsPerWeek: 6,        avgInteractions: 463,
@@ -976,7 +976,7 @@ const LISTENING_COMPETITORS = [
     isMoment: false,
   },
   {
-    id: 'cmp-6', synced: true, name: 'Chowk 21', handle: '@chowk21', channel: 'ig',
+    id: 'cmp-6', dataTier: 'full', synced: true, name: 'Chowk 21', handle: '@chowk21', channel: 'ig',
     avatarColor: '#64748B',
     followers: 16200,       followersChange7dPct: 0.0,
     postsPerWeek: 4,        avgInteractions: 551,
@@ -993,7 +993,7 @@ const LISTENING_COMPETITORS = [
   // A sync fills these in; until then they are correctly absent from the
   // table rather than shown with placeholder zeroes.
   {
-    id: 'cmp-7', name: 'Wok Republic', handle: '@wokrepublicdwarka', channel: 'ig',
+    id: 'cmp-7', dataTier: 'full', name: 'Wok Republic', handle: '@wokrepublicdwarka', channel: 'ig',
     avatarColor: '#0D9488', synced: false,
     followers: 14800,       followersChange7dPct: 1.8,
     avgInteractions: 533,
@@ -1004,7 +1004,7 @@ const LISTENING_COMPETITORS = [
     isMoment: false,
   },
   {
-    id: 'cmp-8', name: 'The Bread Room', handle: '@thebreadroom.dwk', channel: 'ig',
+    id: 'cmp-8', dataTier: 'full', name: 'The Bread Room', handle: '@thebreadroom.dwk', channel: 'ig',
     avatarColor: '#A16207', synced: false,
     followers: 9400,        followersChange7dPct: 5.2,
     avgInteractions: 677,
@@ -1015,7 +1015,7 @@ const LISTENING_COMPETITORS = [
     isMoment: true,
   },
   {
-    id: 'cmp-9', name: 'Tandoori Nights', handle: '@tandoorinights10', channel: 'ig',
+    id: 'cmp-9', dataTier: 'full', name: 'Tandoori Nights', handle: '@tandoorinights10', channel: 'ig',
     avatarColor: '#9333EA', synced: false,
     followers: 12100,       followersChange7dPct: 0.6,
     avgInteractions: 375,
@@ -1441,12 +1441,54 @@ function trackedPendingEstablishments() {
   });
 }
 
+// A tracked ratings-only establishment, expressed as a competitor row.
+//
+// It carries ONLY what Google Places actually returns for it, plus the reason
+// its Instagram cannot be read. No followers, engagement rate, cadence,
+// interactions, themes, posting peak, sparkline or feed — those come from
+// Business Discovery, and Business Discovery returns nothing for a personal,
+// private or dormant account. Absence is declared with `dataTier`, never left
+// to be inferred from a missing field: `fmt()` renders undefined as an em
+// dash, which reads as "empty" rather than "cannot be read" (CLAUDE.md §11
+// trap 1), and the difference is the entire point of this row.
+//
+// `reviewVelocityPerMonth` is null, not a number. Velocity is the delta
+// between two stored review counts and we hold one; `syncCompetitors()`
+// already models that with `velocityComparable`. Seeding a plausible figure
+// here would be inventing the thing the product exists to avoid.
+function ratingsOnlyCompetitor(e) {
+  const avail = establishmentAvailability(e);
+  // Reuse the reason establishmentAvailability() already produced rather than
+  // writing a second copy that can drift from it.
+  const igReason = avail.reasons.find(r => /instagram/i.test(r.text));
+  return {
+    id: `est:${e.id}`,              // namespaced so it cannot collide with cmp-*
+    dataTier: 'ratings',
+    name: e.name,
+    handle: e.instagram ? e.instagram.handle : null,
+    googleRating: e.google.rating,
+    googleReviews: e.google.reviews,
+    reviewVelocityPerMonth: null,
+    unreadableReason: igReason ? igReason.text : 'Instagram cannot be read',
+  };
+}
+
+// Every tracked establishment that yields a comparable row, of either tier.
+// Full-tier rows come from LISTENING_COMPETITORS and require a completed
+// Business Discovery pull (`synced`); ratings-only rows are synthesised from
+// the establishment itself, because Google Places is all there is for them.
 function trackedCompetitors() {
   const ids = new Set(trackedLoad());
-  const wanted = new Set(
-    ESTABLISHMENTS.filter(e => ids.has(e.id) && e.competitorId).map(e => e.competitorId)
-  );
-  return LISTENING_COMPETITORS.filter(c => wanted.has(c.id) && c.synced);
+  const tracked = ESTABLISHMENTS.filter(e => ids.has(e.id));
+
+  const wanted = new Set(tracked.filter(e => e.competitorId).map(e => e.competitorId));
+  const full = LISTENING_COMPETITORS.filter(c => wanted.has(c.id) && c.synced);
+
+  const ratings = tracked
+    .filter(e => establishmentAvailability(e).tier === 'ratings')
+    .map(ratingsOnlyCompetitor);
+
+  return [...full, ...ratings];
 }
 
 // --- Sync --------------------------------------------------------------------

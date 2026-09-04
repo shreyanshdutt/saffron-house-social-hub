@@ -113,7 +113,14 @@ over:
   personal, private, dormant or absent, and Business Discovery cannot read
   those), and *cannot track* (no Google listing, common for delivery-only
   kitchens). Marking an establishment here drives both the Competitors screen
-  and the recommendation engine.
+  and the recommendation engine. A *ratings-only* rival appears on Competitors
+  as a partial row: its Google rating and review count are populated, and the
+  Instagram-derived columns — followers, engagement, cadence — read **"Not
+  readable"** with the specific reason on hover, never an em dash, because an
+  em dash would be indistinguishable from zero. It has no feed to expand and
+  no engagement sparkline. In the engine it counts toward the review-velocity
+  comparison and is excluded from the cadence one, and each median on the
+  Insights cards states the population it is over.
 - **Sync** (`syncCompetitors()` in `src/mock.jsx`, button on Competitors) runs
   one pass over the tracked set: a Places Details call per establishment, plus
   a Business Discovery call per readable Instagram account. Personal and

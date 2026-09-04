@@ -356,7 +356,12 @@ const REC_RULES = [
     run(ctx) {
       const us = ctx.self.reviewVelocityPerMonth;
       if (!us) return [];
-      const faster = ctx.competitors
+      // Velocity is the delta between two stored review counts, so a rival we
+      // have pulled once has null and is not part of this population. The
+      // denominator counts rivals we can actually compare on, not everything
+      // tracked — otherwise "3 of 11" silently includes rivals with no figure.
+      const rated = ctx.competitors.filter(c => typeof c.reviewVelocityPerMonth === 'number');
+      const faster = rated
         .filter(c => c.reviewVelocityPerMonth > us)
         .sort((a, b) => b.reviewVelocityPerMonth - a.reviewVelocityPerMonth);
       if (!faster.length) return [];
@@ -370,7 +375,7 @@ const REC_RULES = [
       return [{
         kind: 'ops',
         title: `${leader.name} is gaining Google reviews ${gap.toFixed(1)}× faster than you`,
-        detail: `They add roughly ${leader.reviewVelocityPerMonth} reviews a month against your ${us}. Google weighs volume as well as score, so this compounds quietly: ${faster.length} restaurant${faster.length > 1 ? 's' : ''} in the catchment ${faster.length > 1 ? 'are' : 'is'} outpacing you${leader.googleReviews > ctx.self.googleReviews ? ' and already ahead on total count' : monthsToOvertake ? `, and at this rate they pass your total in about ${monthsToOvertake} months` : ''}. The fix is a review ask built into the end of service, not a campaign.`,
+        detail: `They add roughly ${leader.reviewVelocityPerMonth} reviews a month against your ${us}. Google weighs volume as well as score, so this compounds quietly: ${faster.length} of the ${rated.length} rivals we can measure ${faster.length > 1 ? 'are' : 'is'} outpacing you${leader.googleReviews > ctx.self.googleReviews ? ' and already ahead on total count' : monthsToOvertake ? `, and at this rate they pass your total in about ${monthsToOvertake} months` : ''}. The fix is a review ask built into the end of service, not a campaign.`,
         action: 'Add a review ask to the bill drop and the WhatsApp thank-you',
         owner: 'admin',
         where: 'Floor process · WhatsApp template',
@@ -379,7 +384,7 @@ const REC_RULES = [
         evidence: [
           { label: 'Our review velocity', value: `${us}/month (${fmt(ctx.self.googleReviews)} total)`, source: 'gbp' },
           { label: `${leader.name}`, value: `${leader.reviewVelocityPerMonth}/month (${fmt(leader.googleReviews)} total)`, source: 'publicApi' },
-          { label: 'Faster than us', value: `${faster.length} of ${ctx.competitors.length} in the catchment`, source: 'publicApi' },
+          { label: 'Faster than us', value: `${faster.length} of ${rated.length} rivals with a stored history`, source: 'publicApi' },
           { label: 'Their rating', value: `${leader.googleRating.toFixed(1)} vs our ${ctx.self.googleRating.toFixed(1)}`, source: 'publicApi' },
         ],
         impact: 0.75,
@@ -397,20 +402,26 @@ const REC_RULES = [
     title: 'Posting cadence against the catchment',
     run(ctx) {
       const us = ctx.self.postsPerWeek;
-      const medianCadence = median(ctx.competitors.map(c => c.postsPerWeek));
+      // Cadence and engagement come from Business Discovery, so a ratings-only
+      // rival has neither. median() already skips non-numbers, but the
+      // DENOMINATOR has to skip them too — "3 of 11 restaurants nearby post
+      // more often than you" is false when four of the eleven have no cadence
+      // we can see.
+      const readable = ctx.competitors.filter(c => typeof c.postsPerWeek === 'number');
+      const medianCadence = median(readable.map(c => c.postsPerWeek));
       const target = Math.ceil(medianCadence);
       if (us >= medianCadence) return [];
-      const busier = ctx.competitors.filter(c => c.postsPerWeek > us);
+      const busier = readable.filter(c => c.postsPerWeek > us);
       // Only worth raising if our engagement rate is competitive — telling
       // someone to post more when nobody engages is bad advice.
       const ourRate = ctx.self.engagementRate;
-      const medianRate = median(ctx.competitors.map(c => c.engagementRate));
+      const medianRate = median(readable.map(c => c.engagementRate));
       if (ourRate < medianRate * 0.8) return [];
 
       return [{
         kind: 'content',
         title: `You post ${us}× a week; the catchment median is ${medianCadence}`,
-        detail: `${busier.length} of ${ctx.competitors.length} restaurants nearby post more often than you, and your engagement rate (${(ourRate * 100).toFixed(1)}%) is at or above the local median (${(medianRate * 100).toFixed(1)}%) — meaning the audience responds when you do show up. This is the cheapest growth available: the content works, there is just not enough of it.`,
+        detail: `${busier.length} of the ${readable.length} rivals whose feed we can read post more often than you, and your engagement rate (${(ourRate * 100).toFixed(1)}%) is at or above the local median (${(medianRate * 100).toFixed(1)}%) — meaning the audience responds when you do show up. This is the cheapest growth available: the content works, there is just not enough of it.`,
         action: `Lift to ${target} posts a week using existing kitchen footage`,
         owner: 'executive',
         where: 'Content plan · schedule queue',
@@ -418,7 +429,7 @@ const REC_RULES = [
         window: 'From next week',
         evidence: [
           { label: 'Our cadence', value: `${us} posts/week`, source: 'ig' },
-          { label: 'Catchment median', value: `${medianCadence} posts/week`, source: 'publicApi' },
+          { label: 'Median of readable rivals', value: `${medianCadence} posts/week across ${readable.length}`, source: 'publicApi' },
           { label: 'Busiest peer', value: `${busier.sort((a, b) => b.postsPerWeek - a.postsPerWeek)[0].name} — ${busier[0].postsPerWeek}/week`, source: 'publicApi' },
           { label: 'Our engagement rate', value: `${(ourRate * 100).toFixed(1)}% vs ${(medianRate * 100).toFixed(1)}% median`, source: 'ig' },
         ],

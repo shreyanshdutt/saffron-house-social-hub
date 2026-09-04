@@ -56,10 +56,12 @@ function EstablishmentsPage({ onNavigate }) {
   const [category, setCategory] = React.useState('all');
   const [openId, setOpenId] = React.useState(null);
 
-  const rows = React.useMemo(
-    () => ESTABLISHMENTS.map(e => ({ ...e, avail: establishmentAvailability(e) })),
-    []
-  );
+  // Computed inline, not memoised. syncCompetitors() mutates e.google.reviews
+  // on the module object, and a memo with [] deps kept showing pre-sync counts
+  // until this screen remounted. Fifteen rows is not worth a cache that can go
+  // stale against mutable data — and keying the memo on the mutation would
+  // mean inventing a signal for it.
+  const rows = ESTABLISHMENTS.map(e => ({ ...e, avail: establishmentAvailability(e) }));
 
   const categories = ['all', ...Array.from(new Set(rows.map(r => r.category)))];
 
@@ -284,7 +286,11 @@ function EstablishmentRow({ row, tracked, expanded, onToggleExpand, onToggleTrac
             />
             <ChannelChip
               id="ig"
-              ok={avail.igReadable}
+              // A dormant business account is readable but has nothing to
+              // compare on, so establishmentAvailability() downgrades it to
+              // ratings-only. The chip must agree with that tier — a green
+              // tick beside an amber "Ratings only" badge read as a bug.
+              ok={avail.igReadable && !avail.stale}
               label={row.instagram
                 ? `${row.instagram.handle} · ${row.instagram.accountType}`
                 : 'None found'}

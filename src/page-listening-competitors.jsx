@@ -65,9 +65,18 @@ function CompetitorsScreen({ theme }) {
     const col = COMPETITOR_COLUMNS.find(c => c.id === sort.field);
     if (!col || !col.getValue) return tracked;
     const dir = sort.dir === 'asc' ? 1 : -1;
+    // A ratings-only row has no followers, engagement or cadence. Those are
+    // ABSENT, not zero, so they sink to the bottom in BOTH directions —
+    // sorting ascending by followers must not surface the unreadable rows
+    // first as though they were the smallest.
+    const present = (v) => v !== undefined && v !== null && !(typeof v === 'number' && Number.isNaN(v));
     return [...tracked].sort((a, b) => {
       const va = col.getValue(a);
       const vb = col.getValue(b);
+      const ha = present(va), hb = present(vb);
+      if (!ha && !hb) return 0;
+      if (!ha) return 1;
+      if (!hb) return -1;
       if (va < vb) return -1 * dir;
       if (va > vb) return  1 * dir;
       return 0;
@@ -106,6 +115,7 @@ function CompetitorsScreen({ theme }) {
 // list of restaurants. Google Places nearby search seeds it; a human curates.
 function CatchmentHeader({ tracked, onSynced }) {
   const c = COMPETITOR_CATCHMENT;
+  const ratingsOnly = tracked.filter(x => x.dataTier === 'ratings').length;
   return (
     <div className="flex items-start gap-2.5">
       <span className="w-8 h-8 rounded-lg bg-saf-light text-saf-primary grid place-items-center shrink-0">
@@ -124,7 +134,9 @@ function CatchmentHeader({ tracked, onSynced }) {
           )}
         </div>
         <div className="text-[12px] text-saf-muted">
-          {c.radiusKm} km radius · {tracked.length} tracked with content data · {c.note}
+          {c.radiusKm} km radius · {tracked.length} tracked
+          {ratingsOnly > 0 && ` (${tracked.length - ratingsOnly} with content data, ${ratingsOnly} ratings only)`}
+          {' · '}{c.note}
         </div>
         {c.isSampleData && (
           <p className="text-[11.5px] text-amber-700 mt-1 leading-relaxed">
@@ -145,18 +157,33 @@ function CatchmentHeader({ tracked, onSynced }) {
 function CompetitorInsights({ theme, peers }) {
   const us = SAF_SELF_STATS;
 
+  // Filter to finite numbers BEFORE sorting, the way median() in
+  // recommend.jsx does. A ratings-only peer carries undefined cadence and a
+  // null velocity; sorting those alongside numbers produced garbage, and the
+  // formatter below then called .toFixed() on undefined and took the whole
+  // screen down. Returns null for an empty population so the caller must
+  // decide what "no readable peers" should say, rather than being handed a 0
+  // that reads as a real median of zero.
   const med = (arr) => {
-    const a = [...arr].sort((x, y) => x - y);
+    const a = arr.filter(n => typeof n === 'number' && Number.isFinite(n)).sort((x, y) => x - y);
+    if (!a.length) return null;
     return a.length % 2 ? a[(a.length - 1) / 2] : (a[a.length / 2 - 1] + a[a.length / 2]) / 2;
   };
   // A median of an even-length set can land on a half. Show it exactly — it is
   // a measurement — but drop a trailing .0 so whole numbers read as whole.
-  const num = (v) => (Number.isInteger(v) ? String(v) : v.toFixed(1));
+  const num = (v) => (v === null ? '—' : Number.isInteger(v) ? String(v) : v.toFixed(1));
 
-  const medCadence = med(peers.map(p => p.postsPerWeek));
-  const medEngagement = med(peers.map(p => p.engagementRate));
+  // Each median is taken over the population the metric actually applies to.
+  // Cadence and engagement come from Business Discovery, so only full-tier
+  // peers have them; every tracked rival has a Google rating; velocity exists
+  // only where two review counts have been stored.
+  const fullPeers = peers.filter(p => p.dataTier === 'full');
+  const velocityPeers = peers.filter(p => typeof p.reviewVelocityPerMonth === 'number');
+
+  const medCadence = med(fullPeers.map(p => p.postsPerWeek));
+  const medEngagement = med(fullPeers.map(p => p.engagementRate));
   const medRating = med(peers.map(p => p.googleRating));
-  const medVelocity = med(peers.map(p => p.reviewVelocityPerMonth));
+  const medVelocity = med(velocityPeers.map(p => p.reviewVelocityPerMonth));
 
   // Theme gap: what the catchment posts about that we do not, and vice versa.
   const peerThemes = {};
@@ -167,46 +194,61 @@ function CompetitorInsights({ theme, peers }) {
     .filter(([t, n]) => n >= 2 && !ourThemes.has(t))
     .sort((a, b) => b[1] - a[1]);
 
+  // Every card states the population its median is over, so "vs 5.5
+  // posts/week" cannot be read as covering rivals whose cadence is unknown.
+  const peerWord = (n) => `${n} ${n === 1 ? 'rival' : 'rivals'}`;
   const cards = [
     {
       icon: 'Repeat',
       label: 'Posting cadence',
-      value: `${us.postsPerWeek} vs ${num(medCadence)}`,
+      value: medCadence === null ? '—' : `${us.postsPerWeek} vs ${num(medCadence)}`,
       unit: 'posts/week',
-      good: us.postsPerWeek >= medCadence,
-      note: us.postsPerWeek >= medCadence
-        ? 'At or above the catchment median.'
-        : `Behind the median. ${peers.filter(p => p.postsPerWeek > us.postsPerWeek).length} of ${peers.length} post more often.`,
+      population: `${peerWord(fullPeers.length)} with a readable feed`,
+      good: medCadence !== null && us.postsPerWeek >= medCadence,
+      note: medCadence === null
+        ? 'No tracked rival has a readable Instagram feed, so there is no cadence to compare against.'
+        : us.postsPerWeek >= medCadence
+          ? 'At or above the median of the rivals we can read.'
+          : `Behind the median. ${fullPeers.filter(p => p.postsPerWeek > us.postsPerWeek).length} of ${fullPeers.length} readable rivals post more often.`,
     },
     {
       icon: 'Heart',
       label: 'Engagement rate',
-      value: `${(us.engagementRate * 100).toFixed(1)}% vs ${(medEngagement * 100).toFixed(1)}%`,
+      value: medEngagement === null ? '—' : `${(us.engagementRate * 100).toFixed(1)}% vs ${(medEngagement * 100).toFixed(1)}%`,
       unit: 'interactions ÷ followers',
-      good: us.engagementRate >= medEngagement,
-      note: us.engagementRate >= medEngagement
-        ? 'The audience responds when you post. Cadence is the constraint, not content.'
-        : 'Below median — more posting will not fix this; the content needs to change.',
+      population: `${peerWord(fullPeers.length)} with a readable feed`,
+      good: medEngagement !== null && us.engagementRate >= medEngagement,
+      note: medEngagement === null
+        ? 'No tracked rival has a readable Instagram feed, so there is no engagement rate to compare against.'
+        : us.engagementRate >= medEngagement
+          ? 'The audience responds when you post. Cadence is the constraint, not content.'
+          : 'Below median — more posting will not fix this; the content needs to change.',
     },
     {
       icon: 'Star',
       label: 'Google rating',
-      value: `${us.googleRating.toFixed(1)} vs ${medRating.toFixed(1)}`,
+      value: medRating === null ? '—' : `${us.googleRating.toFixed(1)} vs ${medRating.toFixed(1)}`,
       unit: 'catchment median',
-      good: us.googleRating >= medRating,
-      note: us.googleRating >= medRating
-        ? 'At or above the local median.'
-        : `${peers.filter(p => p.googleRating > us.googleRating).length} nearby restaurants rate higher.`,
+      population: `all ${peerWord(peers.length)} tracked`,
+      good: medRating !== null && us.googleRating >= medRating,
+      note: medRating === null
+        ? 'Nothing tracked yet.'
+        : us.googleRating >= medRating
+          ? 'At or above the local median.'
+          : `${peers.filter(p => p.googleRating > us.googleRating).length} nearby restaurants rate higher.`,
     },
     {
       icon: 'TrendingUp',
       label: 'Review velocity',
-      value: `${us.reviewVelocityPerMonth} vs ${num(medVelocity)}`,
+      value: medVelocity === null ? '—' : `${us.reviewVelocityPerMonth} vs ${num(medVelocity)}`,
       unit: 'new reviews/month',
-      good: us.reviewVelocityPerMonth >= medVelocity,
-      note: us.reviewVelocityPerMonth >= medVelocity
-        ? 'Keeping pace on volume.'
-        : 'Falling behind on volume. Google weighs count as well as score, so this compounds.',
+      population: `${peerWord(velocityPeers.length)} with a stored history`,
+      good: medVelocity !== null && us.reviewVelocityPerMonth >= medVelocity,
+      note: medVelocity === null
+        ? 'Velocity is the delta between two stored review counts. No tracked rival has two yet.'
+        : us.reviewVelocityPerMonth >= medVelocity
+          ? 'Keeping pace on volume.'
+          : 'Falling behind on volume. Google weighs count as well as score, so this compounds.',
     },
   ];
 
@@ -230,6 +272,7 @@ function CompetitorInsights({ theme, peers }) {
               />
             </div>
             <div className="text-[10.5px] text-saf-muted mt-0.5">{c.unit}</div>
+            <div className="text-[10.5px] text-saf-muted/80 mt-0.5">over {c.population}</div>
             <p className="text-[11.5px] text-saf-muted mt-2 leading-relaxed">{c.note}</p>
           </Card>
         ))}
@@ -564,7 +607,11 @@ function SortableHeader({ col, sort, onSort, label, ariaLabel, className }) {
 }
 
 function CompetitorRow({ c, theme, t, inSelfCard, expanded, onToggle }) {
-  const p = PLATFORM_BY_ID[c.channel];
+  // A ratings-only row has no channel — Business Discovery returned nothing
+  // for it — so `p` is undefined and every Instagram-derived cell has to say
+  // WHY it is empty rather than rendering an em dash (CLAUDE.md §11 trap 1).
+  const isRatings = c.dataTier === 'ratings';
+  const p = PLATFORM_BY_ID[c.channel] || null;
   const channelColor = platformColor(p, theme);
   // The Saffron House self-row gets a YOU badge + sparkline-in-avatarColor +
   // suppressed hover. When rendered inside SelfRowCard the card itself
@@ -621,7 +668,7 @@ function CompetitorRow({ c, theme, t, inSelfCard, expanded, onToggle }) {
           </button>
         ) : (
           <div className="flex items-center gap-2.5 min-w-0">
-            <CompetitorMark name={c.name} color={c.avatarColor} size={32} />
+            <CompetitorMark name={c.name} color={c.avatarColor || '#7A6A5F'} size={32} />
             <div className="min-w-0">
               <div className="flex items-center gap-1.5 min-w-0" dir="ltr">
                 <span className="text-[13px] font-medium text-saf-text truncate">{c.name}</span>
@@ -630,8 +677,15 @@ function CompetitorRow({ c, theme, t, inSelfCard, expanded, onToggle }) {
                     {t.listening.competitors.youBadge}
                   </span>
                 )}
+                {isRatings && (
+                  <span className="inline-flex items-center px-1.5 h-4 text-[9px] font-semibold uppercase tracking-wider rounded bg-amber-50 text-amber-700 border border-amber-200 shrink-0">
+                    Ratings only
+                  </span>
+                )}
               </div>
-              <div className="text-[11px] text-saf-muted truncate" dir="ltr">{c.handle}</div>
+              <div className="text-[11px] text-saf-muted truncate" dir="ltr">
+                {c.handle || 'No Instagram account'}
+              </div>
             </div>
           </div>
         )}
@@ -639,34 +693,62 @@ function CompetitorRow({ c, theme, t, inSelfCard, expanded, onToggle }) {
 
       {/* Channel */}
       <td className="px-3 py-3 hidden md:table-cell">
-        <span className="inline-flex items-center gap-1.5">
-          <span
-            className="w-5 h-5 rounded-full grid place-items-center text-white shrink-0"
-            style={{ background: channelColor }}
-            aria-hidden="true"
-          >
-            <PlatformGlyph id={c.channel} size={10} />
+        {isRatings ? (
+          // The row exists because Google Places returned something. Saying
+          // "Google only" is the honest description of its one source; it is
+          // not the Instagram account the other rows are compared on.
+          <span className="inline-flex items-center gap-1.5">
+            <span
+              className="w-5 h-5 rounded-full grid place-items-center text-white shrink-0"
+              style={{ background: platformColor('gg', theme) }}
+              aria-hidden="true"
+            >
+              <PlatformGlyph id="gg" size={10} />
+            </span>
+            <span className="text-[12px] text-saf-muted">Google only</span>
           </span>
-          <span className="text-[12px] text-saf-text">{p.name}</span>
-        </span>
+        ) : (
+          <span className="inline-flex items-center gap-1.5">
+            <span
+              className="w-5 h-5 rounded-full grid place-items-center text-white shrink-0"
+              style={{ background: channelColor }}
+              aria-hidden="true"
+            >
+              <PlatformGlyph id={c.channel} size={10} />
+            </span>
+            <span className="text-[12px] text-saf-text">{p ? p.name : '—'}</span>
+          </span>
+        )}
       </td>
 
       {/* Followers */}
       <td className="text-end px-3 py-3" dir="ltr">
-        <div className="text-[13px] font-medium text-saf-text tabular-nums">{fmtCompact(c.followers)}</div>
-        <ChangePctText pct={c.followersChange7dPct} />
+        {isRatings ? <NotReadable reason={c.unreadableReason} /> : (
+          <>
+            <div className="text-[13px] font-medium text-saf-text tabular-nums">{fmtCompact(c.followers)}</div>
+            <ChangePctText pct={c.followersChange7dPct} />
+          </>
+        )}
       </td>
 
       {/* Engagement rate */}
       <td className="text-end px-3 py-3" dir="ltr">
-        <div className="text-[13px] font-semibold text-saf-text tabular-nums">{(c.engagementRate * 100).toFixed(1)}%</div>
-        <ChangePctText pct={c.engagementChange7dPct} />
+        {isRatings ? <NotReadable reason={c.unreadableReason} /> : (
+          <>
+            <div className="text-[13px] font-semibold text-saf-text tabular-nums">{(c.engagementRate * 100).toFixed(1)}%</div>
+            <ChangePctText pct={c.engagementChange7dPct} />
+          </>
+        )}
       </td>
 
       {/* Posting cadence — media_count over the window, from Business Discovery */}
       <td className="text-end px-3 py-3 hidden lg:table-cell" dir="ltr">
-        <div className="text-[13px] font-medium text-saf-text tabular-nums">{c.postsPerWeek}</div>
-        <div className="text-[11px] text-saf-muted tabular-nums">{fmtCompact(c.avgInteractions)} avg</div>
+        {isRatings ? <NotReadable reason={c.unreadableReason} /> : (
+          <>
+            <div className="text-[13px] font-medium text-saf-text tabular-nums">{c.postsPerWeek}</div>
+            <div className="text-[11px] text-saf-muted tabular-nums">{fmtCompact(c.avgInteractions)} avg</div>
+          </>
+        )}
       </td>
 
       {/* Google rating — Places API, public */}
@@ -678,7 +760,11 @@ function CompetitorRow({ c, theme, t, inSelfCard, expanded, onToggle }) {
       {/* Trend sparkline. Self-row uses the brand colour; peer rows use
           channel color. */}
       <td className="text-end pe-4 ps-3 py-3 hidden md:table-cell" dir="ltr">
-        <Sparkline data={c.sparkEngagement} width={120} height={26} stroke={sparkColor} className="inline-block h-6" />
+        {/* No engagement series exists for a ratings-only row, so the cell is
+            genuinely empty rather than showing a flat line at zero. */}
+        {isRatings ? null : (
+          <Sparkline data={c.sparkEngagement} width={120} height={26} stroke={sparkColor} className="inline-block h-6" />
+        )}
       </td>
     </tr>
 
@@ -909,6 +995,23 @@ function PerformanceChip({ index }) {
 }
 
 // Small inline components scoped to the Competitors screen.
+// An Instagram-derived cell on a ratings-only row. Deliberately NOT an em
+// dash: fmt() already renders a missing number that way, so an em dash here
+// would be indistinguishable from "zero followers" or "we did not look"
+// (CLAUDE.md §11 trap 1). It says the value cannot be read, and carries the
+// specific reason — personal account, private account, dormant, absent — on
+// hover, because "cannot" is only useful if it names which door is closed.
+function NotReadable({ reason }) {
+  return (
+    <Tooltip label={reason || 'Instagram cannot be read for this establishment'} side="top">
+      <span className="inline-flex items-center gap-1 text-[11.5px] text-saf-muted cursor-help">
+        <Icon name="EyeOff" size={11} />
+        Not readable
+      </span>
+    </Tooltip>
+  );
+}
+
 function CompetitorMark({ name, color, size = 32 }) {
   const initials = (name || '?').split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase();
   return (
