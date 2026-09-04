@@ -719,7 +719,7 @@ const ANALYTICS_SENTIMENT = [
 // Instagram hashtag search is capped at a small number of unique tags per
 // rolling 7-day window and returns only recent media — there is no history.
 // This is therefore your own watchlist, not a discovery feed.
-const TRENDING_TAGS = ['#SaffronHouse', '#KhanMarket', '#DelhiFood', '#MonsoonMenu', '#Galouti', '#DelhiTop50', '#DelhiBrunch', '#Biryani'];
+const TRENDING_TAGS = ['#SaffronHouse', '#Dwarka', '#DelhiFood', '#MonsoonMenu', '#Galouti', '#DelhiTop50', '#DelhiBrunch', '#Biryani'];
 
 // --- Reply templates ----------------------------------------------------------
 const TEMPLATES = {

@@ -325,12 +325,12 @@ function UsersPage({ role }) {
 // AUDIT — Admin only
 // =============================================================================
 const AUDIT_ROWS = [
-  { id: 'a-1', t: '09:42:11', actor: 'Priya Menon',    role: 'Marketing Manager',   action: 'post.publish',  entity: 'post:p2',        detail: 'Published the galouti reel to Instagram and District' },
-  { id: 'a-2', t: '09:38:04', actor: 'Priya Menon',    role: 'Marketing Manager',   action: 'inbox.unmask',  entity: 'message:c4',     detail: 'Unmasked phone and order ID on the Swiggy missing-item complaint' },
+  { id: 'a-1', t: '09:42:11', actor: 'Priya Menon',    role: 'Marketing Manager',   action: 'post.publish',  entity: 'post:p2',        detail: 'Published the galouti reel to Instagram' },
+  { id: 'a-2', t: '09:38:04', actor: 'Priya Menon',    role: 'Marketing Manager',   action: 'inbox.unmask',  entity: 'message:c3',     detail: 'Unmasked phone on the WhatsApp booking-wait complaint from Arjun Mehta' },
   { id: 'a-3', t: '09:30:55', actor: 'Rohit Malhotra', role: 'Guest Relations Lead',action: 'review.reply',  entity: 'review:rv-3',    detail: 'Replied to a 5★ Google review from Meenakshi Reddy' },
   { id: 'a-4', t: '09:12:31', actor: 'Ananya Rao',     role: 'Social Coordinator',  action: 'draft.submit',  entity: 'draft:a-rev-1',  detail: 'Submitted the Diwali menu announcement for review' },
   { id: 'a-5', t: '08:58:17', actor: 'Vikram Suri',    role: 'Owner',               action: 'user.invite',   entity: 'user:u-5',       detail: 'Invited farhan@saffronhouse.in as Social Coordinator' },
-  { id: 'a-6', t: '08:21:02', actor: 'Priya Menon',    role: 'Marketing Manager',   action: 'review.comp',   entity: 'review:rv-2',    detail: 'Issued a ₹1,000 credit with the reply to a 2★ Zomato review' },
+  { id: 'a-6', t: '08:21:02', actor: 'Priya Menon',    role: 'Marketing Manager',   action: 'review.comp',   entity: 'review:rv-2',    detail: 'Issued a ₹1,000 credit with the reply to a 2★ Google review' },
   { id: 'a-7', t: '07:55:44', actor: 'Vikram Suri',    role: 'Owner',               action: 'brand.upload',  entity: 'asset:logo-v2',  detail: 'Uploaded primary lockup v2' },
   { id: 'a-8', t: '07:42:11', actor: 'system',         role: '—',                   action: 'connector.expired', entity: 'channel:ig', detail: 'Instagram OAuth token expired' },
 ];

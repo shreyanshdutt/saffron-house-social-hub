@@ -85,7 +85,7 @@ over:
   derived in-house.
 
 - **Reviews** (`src/page-reviews.jsx`) is a first-class screen, not a feed tab.
-  Reviews arrive with a star rating, a dine-in/delivery context, and an SLA
+  Reviews arrive with a star rating, derived themes, and an SLA
   clock; the list sorts by *urgency* rather than recency, because an unanswered
   1★ is a standing advertisement against you. Replying is gated
   (`review.reply`), and issuing a comp is Marketing-Manager-only because it
@@ -125,13 +125,12 @@ over:
   page reload.
 - **Composer previews** (`src/page-compose.jsx`) are genuinely different per
   channel. A Google post renders inside a business listing with its rating and
-  Book/Directions buttons; a marketplace post renders above an order button; a
-  District post renders as a dated event with a seat count. The same 200
-  characters land differently in each, and the composer shows that.
+  Book/Directions buttons; an Instagram post renders inside a feed. The same
+  200 characters land differently in each, and the composer shows that.
 
 The compliance skeleton from the source design is intact and still earns its
 place: draft → review → approve → publish, a hash-chained audit log, PII
-masking on guest phone numbers and delivery order IDs with a gated unmask, and
+masking on guest phone numbers with a gated unmask, and
 crisis-cluster detection in Listening.
 
 ## Seeded demo narrative
@@ -139,15 +138,16 @@ crisis-cluster detection in Listening.
 The Listening data carries a deliberate three-act story:
 
 1. **Volume spike** — the galouti reel drives Instagram mentions up 340%.
-2. **Competitor move** — Dilli Darbar launches a monsoon menu with 4× our
-   engagement, in the same week and the same category.
-3. **Crisis cluster** (critical) — three negative threads on delivery
-   temperature and missing items inside four hours, all delivery and none
-   dine-in, pointing at packing and handover rather than the kitchen.
+2. **Competitor move** — Dwarka Darbar launches a monsoon menu with 4× our
+   public interactions, in the same week and the same category.
+3. **Crisis cluster** (critical) — four negative reports on weekend booking
+   waits inside four hours, on Google, Instagram comments and WhatsApp at
+   once, pointing at the floor being outrun by Top 50 demand rather than at
+   the kitchen.
 
-That last thread is consistent across screens: the blended rating slides 4.6 →
-4.3 while dine-in holds, Swiggy sentiment falls hardest, and the packaging
-complaint shows up in Reviews, Menu Items and the Inbox.
+That last thread is consistent across screens: the Google rating slides 4.6 →
+4.3 (`REVIEW_STATS.trend12w`), and the wait-time/booking complaint recurs
+across Reviews, Listening and the Inbox.
 
 ## Layout
 
@@ -176,15 +176,16 @@ state through window globals rather than ES imports. Load order in
 
 Every number here is fabricated. **[DATA-SOURCES.md](DATA-SOURCES.md)** maps
 each dataset to what would actually feed it in production and is deliberately
-honest about the gaps — the headline one being that three of the six channels
-(Zomato, Swiggy, District) have no public API, and reach a real build only via
-POS/aggregator middleware.
+honest about the gaps. There are three channels; Zomato, Swiggy and District
+were removed because none has a public API, and reaching them means a
+POS/aggregator middleware contract.
 
 ## Design tokens
 
 Tailwind colours are namespaced `saf-*` and defined in `index.html`. Dark mode
-is a class on `<html>` with hand-written CSS overrides (Tailwind's CDN build
-cannot generate `dark:` variants for arbitrary token names), documented inline
-with their contrast ratios. Type is Inter for UI and Fraunces for display
-numerals. Renaming the brand is a `saf-` token rename plus the strings in
-`i18n.jsx` and `mock.jsx`.
+is a class on `<html>` with hand-written CSS overrides, documented inline with
+their contrast ratios. `dark:` variants do work on `saf-*` tokens; the
+`html.dark` override block owns remapping a token wholesale, and a `dark:`
+utility is for a one-off at a single site that a remap cannot express. Type is
+Inter for UI and Fraunces for display numerals. Renaming the brand is a `saf-`
+token rename plus the strings in `i18n.jsx` and `mock.jsx`.
