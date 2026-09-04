@@ -173,22 +173,36 @@ collision. A duplicate top-level `const` throws; a duplicate `function` or
 
 ## 6. The data layer
 
-**`src/mock.jsx` is the single seed source.** Every dataset on every screen
-originates there: `POSTS`, `SCHEDULED`, `CONVERSATIONS`, `POST_COMMENTS`,
-`REVIEWS`, `REVIEW_STATS`, `MENU_ITEMS`, `ANALYTICS_IG` / `_GG` / `_WA`,
+Since `432ebc0` the data layer has two halves, and which half owns a dataset
+is the first thing to establish before changing it.
+
+**`src/mock.jsx` is the seed source for everything the server does not own:**
+`POSTS`, `SCHEDULED`, `CONVERSATIONS`, `POST_COMMENTS`, `REVIEWS`,
+`REVIEW_STATS`, `MENU_ITEMS`, `ANALYTICS_IG` / `_GG` / `_WA`,
 `ANALYTICS_BREAKDOWN`, `ANALYTICS_SENTIMENT`, `TRENDING_TAGS`, `TEMPLATES`,
 `ACTIVITY`, `LISTENING_SIGNALS`, `LISTENING_TRENDS`, `LISTENING_KPIS`,
 `LISTENING_COMPETITORS`, `COMPETITOR_CATCHMENT`, `COMPETITOR_POST_SEEDS`,
-`ESTABLISHMENTS`, `SAF_SELF_STATS`.
+`SAF_SELF_STATS`, and the channel / role tables.
+
+**The server owns the establishment list, the tracked competitor set, and the
+observation history** behind review velocity, follower change and engagement
+change. It reaches the client over HTTP via `src/api.jsx`, which is the ONLY
+file in `src/` that calls `fetch` — keep it that way. The server also DERIVES:
+availability tiers, observation series and every rate or change state
+(`none` / `measuring` / `rate`) are computed once in `server/src/`, where they
+are tested, and the client renders what it is given. Do not reimplement a
+derivation client-side to "avoid a round trip"; two implementations of one
+number is the defect this repo has spent the most commits removing.
 
 Do not create a second seed array inside a page file. A screen needing data
 either reads an existing export or gets a new one added to `mock.jsx` — and a
 new one must be defensible against `DATA-SOURCES.md` before it is written.
 
-**Derived-at-runtime, not seeded:** `buildCompetitorFeed()`,
-`applyCompetitorSync()`, `establishmentAvailability()`, `trackedCompetitors()`,
-`trackedPendingEstablishments()`, `syncCompetitors()`, and the whole of
-`recommend.jsx`.
+**Derived-at-runtime in the CLIENT, not seeded:** `buildCompetitorFeed()`,
+`applyCompetitorSync()`, `syncCompetitors()` and the whole of `recommend.jsx`.
+`establishmentAvailability()`, `trackedCompetitors()` and the velocity /
+change derivations moved to `server/src/` in `432ebc0` and were deleted from
+the client — there is no client copy to fall back on.
 
 **`SYNC_VERSION`** (`{ value: 0 }` in `mock.jsx`) is the cache key. A completed
 `syncCompetitors()` bumps it; the Competitors table and the recommendation
@@ -202,8 +216,9 @@ in `try/catch` because private-mode browsers throw on access; keep that.
 |---|---|---|
 | `saf-role` | current role id | `app.jsx` |
 | `saf-theme` | `'light'` / `'dark'` | `app.jsx` + the pre-paint block in `index.html` |
-| `saf-tracked-v1` | tracked establishment ids | `trackedSave()` |
-| `saf-sync-v2` | last sync state **+ observation history** | `syncStateSave()` |
+| `saf-api-base` | optional data-service URL override | set by hand |
+| ~~`saf-tracked-v1`~~ | retired in `432ebc0` — per-restaurant, now server-side | — |
+| ~~`saf-sync-v2`~~ | retired in `432ebc0` — observation history is server-side | — |
 | ~~`saf-sync-v1`~~ | superseded — **not read, migrated or deleted** | — |
 | `saf-listening-v1` | dismissed / assignments / read / notes / tags / filter | `listeningSave()` |
 | `saf-recs-v1` | recommendation id → `accepted` / `done` / `dismissed` | `recsSave()` |
@@ -412,8 +427,10 @@ the reasoning belongs in a code comment at the site, not only in a report.
 5. **A readable but dormant competitor account is not "full comparison".**
    `est-10` Punjabi Rasoi (`lastPostDaysAgo: 142`) landed in the full tier
    while the reason underneath said "nothing to compare" (`eb2a33d`).
-   `establishmentAvailability()` now treats `lastPostDaysAgo > 60` as stale and
-   downgrades to ratings-only, so the tier matches its own explanation.
+   `establishmentAvailability()` treats `lastPostDaysAgo > 60` as stale and
+   downgrades to ratings-only, so the tier matches its own explanation. Since
+   `432ebc0` that function lives in `server/src/availability.js` and is
+   covered by tests — the client renders the tier it is served.
 
 6. **Giving an establishment a competitor id pulls it into the default tracked
    set.** `TRACKED_DEFAULT` in `mock.jsx` is `est-1`…`est-6`; `est-7`/`8`/`9`
