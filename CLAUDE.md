@@ -128,7 +128,7 @@ There is no module system. Two mechanisms, and both are in use:
   `Card`, `Icon`, `fmt`, `StarRow`.
 - **Explicit `window.*` assignment** at the bottom of a file, for symbols
   crossing a boundary where the author wanted the export to be legible. The
-  current set: `maskedPhone`, `maskedAccount`, `maskedOrder`, `csvEscape`,
+  current set: `maskedPhone`, `maskedAccount`, `csvEscape`,
   `buildCsv`, `downloadCsv`, `ROLES`, `PROFILES`, `PROFILE_BY_ID`, `PERMS`,
   `hasPerm`, `I18N`, `useT`, `tFor`, `AppCtx`, `PAGE_PERMS`, `PAGE_LABEL`,
   `App`, and the page/screen components (`ApprovalsPage`, `HistoryPage`,

@@ -35,10 +35,8 @@
 // modelled here rather than papered over.
 function maskedPhone(p) { return p ? p.replace(/\d(?=\d{2})/g, '•') : p; }
 function maskedAccount(a) { return a ? a.replace(/\d(?=\d{4})/g, '•') : a; }
-const maskedOrder = maskedAccount;
 window.maskedPhone = maskedPhone;
 window.maskedAccount = maskedAccount;
-window.maskedOrder = maskedOrder;
 
 // --- Roles + per-role profiles --------------------------------------------
 // Source: your own user table. Nothing here comes from a platform.

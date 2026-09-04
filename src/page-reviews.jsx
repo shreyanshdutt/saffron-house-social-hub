@@ -135,7 +135,7 @@ function ReviewsPage({ role }) {
         <div>
           <h1 className="text-2xl font-bold text-saf-text">Reviews</h1>
           <p className="text-sm text-saf-muted mt-1">
-Every Google review, with the reply clock running.
+            Every Google review, with the reply clock running.
           </p>
         </div>
         <Button

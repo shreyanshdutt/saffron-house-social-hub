@@ -136,20 +136,29 @@ closing an item, not follow-up work.**
     screen printed "3 related incidents" above "Four negative reports".
     Fourth child added from `rv-4`. — closed `df34712`
 
+12. **`maskedOrder` was dead** — an alias of `maskedAccount` used in zero
+    screens, left over from the marketplace removal. Removed from `mock.jsx`
+    and from the `window.*` export set in `CLAUDE.md` § 5. `maskedAccount`
+    itself stays: it masks the booking reference in the Inbox
+    (`page-messages.jsx:201`). — closed in this commit
+13. **The `partner` recommendation source tier was unreachable** — no entry in
+    `REC_SOURCES` carried `tier: 'partner'`, so `REC_TIER_LABEL.partner` was
+    never looked up. Removed from `REC_TIER_LABEL` (`recommend.jsx`) and the
+    `SourceBadge` tone map (`page-recommendations.jsx`). The Actions screen's
+    on-screen **Sources legend** was wrong in both directions — it named the
+    dead `partner` tier and omitted `partial`, which `publicApi` carries and
+    eight rules cite — and now lists the four tiers that exist: `api`,
+    `derived`, `own`, `partial`. Two stale comments citing a "partner
+    dashboard" and the removed "Zomato partner dashboard" went with it.
+    The history it recorded in an inline comment now lives only in
+    `DATA-SOURCES.md` § *Cost of adding the delivery marketplaces back*,
+    which is where it belongs. — closed in this commit
+14. **`page-reviews.jsx` subtitle indentation** — text sat flush at column 0
+    inside its `<p>`. Cosmetic; re-indented. — closed in this commit
+
 #### Open
 
-12. **`maskedOrder` is dead.** Defined `mock.jsx:38`, exported `:41`, used in
-    zero screens; `orderId` appears nowhere in `src/`. Left over from the
-    marketplace removal. Removing it is a two-file change — `CLAUDE.md` § 5
-    lists it in the `window.*` export set.
-13. **The `partner` recommendation source tier is unreachable.**
-    `REC_TIER_LABEL.partner` (`recommend.jsx:44`) is never looked up: no entry
-    in `REC_SOURCES` carries `tier: 'partner'`, so no rule can emit it. Unlike
-    `maskedOrder` it carries an inline comment explaining why it once existed,
-    so deleting it also deletes that record — decide which is worth more.
-14. **`page-reviews.jsx:138`** — the subtitle text sits flush at column 0
-    inside its `<p>`. Cosmetic; JSX collapses the whitespace and it renders
-    correctly. Noted so it is not mistaken for something load-bearing.
+None.
 
 ## 4. Scope discipline
 

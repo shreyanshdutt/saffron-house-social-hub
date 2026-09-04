@@ -12,8 +12,8 @@
 //      produced it, with the actual numbers, and the score arithmetic is shown
 //      in the UI. An owner who cannot see why will not act, and should not.
 //   2. Actions happen outside this app. The output is a briefing, not a button
-//      that posts for you: "tell the kitchen", "add this on the Zomato partner
-//      dashboard", "brief the floor". Each carries an owner and a place.
+//      that posts for you: "tell the kitchen", "update the Google listing",
+//      "brief the floor". Each carries an owner and a place.
 //   3. No invented causality. The engine never claims "this will raise your
 //      rating by 0.2". It states what is true (mentions up 240%, sentiment
 //      0.78, nothing scheduled) and what it projects, labelled as projection
@@ -41,7 +41,6 @@ const REC_SOURCES = {
 
 const REC_TIER_LABEL = {
   api:     'Live via API',
-  partner: 'Needs partner integration',   // unused since the marketplaces were dropped
   derived: 'Derived in-house',
   own:     'Your own data',
   partial: 'Partial / approximate',

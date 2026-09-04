@@ -6,13 +6,13 @@
 // Two deliberate choices worth defending:
 //
 //   1. Every card shows its evidence with the source of each number, badged by
-//      whether that source is live-available, needs a partner integration, or
-//      is derived in-house. A recommendation an owner cannot trace is a
+//      whether that source is live via an API, derived in-house, your own
+//      system, or a partial public approximation. A recommendation an owner cannot trace is a
 //      recommendation they will not act on — and one built on data you cannot
 //      actually get in production is worse than none at all.
 //
-//   2. Nothing here executes. The actions happen in a kitchen, on a partner
-//      dashboard, in a menu meeting. The screen's job is to say what to do,
+//   2. Nothing here executes. The actions happen in a kitchen, on the Google
+//      listing, in a menu meeting. The screen's job is to say what to do,
 //      who owns it, where it happens, and to track whether it got done.
 
 function RecommendationsPage({ role, onNavigate }) {
@@ -409,13 +409,12 @@ function RecCard({ rec, rank, status, theme, expanded, onToggle, onStatus, onNav
 }
 
 // Source badge. Tier is carried in text as well as tone — an owner needs to
-// know at a glance whether a number is live or needs a partner contract, and
-// that distinction must survive greyscale printing.
+// know at a glance whether a number is live, derived or approximate, and that
+// distinction must survive greyscale printing.
 function SourceBadge({ src }) {
   if (!src) return null;
   const tone = {
     api:     'bg-emerald-50 text-emerald-700 border-emerald-200',
-    partner: 'bg-amber-50 text-amber-700 border-amber-200',
     derived: 'bg-saf-light text-saf-primary border-saf-light',
     own:     'bg-slate-100 text-saf-muted border-saf-border',
     partial: 'bg-rose-50 text-rose-700 border-rose-200',
@@ -489,11 +488,11 @@ function MethodNote() {
             <span className="font-medium text-saf-text">Sources.</span> Every figure is badged with
             where it would come from in production —{' '}
             <span className="text-emerald-700 font-medium">live via API</span>,{' '}
-            <span className="text-amber-700 font-medium">needs a partner integration</span>,{' '}
-            <span className="text-saf-primary font-medium">derived in-house</span>, or{' '}
-            <span className="text-saf-text font-medium">your own systems</span>. Actions built
-            mostly on green badges are shippable first; amber ones need a middleware contract
-            before they are real.
+            <span className="text-saf-primary font-medium">derived in-house</span>,{' '}
+            <span className="text-saf-text font-medium">your own systems</span>, or{' '}
+            <span className="text-rose-700 font-medium">partial / approximate</span>. A rose
+            badge means the figure is a public approximation — competitor counts without reach —
+            so weigh it accordingly.
           </p>
         </div>
       )}
