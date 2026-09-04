@@ -21,7 +21,7 @@ function ComposePage({ initialContent, onPublished }) {
   }, [initialContent]);
 
   // Hashtags
-  const [tags, setTags] = React.useState(['#SaffronHouse', '#KhanMarket']);
+  const [tags, setTags] = React.useState(['#SaffronHouse', '#Dwarka']);
   const [tagInput, setTagInput] = React.useState('');
   const [tagAutocomplete, setTagAutocomplete] = React.useState(false);
 
@@ -410,7 +410,7 @@ function Field({ icon, label, children }) {
 // ---------------------------------------------------------------------------
 // Per-channel preview cards.
 //
-// These are deliberately not five variations on one card. A guest reads a
+// These are deliberately not two variations on one card. A guest reads a
 // Google post inside a business listing — next to the rating, the hours and
 // a Book button — and an Instagram post inside a feed. The same 200
 // characters land completely differently in each, and the composer shows that.

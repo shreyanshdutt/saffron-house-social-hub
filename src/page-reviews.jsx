@@ -5,7 +5,7 @@
 // you, in public, on a clock. So the screen is built around three things a
 // social feed does not have:
 //
-//   1. A rating, not an engagement count. The header leads with the blended
+//   1. A rating, not an engagement count. The header leads with the Google
 //      average and its 12-week direction, because that number is what a guest
 //      sees before they see anything else you have ever published.
 //   2. An SLA. An unanswered 1★ is a standing advertisement against you, so
@@ -258,7 +258,7 @@ function ReviewSummary({ breached, theme }) {
       <Card className="col-span-12 lg:col-span-5">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <div className="text-[12px] text-saf-muted uppercase tracking-wider">Blended rating</div>
+            <div className="text-[12px] text-saf-muted uppercase tracking-wider">Google rating</div>
             <div className="flex items-end gap-2 mt-1">
               <div className="text-[44px] leading-none font-bold text-saf-text font-display">{s.avg.toFixed(1)}</div>
               <div className="pb-1.5">

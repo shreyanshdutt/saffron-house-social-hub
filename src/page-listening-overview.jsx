@@ -31,7 +31,8 @@ function OverviewScreen({ state, theme, onGoSignals, onGoTrends, onGoCompetitors
   // sentiment is misleading — moving 0.10 -> 0.20 is "100%" but actually
   // a small absolute shift; the reader cares about the absolute number).
   const sentimentDelta = kp.netSentiment.current - kp.netSentiment.baseline;
-  // Share of voice is a fraction; show absolute point delta.
+  // Direction requests are an integer count, like mentions and reach — so a
+  // % change against the prior window is the natural metric here too.
   const dirChangePct = Math.round(((kp.directionRequests.current - kp.directionRequests.baseline) / kp.directionRequests.baseline) * 100);
 
   return (

@@ -227,7 +227,7 @@ const POSTS = [
     author: 'Priya Menon',
     content: 'The monsoon menu is here. Twelve plates built around what Delhi actually eats when it rains — corn and chilli pakoras with saffron chutney, Kashmiri morel pulao, and a ginger-jaggery kheer worth the walk in the wet. Available all week, lunch and dinner. Sector 10 Market, Dwarka.',
     media: { kind: 'image', label: 'Monsoon thali overhead, rain on the window', tone: 'warm' },
-    tags: ['#SaffronHouse', '#MonsoonMenu', '#KhanMarket', '#DelhiFood'],
+    tags: ['#SaffronHouse', '#MonsoonMenu', '#Dwarka', '#DelhiFood'],
     metrics: { views: 21200, reach: 16400, likes: 490, comments: 88, shares: 142, saves: 296, rate: 6.2 },
   },
   {
@@ -253,7 +253,7 @@ const POSTS = [
     author: 'Vikram Suri',
     content: 'Saffron House has been listed in the Delhi Top 50 for the third year running. Thank you to every guest who walked up those stairs in Sector 10 Market, Dwarka and gave us a table to cook for. We are open seven days, 12pm to 11:30pm.',
     media: null,
-    tags: ['#SaffronHouse', '#DelhiTop50', '#KhanMarket'],
+    tags: ['#SaffronHouse', '#DelhiTop50', '#Dwarka'],
     metrics: { views: 11400, reach: 9100, likes: 343, comments: 34, shares: 71, saves: 62, rate: 5.6 },
   },
   {
@@ -265,7 +265,7 @@ const POSTS = [
     date: '2026-09-01T08:00:00+05:30',
     author: 'Ananya Rao',
     content: 'Weekday lunch, sorted. Two courses and a cooler for ₹649, 12 to 4pm. Walk in or book on WhatsApp.',
-    tags: ['#SaffronHouse', '#LunchDeal', '#KhanMarket'],
+    tags: ['#SaffronHouse', '#LunchDeal', '#Dwarka'],
     metrics: { views: 0, reach: 0, likes: 0, comments: 0, shares: 0, saves: 0, rate: 0 },
     error: 'Instagram access token expired. Please reconnect the account.',
   },
@@ -314,11 +314,11 @@ const POSTS = [
 // API; Google via localPosts. Both are real.
 const SCHEDULED = [
   { id: 's1', platforms: ['ig'],      when: '2026-09-05T11:00:00+05:30', content: 'Weekend brunch is back. Unlimited chai, five small plates, and the terrace open from 11am. Carousel below →', tags: ['#SaffronHouse','#DelhiBrunch'] },
-  { id: 's2', platforms: ['gg'],      when: '2026-09-05T15:30:00+05:30', content: 'Updated hours for the festive season: we are open till 12:30am from 5 October through Diwali week.', tags: ['#KhanMarket'] },
+  { id: 's2', platforms: ['gg'],      when: '2026-09-05T15:30:00+05:30', content: 'Updated hours for the festive season: we are open till 12:30am from 5 October through Diwali week.', tags: ['#Dwarka'] },
   { id: 's3', platforms: ['ig','gg'], when: '2026-09-06T13:00:00+05:30', content: 'Saturday special — the Awadhi biryani is back, limited to 40 portions a day.', tags: ['#Biryani','#SaffronHouse'] },
   { id: 's4', platforms: ['ig'],      when: '2026-09-07T19:00:00+05:30', content: 'Meet Ramesh, who has been rolling our rotis for eleven years. He does 600 on a Saturday and has never once dropped one.', tags: ['#SaffronHouse','#TeamStories'] },
   { id: 's5', platforms: ['ig','gg'], when: '2026-09-09T11:00:00+05:30', content: 'Diwali menu, six courses, one seating a night from 18 October. Bookings open Monday 9am on WhatsApp.', tags: ['#Diwali','#SaffronHouse'] },
-  { id: 's6', platforms: ['ig','gg'], when: '2026-09-12T09:00:00+05:30', content: 'The terrace reopens for the season this weekend — 30 covers, first come, no bookings.', tags: ['#SaffronHouse','#KhanMarket'] },
+  { id: 's6', platforms: ['ig','gg'], when: '2026-09-12T09:00:00+05:30', content: 'The terrace reopens for the season this weekend — 30 covers, first come, no bookings.', tags: ['#SaffronHouse','#Dwarka'] },
 ];
 
 // --- Conversations / Inbox ---------------------------------------------------
@@ -780,6 +780,7 @@ const LISTENING_SIGNALS = [
       { channel: 'gg', text: 'Waited 55 minutes for a table we had booked for 8pm.', t: '12m' },
       { channel: 'wa', text: 'Booked for 8pm, not seated until 8:50. Third time.', t: '34m' },
       { channel: 'ig', text: 'Food is great but we waited nearly an hour for a booked table 😕', t: '52m' },
+      { channel: 'gg', text: 'Second Saturday running that our booking meant nothing.', t: '2h' },
     ] },
 
   // Background signals.

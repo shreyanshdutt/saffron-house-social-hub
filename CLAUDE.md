@@ -304,7 +304,7 @@ relative to load — do not hardcode ISO timestamps.
 
 **A menu dish, review, or post.** Add to the corresponding array in
 `mock.jsx`. If it participates in the seeded three-act narrative (galouti reel
-volume spike → competitor monsoon menu → delivery-temperature crisis cluster),
+volume spike → competitor monsoon menu → booking-wait crisis cluster),
 keep it consistent across Reviews, Menu Items and the Inbox — that consistency
 is the demo.
 
