@@ -244,7 +244,12 @@ const I18N = {
       competitors: {
         column: {
           competitor: 'Competitor',
-          channel:    'Channel',
+          // "Feed", not "Channel": this column names the feed the post metrics
+          // in this row came from, which is not the same as which social
+          // accounts the establishment has. See COMPETITOR_COLUMNS in
+          // page-listening-competitors.jsx for why the label and the field id
+          // deliberately differ.
+          channel:    'Feed',
           followers:  'Followers',
           engagement: 'Engagement',
           cadence:    'Posts / week',

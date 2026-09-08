@@ -42,6 +42,17 @@ const COMPETITOR_COLGROUP = (
 const COMPETITOR_COLUMNS = [
   { id: 'moment',     sortable: false },
   { id: 'competitor', sortable: true,  getValue: (c) => c.name.toLowerCase(),     defaultDir: 'asc'  },
+  // LABEL AND FIELD DIFFER ON PURPOSE — do not "fix" this by re-pointing the
+  // column at establishment_social.
+  //
+  // The id stays `channel` (sort key, aria-sort plumbing and the server's
+  // `c.channel` all use it), but the header reads "Feed", because the value
+  // comes from the CONTENT record and names the feed this row's posts and
+  // cadence were pulled from. Since 3949f8b social identity comes from
+  // establishment_social instead, so a row can hold a handle with no pulled
+  // content — and such a row legitimately has NO feed to name and says so.
+  // Pointing this column at the handle instead would make it claim a feed for
+  // an account nobody has fetched, which is the change the owner declined.
   { id: 'channel',    sortable: true,  getValue: (c) => c.channel,                defaultDir: 'asc'  },
   { id: 'followers',  sortable: true,  getValue: (c) => c.followers,              defaultDir: 'desc' },
   { id: 'engagement', sortable: true,  getValue: (c) => c.engagementRate,         defaultDir: 'desc' },
