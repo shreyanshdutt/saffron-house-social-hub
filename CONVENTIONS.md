@@ -395,6 +395,30 @@ is § 4 and § 6, not a GitHub feature.
 - **Never rebase to "tidy" a stack that has been pushed.** The history a
   reviewer has already read is not yours to rewrite.
 
+### Where git is run from
+
+- **The planning assistant does not run git commands that WRITE**, and
+  prefixes even its reads with `GIT_OPTIONAL_LOCKS=0`. `git log`, `git show`
+  and `git rev-parse` are safe unprefixed. **`git status` and `git diff` are
+  NOT** — both refresh the index and take `.git/index.lock` to do it, which
+  is a write, and which through this mount is a lock that cannot be released.
+  `GIT_OPTIONAL_LOCKS=0` tells git to skip exactly that, and was verified to
+  work here on 2026-09-08.
+- The reason is mechanical, not stylistic. The repository is reached through a
+  folder mount that cannot delete files, so git cannot clean up its own
+  temporary objects or release its own locks. On 2026-09-08 a ONE-LINE docs
+  commit run this way left `.git/HEAD.lock` and
+  `.git/objects/maintenance.lock` behind, and every operation that moves HEAD
+  — checkout, commit, reset — then failed with "Another git process seems to
+  be running" until the owner deleted two zero-byte files by hand. A
+  partially applied `checkout` had also left the working tree holding one
+  branch's content while HEAD pointed at another, which then blocked the
+  merge.
+- **So: the assistant edits files and hands over the commands; the owner and
+  CC run git.** A change small enough to feel not worth handing over is
+  precisely the one that causes this, because its smallness is what makes
+  running it yourself feel reasonable.
+
 ### Unchanged
 
 - **Branch before the first commit of a piece of work.** `main` is not
