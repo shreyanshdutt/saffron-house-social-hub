@@ -29,8 +29,45 @@ export function migrate(db) {
   return db;
 }
 
+// SQLite cannot ALTER a CHECK constraint, and `CREATE TABLE IF NOT EXISTS` is
+// a NO-OP against a table that already exists — so a database created before a
+// CHECK changed keeps the OLD constraint silently, and the only symptom is an
+// insert being rejected at runtime for a value the schema file plainly allows.
+// That is precisely the silent failure this repo keeps paying for.
+//
+// There is no migration framework (server/README.md § Known gaps) and this
+// commit does not add one: the database holds fabricated sample rows only, so
+// the remedy is to delete it and re-seed, which costs nothing. What is NOT
+// acceptable is finding that out from a confusing runtime error, so the
+// mismatch is detected at boot and named.
+const REQUIRED_CHECK_VALUES = [
+  { table: 'establishment_social', column: 'platform', values: ['youtube'] },
+  { table: 'observations', column: 'source', values: ['youtube_data', 'x_api'] },
+];
+
+export function assertSchemaCurrent(db) {
+  const stale = [];
+  for (const req of REQUIRED_CHECK_VALUES) {
+    const row = db.prepare(`SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?`).get(req.table);
+    if (!row || !row.sql) continue;                 // table not created yet — migrate() will make it
+    for (const v of req.values) {
+      if (!row.sql.includes(`'${v}'`)) stale.push(`${req.table}.${req.column} does not allow '${v}'`);
+    }
+  }
+  if (stale.length) {
+    throw new Error(
+      `This database predates the current schema:\n  - ${stale.join('\n  - ')}\n` +
+      `SQLite cannot alter a CHECK constraint in place and there is no migration framework. ` +
+      `The database holds only fabricated sample rows, so delete it and re-seed:\n` +
+      `  rm -f server/data/saffron.sqlite* && npm run seed`
+    );
+  }
+}
+
 export function openAndMigrate(path) {
-  return migrate(openDb(path));
+  const db = migrate(openDb(path));
+  assertSchemaCurrent(db);
+  return db;
 }
 
 export const nowIso = () => new Date().toISOString();

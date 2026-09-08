@@ -2,6 +2,7 @@
 // without a socket.
 
 import { availability } from './availability.js';
+import { channelCapabilities } from './channels.js';
 import { seriesFor, insertObservation, SELF_SUBJECT } from './observations.js';
 import { velocityFromSeries, changeFromSeries, newestWith } from './derive.js';
 import { nowIso } from './db.js';
@@ -117,6 +118,11 @@ function shapeEstablishment(db, row) {
     // handed a stale copy.
     fetchedAt: row.fetched_at,
     tracked: !!row.tracked,
+    // Per-channel capability, BESIDE the tier rather than feeding it. The tier
+    // above keeps its exact meaning (Instagram readability + a Google
+    // listing); this answers the finer question "what can we know about them
+    // on each channel, and if not, whose limitation is it" — see channels.js.
+    channels: channelCapabilities(current, social),
     // True only for a tracked row that the current filters would otherwise
     // exclude. The screen says so rather than quietly showing it.
     belowFilters: !!row.below_filters,

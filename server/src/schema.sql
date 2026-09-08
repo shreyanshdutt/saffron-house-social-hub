@@ -77,7 +77,10 @@ CREATE TABLE IF NOT EXISTS establishments (
 CREATE TABLE IF NOT EXISTS establishment_social (
   id                  INTEGER PRIMARY KEY,
   place_id            TEXT NOT NULL REFERENCES establishments (place_id) ON DELETE CASCADE,
-  platform            TEXT NOT NULL CHECK (platform IN ('instagram', 'x', 'facebook')),
+  -- 'youtube' was missing, so the database REJECTED a YouTube handle outright
+  -- while the product's pitch covered the channel. See CHANNEL_CAPABILITIES in
+  -- channels.js for what each of these can actually answer.
+  platform            TEXT NOT NULL CHECK (platform IN ('instagram', 'x', 'youtube', 'facebook')),
   handle              TEXT,
   account_type        TEXT NOT NULL DEFAULT 'unknown'
                         CHECK (account_type IN ('unknown', 'business', 'creator', 'personal', 'private', 'absent')),
@@ -127,8 +130,13 @@ CREATE TABLE IF NOT EXISTS observations (
   -- a table of other people's Places listings.
   subject             TEXT NOT NULL,
   observed_at         TEXT NOT NULL,
+  -- Named after the API that produced the reading, as the existing values are.
+  -- `youtube_data` is the YouTube Data API; `x_api` is X's v2 API, and it is
+  -- the first source here whose reads are billed per call rather than per
+  -- quota unit (CONVENTIONS.md §10 — cost is a correctness concern).
   source              TEXT NOT NULL
-                        CHECK (source IN ('places', 'business_discovery', 'business_profile', 'seed')),
+                        CHECK (source IN ('places', 'business_discovery', 'business_profile',
+                                          'youtube_data', 'x_api', 'seed')),
   review_count        INTEGER,
   rating              REAL,
   followers           INTEGER,
