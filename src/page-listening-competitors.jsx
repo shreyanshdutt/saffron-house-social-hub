@@ -71,7 +71,15 @@ function mergeCompetitor(row) {
     ...(content || {}),
     ...row,
     id: row.placeId,
-    handle: content ? content.handle : null,
+    // The SERVER owns social identity now — it reads establishment_social,
+    // which holds a handle whether or not a competitorRef exists. Taking it
+    // from `content` nulled the handle for every row without that ref, and the
+    // row below turned the null into "No Instagram account" about an account
+    // the database was holding.
+    handle: row.handle,
+    // Channel still comes from the post-content record: it describes which
+    // feed the recentPosts belong to, not which accounts the establishment
+    // has. A row with a handle but no pulled content has no channel to name.
     channel: content ? content.channel : null,
     themes: content ? content.themes : [],
     recentPosts: content ? content.recentPosts : null,
@@ -766,8 +774,13 @@ function CompetitorRow({ c, theme, t, inSelfCard, expanded, onToggle }) {
               <div className="flex items-center gap-1.5 min-w-0" dir="ltr">
                 <span className="text-[13px] font-medium text-saf-text truncate group-hover:text-saf-primary transition-colors">{c.name}</span>
               </div>
+              {/* Content and handle are now independent: the feed comes from
+                  a past pull, the handle from establishment_social, and
+                  clearing the handle does not delete the posts already
+                  fetched. So the handle may be absent here even though the
+                  posts are not. */}
               <div className="text-[11px] text-saf-muted truncate" dir="ltr">
-                {c.handle} · {c.recentPosts.length} posts / 14d
+                {c.handle ? `${c.handle} · ` : ''}{c.recentPosts.length} posts / 14d
               </div>
             </div>
           </button>
@@ -788,8 +801,18 @@ function CompetitorRow({ c, theme, t, inSelfCard, expanded, onToggle }) {
                   </span>
                 )}
               </div>
+              {/* THREE states, not two. A falsy handle used to render as the
+                  positive claim "No Instagram account", which contradicted the
+                  banner above it for any establishment whose account we hold
+                  but have not pulled. `handleAccountType` carries the
+                  difference: 'absent' is a checked answer, 'unknown' or no row
+                  at all is an unchecked one, and neither is the other. */}
               <div className="text-[11px] text-saf-muted truncate" dir="ltr">
-                {c.handle || 'No Instagram account'}
+                {c.handle
+                  ? c.handle
+                  : c.handleAccountType === 'absent'
+                    ? 'No Instagram account'
+                    : <NotReadable reason="No Instagram handle recorded for this establishment yet. Nobody has looked, and that is not the same as there being no account — add one on the Establishments screen." />}
               </div>
             </div>
           </div>
@@ -812,7 +835,7 @@ function CompetitorRow({ c, theme, t, inSelfCard, expanded, onToggle }) {
             </span>
             <span className="text-[12px] text-saf-muted">Google only</span>
           </span>
-        ) : (
+        ) : p ? (
           <span className="inline-flex items-center gap-1.5">
             <span
               className="w-5 h-5 rounded-full grid place-items-center text-white shrink-0"
@@ -821,8 +844,15 @@ function CompetitorRow({ c, theme, t, inSelfCard, expanded, onToggle }) {
             >
               <PlatformGlyph id={c.channel} size={10} />
             </span>
-            <span className="text-[12px] text-saf-text">{p ? p.name : '—'}</span>
+            <span className="text-[12px] text-saf-text">{p.name}</span>
           </span>
+        ) : (
+          // No channel means no pulled content to attribute to one. This used
+          // to render a bare em dash beside a black glyph — an unknown channel
+          // drawn as if it were a real one, next to the marker §11 trap 1
+          // warns reads as a measured nothing. Both are gone: no glyph for a
+          // channel we do not have, and the words say which absence it is.
+          <NotReadable reason="No feed has been pulled for this establishment, so there is no channel to attribute it to. Run a sync once its Instagram account has been verified." />
         )}
       </td>
 
@@ -976,11 +1006,23 @@ function CompetitorFeed({ c, theme }) {
             ? 'Best post interactions not readable'
             : <>Best <span className="font-semibold text-saf-text">{fmtCompact(best.interactions)}</span> ({best.theme})</>}
         </div>
-        <ExternalRef
-          href={`https://instagram.com/${c.handle.replace('@', '')}`}
-          label="Open profile"
-          className="ms-auto"
-        />
+        {/* Guarded because `handle` and `recentPosts` no longer come from the
+            same record: the posts are a past pull, the handle is current, and
+            "No account" on the Establishments screen clears one without the
+            other. Unguarded, this threw on null and white-screened the tab the
+            moment a feed was expanded. */}
+        {c.handle ? (
+          <ExternalRef
+            href={`https://instagram.com/${c.handle.replace('@', '')}`}
+            label="Open profile"
+            className="ms-auto"
+          />
+        ) : (
+          <span className="text-[12px] text-saf-muted ms-auto inline-flex items-center gap-1">
+            <Icon name="Unlink" size={12} />
+            No handle on record
+          </span>
+        )}
       </div>
 
       {/* Performance strip — every post as a bar, so the outliers are visible

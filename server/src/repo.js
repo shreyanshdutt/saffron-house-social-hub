@@ -204,6 +204,15 @@ export function listCompetitors(db) {
     const followers = newestFollowers ? newestFollowers.followers : null;
     const avgInteractions = newestInter ? newestInter.avgInteractions : null;
 
+    // Social identity comes from `establishment_social`, which is the table
+    // that holds it — NOT from a join through `competitorRef`. That ref is a
+    // seed-era link to the client's post-content records, and an establishment
+    // without one (est-15 is the live case) then arrived with no handle at
+    // all, which the row turned into the positive claim "No Instagram
+    // account" about a business account the database was holding at the time.
+    // A fact the database has must not be gated on a link that predates it.
+    const ig = est.social.find(x => x.platform === 'instagram') || null;
+
     const igReason = est.availability.reasons.find(r => /instagram/i.test(r.text) && !r.ok);
     // A `none`-tier establishment has no Google listing, so Places gives us no
     // way in at all — a different absence from "Instagram cannot be read", and
@@ -219,6 +228,17 @@ export function listCompetitors(db) {
       dataTier: est.availability.tier,
       googleRating: est.rating,
       googleReviews: est.userRatingsTotal,
+      // The handle, and enough state for the client to tell three different
+      // things apart without inferring:
+      //   handle set                     — we hold an account
+      //   accountType 'absent'           — we looked and there is none
+      //   accountType 'unknown' / no row — nobody has checked yet
+      // Collapsing the last two into one message is the defect this fixes, so
+      // the state travels rather than being guessed from a falsy handle.
+      handle: ig ? ig.handle : null,
+      handlePlatform: ig ? ig.platform : null,
+      handleAccountType: ig ? ig.accountType : null,
+      handleVerifiedAt: ig ? ig.verifiedAt : null,
       // Present only on the full tier: Business Discovery is what produces
       // them, and it never runs for a ratings-only establishment.
       followers: est.availability.tier === 'full' ? followers : null,

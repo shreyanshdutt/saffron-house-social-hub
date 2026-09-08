@@ -140,6 +140,76 @@ test('an invalid handle is rejected and nothing is written', () => {
   assert.equal(ig.accountType, 'absent', 'unchanged from the seed');
 });
 
+// --- social identity on the competitor row ----------------------------------
+// establishment_social is the source of truth for a handle. It used to reach
+// the Competitors row by a join through `competitorRef`, so an establishment
+// without that seed-era link arrived with no handle — and the row turned the
+// null into "No Instagram account" about an account the database was holding.
+
+test('a tracked establishment with NO competitorRef still serves its handle', () => {
+  const db = seededDb();
+  const pid = samplePlaceId('est-15');   // Biryani Junction: competitorId null
+  repo.track(db, pid, 'admin');
+  const c = repo.listCompetitors(db).find(x => x.placeId === pid);
+  assert.equal(c.competitorRef, null, 'this is the case that was broken');
+  assert.equal(c.handle, '@biryanijunction.ncr', 'served from establishment_social, not the ref');
+  assert.equal(c.handlePlatform, 'instagram');
+  assert.equal(c.handleAccountType, 'business');
+});
+
+test('the served handle does not contradict the availability banner', () => {
+  const db = seededDb();
+  const pid = samplePlaceId('est-15');
+  repo.track(db, pid, 'admin');
+  const est = repo.getEstablishment(db, pid);
+  const c = repo.listCompetitors(db).find(x => x.placeId === pid);
+  // The banner says the account is readable; the row must not say there is none.
+  assert.equal(est.availability.igReadable, true);
+  assert.ok(c.handle, 'a readable account must not arrive at the row as a null handle');
+});
+
+test('`absent` and `unknown` are distinguishable in what the server serves', () => {
+  const db = seededDb();
+  const checked = samplePlaceId('est-13');    // seeded 'absent': we looked, none
+  const unchecked = samplePlaceId('est-12');
+  repo.track(db, checked, 'admin');
+  repo.track(db, unchecked, 'admin');
+  // Put est-12 in the unchecked state a hand-entered handle produces.
+  db.prepare(`UPDATE establishment_social SET account_type = 'unknown', verified_at = NULL
+               WHERE place_id = ? AND platform = 'instagram'`).run(unchecked);
+
+  const list = repo.listCompetitors(db);
+  const a = list.find(x => x.placeId === checked);
+  const u = list.find(x => x.placeId === unchecked);
+
+  assert.equal(a.handleAccountType, 'absent', 'we looked and there is none');
+  assert.equal(a.handle, null);
+  assert.equal(u.handleAccountType, 'unknown', 'nobody has looked');
+  assert.notEqual(a.handleAccountType, u.handleAccountType,
+    'the client must be able to tell these apart — collapsing them is the defect');
+});
+
+test('an establishment with no social row at all serves nulls, not a guess', () => {
+  const db = seededDb();
+  const pid = samplePlaceId('est-13');
+  repo.track(db, pid, 'admin');
+  db.prepare(`DELETE FROM establishment_social WHERE place_id = ?`).run(pid);
+  const c = repo.listCompetitors(db).find(x => x.placeId === pid);
+  assert.equal(c.handle, null);
+  assert.equal(c.handleAccountType, null, 'no row is its own state — not `absent`');
+});
+
+test('clearing a handle leaves the row serveable — content and handle are independent', () => {
+  const db = seededDb();
+  const pid = samplePlaceId('est-1');   // HAS a competitorRef, so the client finds posts
+  repo.clearInstagramHandle(db, pid);
+  const c = repo.listCompetitors(db).find(x => x.placeId === pid);
+  assert.equal(c.competitorRef, 'cmp-1', 'the post-content link is untouched');
+  assert.equal(c.handle, null, 'but the handle is gone');
+  assert.equal(c.handleAccountType, 'absent');
+  // The client renders both; neither may assume the other exists.
+});
+
 // --- synced ----------------------------------------------------------------
 
 test('synced is DERIVED from stored content, so it survives a reload', () => {
