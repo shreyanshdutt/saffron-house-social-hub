@@ -531,6 +531,7 @@ turns previously dead code live, so the commit that flips it owes tests for
 the branch, not just for the constant.
 
 Work touching live Google Places data is unblocked from this date.
+
 - Meta's terms and rate limits apply the same way. Business Discovery reads
   public Business and Creator accounts only; scraping Instagram to fill the
   gap is out of the question regardless of how easy it looks.
