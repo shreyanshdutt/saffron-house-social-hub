@@ -205,6 +205,12 @@ export function listCompetitors(db) {
     const avgInteractions = newestInter ? newestInter.avgInteractions : null;
 
     const igReason = est.availability.reasons.find(r => /instagram/i.test(r.text) && !r.ok);
+    // A `none`-tier establishment has no Google listing, so Places gives us no
+    // way in at all — a different absence from "Instagram cannot be read", and
+    // it needs its own sentence. Sourced from availability() rather than
+    // written fresh here, so the row and the Establishments screen cannot
+    // explain the same fact two different ways.
+    const googleReason = est.availability.reasons.find(r => /google/i.test(r.text) && !r.ok);
 
     return {
       placeId: est.placeId,
@@ -223,9 +229,15 @@ export function listCompetitors(db) {
       velocity: velocityFromSeries(series),
       followerChange: changeFromSeries(series, 'followers'),
       engagementChange: changeFromSeries(series, 'engagement'),
+      // Why this row cannot be fully compared, in the tier's own terms. Set
+      // for BOTH constrained tiers: `ratings` is missing Instagram, `none` is
+      // missing the Google listing itself. Leaving `none` null meant the cell
+      // had nothing to say even once it stopped crashing.
       unreadableReason: est.availability.tier === 'ratings'
         ? (igReason ? igReason.text : 'Instagram cannot be read')
-        : null,
+        : est.availability.tier === 'none'
+          ? (googleReason ? googleReason.text : 'No Google listing for this establishment')
+          : null,
       // Full tier but no content pulled yet. The row is real and belongs on
       // the table; its Instagram-derived cells have nothing in them, and they
       // must say that rather than render null as "null" or an engagement rate

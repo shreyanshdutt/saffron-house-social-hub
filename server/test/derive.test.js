@@ -98,6 +98,52 @@ test('a ratings-only rival has no follower or engagement change, ever', () => {
   assert.equal(c.velocity.state, 'none');
 });
 
+// Tracking a delivery-only kitchen is a SUPPORTED action — the user decides
+// who counts as a competitor, so POST /tracked deliberately has no tier check.
+// The row therefore has to survive the trip to the screen, which means the
+// client needs both a null rating it can guard on AND a sentence explaining
+// it. Rendering it unguarded white-screened the Competitors tab.
+test('a `none`-tier tracked establishment has a null rating AND a reason for it', () => {
+  const db = seededDb();
+  const pid = samplePlaceId('est-15');   // Biryani Junction, delivery only, google: null
+  repo.track(db, pid, 'admin');
+
+  const c = repo.listCompetitors(db).find(x => x.placeId === pid);
+  assert.ok(c, 'tracking it must put it on the Competitors list, not drop it');
+  assert.equal(c.dataTier, 'none');
+  assert.equal(c.googleRating, null, 'no listing means no rating — not a zero');
+  assert.equal(c.googleReviews, null);
+  assert.notEqual(c.unreadableReason, null,
+    'a null rating with no reason leaves the cell blank once the crash is guarded');
+  assert.match(c.unreadableReason, /No Google listing/);
+});
+
+test('the `none` reason comes from availability(), not from a fresh string', () => {
+  const db = seededDb();
+  const pid = samplePlaceId('est-15');
+  repo.track(db, pid, 'admin');
+  const est = repo.getEstablishment(db, pid);
+  const c = repo.listCompetitors(db).find(x => x.placeId === pid);
+  // The same sentence the Establishments screen shows, so one fact is not
+  // explained two different ways on two screens.
+  const fromAvailability = est.availability.reasons.find(r => /google/i.test(r.text) && !r.ok);
+  assert.equal(c.unreadableReason, fromAvailability.text);
+});
+
+test('the two constrained tiers give DIFFERENT reasons — they are different absences', () => {
+  const db = seededDb();
+  repo.track(db, samplePlaceId('est-11'), 'admin');   // ratings: personal Instagram
+  repo.track(db, samplePlaceId('est-15'), 'admin');   // none: no Google listing
+  const list = repo.listCompetitors(db);
+  const ratings = list.find(x => x.placeId === samplePlaceId('est-11'));
+  const none = list.find(x => x.placeId === samplePlaceId('est-15'));
+  assert.match(ratings.unreadableReason, /Instagram/);
+  assert.match(none.unreadableReason, /Google listing/);
+  assert.notEqual(ratings.unreadableReason, none.unreadableReason);
+  // and a full-tier row still carries no reason, because nothing is missing
+  assert.equal(list.find(x => x.placeId === samplePlaceId('est-1')).unreadableReason, null);
+});
+
 test('current followers is the newest reading, not a separately stored number', () => {
   const db = seededDb();
   const pid = samplePlaceId('est-1');

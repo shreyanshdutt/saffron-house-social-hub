@@ -866,14 +866,28 @@ function CompetitorRow({ c, theme, t, inSelfCard, expanded, onToggle }) {
         )}
       </td>
 
-      {/* Google rating — Places API, public */}
+      {/* Google rating — Places API, public.
+          BOTH values here are server-derived and genuinely nullable: a
+          delivery-only kitchen has no Google listing at all, so it has neither
+          a rating nor a review count. `.toFixed()` on that null took the whole
+          Competitors tab down with a white screen — the same class of failure
+          the comment above med() describes, in the same file.
+          The absence is rendered with <NotReadable>, the marker this table
+          already uses for a cell it cannot fill, and NOT as a bare em dash: a
+          restaurant with no listing has not been measured at zero stars
+          (CLAUDE.md §11 trap 1). The reason comes from the server so the
+          tooltip explains the specific absence rather than a generic one. */}
       <td className="text-end px-3 py-3 hidden lg:table-cell" dir="ltr">
-        <div className="text-[13px] font-semibold text-saf-text tabular-nums">{c.googleRating.toFixed(1)}</div>
-        {/* Server-derived, so genuinely nullable: an establishment with no
-            Google listing has no review count at all. */}
-        <div className="text-[11px] text-saf-muted tabular-nums">
-          {isAbsent(c.googleReviews) ? 'Review count not readable' : `${fmtCompact(c.googleReviews)} reviews`}
-        </div>
+        {c.googleRating === null || c.googleRating === undefined ? (
+          <NotReadable reason={c.unreadableReason} />
+        ) : (
+          <>
+            <div className="text-[13px] font-semibold text-saf-text tabular-nums">{c.googleRating.toFixed(1)}</div>
+            <div className="text-[11px] text-saf-muted tabular-nums">
+              {isAbsent(c.googleReviews) ? 'Review count not readable' : `${fmtCompact(c.googleReviews)} reviews`}
+            </div>
+          </>
+        )}
       </td>
 
       {/* Trend sparkline. Self-row uses the brand colour; peer rows use
