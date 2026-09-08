@@ -478,9 +478,11 @@ every layer as though the data were real:
 - Credentials, rate-limit accounting and call reporting are built for real
   volumes from the start. A job states its call count before it runs.
 
-**GATE — before the first real Google Places call is made.** No commit may
-issue a live Places request until the owner has recorded an answer here to
-both of:
+**GATE — CLEARED 2026-09-08.** The two questions below were answered by the
+owner on that date; the ruling follows them. The questions stay recorded
+rather than deleted, so a future reader sees what was decided and against
+what alternatives. Before that date, no commit could issue a live Places
+request. The blocked questions were:
 
 1. **Volatile Places columns** (name, rating, `user_ratings_total`, address,
    business status). §14.3 grants a 30-day window to latitude and longitude
@@ -497,9 +499,38 @@ both of:
    deletes competitor history past the window and degrades every competitor
    velocity to `none` — which the UI already renders honestly.
 
-This is a legal and commercial question, not an engineering one. Until it is
-answered here, work that touches live Google data is blocked; work that does
-not is unaffected.
+#### Ruling (owner, 2026-09-08)
+
+**1 — Volatile Places columns: the 30-day window stands.** Name, rating,
+`user_ratings_total`, address and business status keep the same window §14.3
+grants latitude and longitude. This is the more permissive of the two
+readings and it is taken knowingly: the clause names lat/lng *specifically*,
+and extending it by analogy is a judgement about risk, not something the text
+grants. `PLACES_RETENTION_DAYS_DEFAULT` stays 30, and the boot-time refusal
+of any window above the ceiling stays exactly as it is.
+
+**2 — Competitor review-count history: purged.**
+`PURGE_PLACES_OBSERVATIONS` becomes `true`. Places-sourced observations for
+real establishments are deleted once past the window. The reasoning is that a
+snapshot held for 30 days and a 90-day archive kept in order to derive a rate
+are different asks, and only the first survives a clause that grants these
+columns no window at all.
+
+**What ruling 2 actually costs — stated precisely, because it was first
+described here more harshly than it is.** Competitor review velocity is NOT
+removed. `changeFromSeries` needs two readings seven or more days apart, and
+a 30-day window always holds several of them, so velocity survives with its
+lookback capped at 30 days rather than growing without bound. The figure
+becomes noisier and slower to stabilise; it does not become `none`. Our own
+velocity reads `saf-self` from Business Profile rather than Places and is
+untouched by either ruling.
+
+**One consequence for engineering:** the `true` branch of
+`purgePlacesContent()` has never executed in a test. Flipping the switch
+turns previously dead code live, so the commit that flips it owes tests for
+the branch, not just for the constant.
+
+Work touching live Google Places data is unblocked from this date.
 - Meta's terms and rate limits apply the same way. Business Discovery reads
   public Business and Creator accounts only; scraping Instagram to fill the
   gap is out of the question regardless of how easy it looks.

@@ -42,20 +42,33 @@ export function loadDotEnv(path = join(SERVER_ROOT, '.env')) {
 // `place_id` is the one permanent column in `establishments` and everything
 // else in that table is volatile and stamped with `fetched_at`.
 //
-// OPEN OWNER DECISION (CONVENTIONS.md §10): whether the competitor
-// review-count history from 3eb4344 may be retained beyond this window has
-// NOT been ruled on. `observations` rows are therefore governed by a SEPARATE
-// switch below, defaulting to "retain", so that changing the owner's answer is
-// a one-line change here and nothing else.
+// RULED 2026-09-08 (CONVENTIONS.md §10, "Ruling (owner, 2026-09-08)").
+// Whether the competitor review-count history from 3eb4344 may outlive this
+// window was an open question; it is now answered, and `observations` remain
+// on a SEPARATE switch below so the two policies stay independently legible.
 // ---------------------------------------------------------------------------
 export const PLACES_RETENTION_DAYS_MAX = 30;   // the §14.3 ceiling. Not ours to raise.
 export const PLACES_RETENTION_DAYS_DEFAULT = 30;
 
 // When true, `observations` rows sourced from Places are purged on the same
-// window as establishment content. Left false until the owner rules, because
-// deleting history we may legitimately hold is as wrong as keeping history we
-// may not — and one of the two is reversible.
-export const PURGE_PLACES_OBSERVATIONS = false;
+// window as establishment content.
+//
+// TRUE since the owner's ruling of 2026-09-08. The reasoning, in one line: a
+// snapshot held for 30 days and a 90-day archive kept in order to derive a
+// RATE are different asks, and only the first survives a clause that grants
+// these columns no window at all. Keeping the archive would have meant
+// claiming a permission §14.3 does not give, in service of a number we can
+// still produce without it.
+//
+// What this costs is smaller than it first sounds and is worth stating where
+// someone will read it: competitor review velocity is NOT removed.
+// `changeFromSeries()` needs two readings seven or more days apart, and a
+// 30-day window always holds several — so velocity survives with its lookback
+// capped at 30 days instead of growing without bound. It becomes noisier and
+// slower to settle; it does not become `none`. Our own velocity reads
+// `saf-self`, which is Business Profile rather than Places, and is untouched.
+// `test/retention.test.js` pins both halves of that claim.
+export const PURGE_PLACES_OBSERVATIONS = true;
 
 export function retentionDays(env = process.env) {
   const raw = env.PLACES_RETENTION_DAYS;

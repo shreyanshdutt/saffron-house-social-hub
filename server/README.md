@@ -68,10 +68,20 @@ tracking, social handles and observations together.
 
 **The window is one constant** — `PLACES_RETENTION_DAYS_DEFAULT` in
 `src/config.js`, with the clause quoted beside it. It is never inlined at a
-call site. Whether the competitor review-count history may outlive that window
-is an open owner decision (CONVENTIONS.md §10), so `observations` are governed
-by a separate switch, `PURGE_PLACES_OBSERVATIONS`, currently `false`. Flipping
-the owner's answer is a one-line change in that file.
+call site.
+
+Whether the competitor review-count history may outlive that window was an open
+owner decision; **it was ruled on 2026-09-08 and the answer is that it may
+not** (CONVENTIONS.md §10, *Ruling*). `observations` stay on their own switch,
+`PURGE_PLACES_OBSERVATIONS`, now `true`: Places-sourced readings for real
+establishments are deleted once past the window. A 30-day snapshot and a 90-day
+archive kept to derive a rate are different asks under a clause that grants
+these columns no window at all.
+
+Competitor review velocity survives this. It needs two readings seven or more
+days apart and a 30-day window always holds several, so the lookback is capped
+rather than lost — noisier, not absent. Our own velocity reads `saf-self` from
+Business Profile, which §14.3 does not reach.
 
 Fabricated seed rows carry `is_sample = 1` and are exempt: they are invented,
 not Google Maps Content.
