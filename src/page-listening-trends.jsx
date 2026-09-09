@@ -16,6 +16,7 @@ function TrendsScreen({ theme }) {
 
   const channels = channel === 'all' ? PLATFORMS.map(p => p.id) : [channel];
 
+  const selectedName = channel === 'all' ? null : (PLATFORM_BY_ID[channel] || {}).name;
   const sortField = TREND_SORTS.find(s => s.id === sortBy)?.field || 'totalMentions7d';
   const cards = React.useMemo(() => {
     return channels
@@ -44,18 +45,36 @@ function TrendsScreen({ theme }) {
         </div>
       </Card>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-        {cards.map(({ id, data }) => (
-          <TrendCard
-            key={id}
-            channelId={id}
-            data={data}
-            theme={theme}
-            takeaway={t.listening.trends.takeaway[id]}
-            tLabels={t.listening.trends}
-          />
-        ))}
-      </div>
+      {/* PLATFORMS now carries read-only channels that have no listening
+          trends of their own, and `cards` filters those out — so selecting one
+          previously left an EMPTY GRID with nothing to explain it, which is
+          §11's silent-empty-region. Signals and the Inbox already say why when
+          a filter matches nothing; this says the same thing in the same voice. */}
+      {cards.length === 0 ? (
+        <Card padding="p-8">
+          <div className="text-center">
+            <div className="text-[13px] font-medium text-saf-text">No listening trends for this channel</div>
+            <p className="text-[12px] text-saf-muted mt-1.5 max-w-md mx-auto leading-relaxed">
+              {selectedName
+                ? `${selectedName} is read for competitor comparison, not for our own mention volume — there is no trend series to show here.`
+                : 'No channel in this view reports mention volume.'}
+            </p>
+          </div>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {cards.map(({ id, data }) => (
+            <TrendCard
+              key={id}
+              channelId={id}
+              data={data}
+              theme={theme}
+              takeaway={t.listening.trends.takeaway[id]}
+              tLabels={t.listening.trends}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

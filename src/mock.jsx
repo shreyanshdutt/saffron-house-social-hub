@@ -127,6 +127,55 @@ const PLATFORMS = [
     limit: 4096, dmLimit: 4096,
     color: '#25D366', colorDark: '#25D366',
   },
+  // READ-ONLY CHANNELS. Both are modelled server-side (CHANNEL_CAPABILITIES in
+  // server/src/channels.js) and described in DATA-SOURCES.md; this makes them
+  // expressible in the client. Neither renders anywhere new in this commit.
+  //
+  // NEITHER CARRIES `publish`, and that is load-bearing rather than an
+  // oversight. POSTABLE is derived as `caps.includes('publish')` and the
+  // Composer's channel picker is built from it — but PlatformPreview switches
+  // on 'ig'/'gg' and returns null for anything else, so a channel with
+  // `publish` and no preview case renders a BLANK PANE with no error (§11's
+  // silent-empty-region class). Adding `publish` here without a preview case
+  // there is how that ships.
+  {
+    id: 'yt', name: 'YouTube', short: 'YT',
+    // Not 'social': nothing consumes `kind` today, so it is purely
+    // descriptive, and describing YouTube as social alongside Instagram would
+    // imply a feed we neither publish to nor read in the same way. It is a
+    // video platform we read.
+    kind: 'video',
+    api: 'YouTube Data API',
+    // The only channel that returns competitor COMMENT TEXT without being
+    // billed per read — 1 quota unit via commentThreads. No publish: this
+    // product does not upload video, and offering it would be a dead option.
+    caps: ['metrics', 'comments', 'competitor'],
+    limit: 5000, dmLimit: 0,          // description limit; no DM surface
+    // platformColor() is used TWO ways and a value has to serve both: as a
+    // circle fill with a white glyph on top (the channel pickers), and as the
+    // glyph colour directly on the card. Measured, white-glyph-on-it / on the
+    // dark card #221913 — existing entries run 1.98/8.70 (wa) to 4.34/3.98 (ig).
+    // #FF0000 is 4.00/4.32; #FF3D33 is 3.52/4.91, which keeps the glyph legible
+    // on the circle while lifting the circle off the dark card.
+    color: '#FF0000', colorDark: '#FF3D33',
+  },
+  {
+    id: 'x', name: 'X', short: 'X',
+    kind: 'social',
+    api: 'X API',
+    // Posts AND replies are readable, and BOTH are billed per read — replies
+    // at roughly ten times the volume of posts. DATA-SOURCES.md carries the
+    // figures. No publish in this commit, deliberately: see the note above.
+    caps: ['metrics', 'comments', 'competitor'],
+    limit: 280, dmLimit: 0,
+    // X's brand near-black is 18.51:1 on the light card and 1.07:1 on the dark
+    // one, so a dark value is mandatory. But it cannot simply be light: these
+    // ids are also used as a circle FILL with a white glyph, and a near-white
+    // fill made the glyph disappear (1.22:1 — worse than any existing entry).
+    // #5B7083, X's own secondary grey, measures 5.13:1 for the white glyph and
+    // 3.36:1 on the dark card — the same balance `ig` strikes (4.34 / 3.98).
+    color: '#0F1419', colorDark: '#5B7083',
+  },
 ];
 const PLATFORM_BY_ID = Object.fromEntries(PLATFORMS.map(p => [p.id, p]));
 const PLATFORM_ID_BY_NAME = Object.fromEntries(PLATFORMS.map(p => [p.name, p.id]));
@@ -180,6 +229,20 @@ function PlatformGlyph({ id, size = 16, className = '' }) {
           <path fill="currentColor" d="m12 4.4 1.53 3.13 3.47.5-2.5 2.44.59 3.44L12 12.29 8.91 13.9l.59-3.44L7 8.03l3.47-.5L12 4.4Z"/>
         </svg>
       );
+    case 'yt':
+      return (
+        <svg width={s} height={s} viewBox="0 0 24 24" className={className} aria-hidden="true">
+          <path fill="currentColor" d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.6 12 3.6 12 3.6s-7.5 0-9.4.5A3 3 0 0 0 .5 6.2C0 8.1 0 12 0 12s0 3.9.5 5.8a3 3 0 0 0 2.1 2.1c1.9.5 9.4.5 9.4.5s7.5 0 9.4-.5a3 3 0 0 0 2.1-2.1c.5-1.9.5-5.8.5-5.8s0-3.9-.5-5.8ZM9.6 15.6V8.4l6.2 3.6-6.2 3.6Z"/>
+        </svg>
+      );
+    case 'x':
+      return (
+        <svg width={s} height={s} viewBox="0 0 24 24" className={className} aria-hidden="true">
+          <path fill="currentColor" d="M18.9 1.2h3.7l-8.1 9.2 9.5 12.5h-7.4l-5.8-7.6-6.7 7.6H.4l8.6-9.8L0 1.2h7.6l5.2 6.9 6.1-6.9Zm-1.3 19.5h2L6.5 3.2H4.4l13.2 17.5Z"/>
+        </svg>
+      );
+    // An unknown id renders NOTHING — silently. Every id in PLATFORMS needs a
+    // case above or it becomes an invisible gap wherever it appears (§11 trap 3).
     default: return null;
   }
 }
