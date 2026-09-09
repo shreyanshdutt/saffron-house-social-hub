@@ -420,3 +420,87 @@ CREATE TABLE IF NOT EXISTS guest_texts (
 );
 
 CREATE INDEX IF NOT EXISTS guest_texts_kind_time ON guest_texts (kind, said_at);
+
+-- ---------------------------------------------------------------------------
+-- customers  +  customer_tags
+--
+-- THE FIRST TABLES IN THIS PRODUCT THAT HOLD A PERSON. Through b4b8f24 the
+-- only columns naming anybody were `posts.author` and `guest_texts.author` —
+-- public display names on text their writer published publicly. The rules for
+-- this went in before the table did: CONVENTIONS.md §11, owner decision
+-- 2026-09-09.
+--
+-- WHY IT EXISTS IS COST, NOT MARKETING. A WhatsApp marketing message is
+-- ₹0.8631 and those messages are roughly 95% of this product's running bill. A
+-- broadcast to 6,400 contacts is about ₹5,500 before GST; the same offer to the
+-- 40 people tagged as kathal galouti regulars is about ₹34. Segmentation turns
+-- the largest running cost into a rounding error, and that arithmetic is the
+-- justification for every column below.
+--
+-- THERE IS NO PHONE COLUMN, NO EMAIL COLUMN AND NO ADDRESS COLUMN, and none is
+-- to be added "for later" (§11 decision 1). That is not a default a subsequent
+-- feature may relax; changing it is an owner decision recorded in §11, not a
+-- migration.
+CREATE TABLE IF NOT EXISTS customers (
+  id                  TEXT PRIMARY KEY,
+
+  --   imported — from the client's WhatsApp contact list. Carries a
+  --              PROVIDER-ISSUED reference, never a phone number. Reachable.
+  --   staff    — entered by hand for somebody not in that list. Carries a
+  --              display label and nothing else, and is NOT reachable — which
+  --              the product states rather than leaving to be assumed.
+  source              TEXT NOT NULL CHECK (source IN ('imported', 'staff')),
+
+  -- Provider-issued. NEVER a phone number, and never a hash of one: no
+  -- provider accepts a hash as a send target, so hashing would satisfy §11
+  -- decision 1 on paper while breaking the one thing this table exists to do.
+  contact_ref         TEXT UNIQUE,
+
+  display_label       TEXT NOT NULL,
+  created_at          TEXT NOT NULL,
+  is_sample           INTEGER NOT NULL DEFAULT 0 CHECK (is_sample IN (0, 1)),
+
+  -- THE TWO HALVES OF `source` TIED TO THE COLUMN THAT DEFINES THEM. An
+  -- imported row without a reference is unreachable while claiming to be
+  -- reachable; a staff row with one has a reference nobody issued. Both are
+  -- contradictions, and the database refuses them rather than trusting every
+  -- caller to remember — the same reasoning as UNIQUE(alias) on
+  -- menu_item_aliases, where the constraint is what makes the wrong state
+  -- impossible instead of merely discouraged.
+  --
+  -- UNIQUE on contact_ref above does the other half: SQLite permits MANY NULLs
+  -- under a UNIQUE, which is exactly the behaviour wanted here. One imported
+  -- contact cannot appear twice, and any number of staff rows can coexist with
+  -- no reference at all.
+  CHECK (
+    (source = 'imported' AND contact_ref IS NOT NULL) OR
+    (source = 'staff'    AND contact_ref IS NULL)
+  )
+);
+
+CREATE TABLE IF NOT EXISTS customer_tags (
+  customer_id         TEXT NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+
+  -- THE REAL JOIN. A tag names a dish that exists on the menu; it is not free
+  -- text, so a tag cannot outlive the dish or name one that was never on it.
+  menu_item_id        TEXT NOT NULL REFERENCES menu_items(id) ON DELETE CASCADE,
+
+  -- NOT NULL, both. A staff tag is ONE PERSON'S JUDGEMENT, and a judgement
+  -- with no author recorded is indistinguishable from a derived fact (§11,
+  -- "the two provenances"). This is the column that keeps a hand-entered tag
+  -- apart from a dish mention matched out of `guest_texts` — which is a
+  -- guest's own words and a different kind of claim entirely.
+  --
+  -- THE TWO MUST NEVER BE JOINED. An Instagram handle is not a phone number,
+  -- there is no honest automatic link between a customer row and a social
+  -- mention, and no commit may create one by inference. Nothing here
+  -- references guest_texts, deliberately.
+  tagged_by           TEXT NOT NULL,
+  tagged_at           TEXT NOT NULL,
+
+  is_sample           INTEGER NOT NULL DEFAULT 0 CHECK (is_sample IN (0, 1)),
+
+  PRIMARY KEY (customer_id, menu_item_id)
+);
+
+CREATE INDEX IF NOT EXISTS customer_tags_dish ON customer_tags (menu_item_id);

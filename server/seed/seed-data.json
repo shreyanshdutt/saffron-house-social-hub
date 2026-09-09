@@ -1,5 +1,5 @@
 {
-  "_generated": "Extracted once from src/mock.jsx at commit 40c9100, immediately before that data was deleted from the client. Regenerate with: git show 40c9100:src/mock.jsx | posts+scheduled frozen from src/mock.jsx at 03c0471 | menuItems frozen from src/mock.jsx at 04f442b | guestTexts frozen from src/mock.jsx at 99d8f04",
+  "_generated": "Extracted once from src/mock.jsx at commit 40c9100, immediately before that data was deleted from the client. Regenerate with: git show 40c9100:src/mock.jsx | posts+scheduled frozen from src/mock.jsx at 03c0471 | menuItems frozen from src/mock.jsx at 04f442b | guestTexts frozen from src/mock.jsx at 99d8f04 | customers + customerTags (fabricated, sample: refs)",
   "establishments": [
     {
       "id": "est-1",
@@ -1119,6 +1119,106 @@
       "saidAt": "2026-09-01T15:00:00+05:30",
       "sourceKind": "conversation",
       "sourceId": "c7"
+    }
+  ],
+  "customers": [
+    {
+      "id": "cu-1",
+      "source": "imported",
+      "contactRef": "sample:wa-c-1001",
+      "displayLabel": "Rahul K."
+    },
+    {
+      "id": "cu-2",
+      "source": "imported",
+      "contactRef": "sample:wa-c-1002",
+      "displayLabel": "Sneha I."
+    },
+    {
+      "id": "cu-3",
+      "source": "imported",
+      "contactRef": "sample:wa-c-1003",
+      "displayLabel": "Arjun M."
+    },
+    {
+      "id": "cu-4",
+      "source": "imported",
+      "contactRef": "sample:wa-c-1004",
+      "displayLabel": "Meenakshi R."
+    },
+    {
+      "id": "cu-5",
+      "source": "imported",
+      "contactRef": "sample:wa-c-1005",
+      "displayLabel": "Kabir S."
+    },
+    {
+      "id": "cu-6",
+      "source": "staff",
+      "contactRef": null,
+      "displayLabel": "Table 12 regular (Thursdays)"
+    },
+    {
+      "id": "cu-7",
+      "source": "staff",
+      "contactRef": null,
+      "displayLabel": "Mr Bhatia — anniversary booking"
+    },
+    {
+      "id": "cu-8",
+      "source": "staff",
+      "contactRef": null,
+      "displayLabel": "Corporate — Sector 10 office"
+    }
+  ],
+  "customerTags": [
+    {
+      "customerId": "cu-1",
+      "menuItemId": "mi-2",
+      "taggedBy": "Priya Menon",
+      "taggedAtDaysAgo": 6
+    },
+    {
+      "customerId": "cu-2",
+      "menuItemId": "mi-3",
+      "taggedBy": "Priya Menon",
+      "taggedAtDaysAgo": 5
+    },
+    {
+      "customerId": "cu-3",
+      "menuItemId": "mi-2",
+      "taggedBy": "Ananya Rao",
+      "taggedAtDaysAgo": 4
+    },
+    {
+      "customerId": "cu-4",
+      "menuItemId": "mi-1",
+      "taggedBy": "Priya Menon",
+      "taggedAtDaysAgo": 3
+    },
+    {
+      "customerId": "cu-5",
+      "menuItemId": "mi-2",
+      "taggedBy": "Rohit Malhotra",
+      "taggedAtDaysAgo": 2
+    },
+    {
+      "customerId": "cu-6",
+      "menuItemId": "mi-2",
+      "taggedBy": "Ananya Rao",
+      "taggedAtDaysAgo": 9
+    },
+    {
+      "customerId": "cu-7",
+      "menuItemId": "mi-6",
+      "taggedBy": "Priya Menon",
+      "taggedAtDaysAgo": 8
+    },
+    {
+      "customerId": "cu-8",
+      "menuItemId": "mi-2",
+      "taggedBy": "Priya Menon",
+      "taggedAtDaysAgo": 7
     }
   ]
 }

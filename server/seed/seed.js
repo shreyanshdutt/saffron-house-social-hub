@@ -75,10 +75,12 @@ export function seed(db, _repoRoot, { trackedBy = 'admin', now = Date.now() } = 
 
   const SEED_MENU = SEED_DATA.menuItems || [];
   const SEED_GUEST = SEED_DATA.guestTexts || [];
+  const SEED_CUSTOMERS = SEED_DATA.customers || [];
+  const SEED_CUSTOMER_TAGS = SEED_DATA.customerTags || [];
   const SEED_POSTS = SEED_DATA.posts || [];
   const SEED_SCHEDULED = SEED_DATA.scheduled || [];
 
-  const counts = { establishments: 0, social: 0, connections: 0, tracked: 0, observations: 0, posts: 0, postTargets: 0, menuItems: 0, menuAliases: 0, guestTexts: 0 };
+  const counts = { establishments: 0, social: 0, connections: 0, tracked: 0, observations: 0, posts: 0, postTargets: 0, menuItems: 0, menuAliases: 0, guestTexts: 0, customers: 0, customerTags: 0 };
 
   db.exec('BEGIN');
   try {
@@ -293,6 +295,39 @@ export function seed(db, _repoRoot, { trackedBy = 'admin', now = Date.now() } = 
       insGuest.run(g.id, g.kind, g.body, g.author ?? null, g.channel ?? null,
                    g.saidAt ?? null, g.sourceKind ?? null, g.sourceId ?? null);
       counts.guestTexts++;
+    }
+
+    // CUSTOMERS. Fabricated, is_sample = 1, and every imported contact_ref
+    // carries the `sample:` prefix — the same marker place ids use — so a
+    // seeded reference can never be mistaken for one a provider issued. That
+    // is what keeps this inside the §11 gate: the gate blocks populating
+    // contact_ref with a REAL value, not with an obviously fake one.
+    //
+    // Both sources are seeded on purpose. A segment made only of imported rows
+    // would show `tagged` equal to `reachable`, and the two-number rule would
+    // look like decoration instead of the thing that stops a restaurant paying
+    // to message people it cannot reach.
+    db.prepare(`DELETE FROM customers WHERE is_sample = 1`).run();   // tags cascade
+    const insCustomer = db.prepare(
+      `INSERT INTO customers (id, source, contact_ref, display_label, created_at, is_sample)
+       VALUES (?, ?, ?, ?, ?, 1)`
+    );
+    for (const c of SEED_CUSTOMERS) {
+      insCustomer.run(c.id, c.source, c.contactRef ?? null, c.displayLabel, stamp);
+      counts.customers++;
+    }
+
+    // Tags name a dish in menu_items — the foreign key is the real join. They
+    // are NOT derived from guest_texts and must never be: a staff judgement and
+    // a guest's own words are different facts with different reliability (§11).
+    const insTag = db.prepare(
+      `INSERT INTO customer_tags (customer_id, menu_item_id, tagged_by, tagged_at, is_sample)
+       VALUES (?, ?, ?, ?, 1)`
+    );
+    for (const t of SEED_CUSTOMER_TAGS) {
+      insTag.run(t.customerId, t.menuItemId, t.taggedBy,
+                 new Date(now - (t.taggedAtDaysAgo || 0) * 86_400_000).toISOString());
+      counts.customerTags++;
     }
 
     for (const id of TRACKED_DEFAULT) {

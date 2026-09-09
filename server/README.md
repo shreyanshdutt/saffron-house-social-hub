@@ -17,7 +17,7 @@ renders those values and computes none of them itself.
 ```
 cd server
 cp .env.example .env      # fill in nothing yet — no key is used by this build
-npm test                  # 137 tests, no network
+npm test                  # 168 tests, no network
 npm run seed              # loads the 15 establishments from seed/seed-data.json
 npm start                 # http://127.0.0.1:8787
 ```
@@ -161,6 +161,40 @@ day, so nobody re-runs that afternoon.
 Nobody translates "biryani". The dish name is the anchor and the language around
 it is irrelevant to a mention count.
 
+## Customers
+
+The first tables here that hold a person. **CONVENTIONS.md §11 is the
+specification** and was committed before the schema was written.
+
+**No contact details are stored.** There is no phone, email or address column
+on `customers`, and none is to be added — that is an owner decision, not a
+default a later feature may relax. What an imported row carries is a
+**provider-issued contact reference**, never a phone number and never a hash of
+one.
+
+**Reachability is derived, never stored.** `isReachable()` reads the source and
+the reference; a `reachable` column could disagree with the row it describes,
+the same reason `summarisePost()` derives an outcome instead of persisting one.
+
+**A segment shows two numbers, never one.** `summariseSegment()` returns
+`tagged`, `reachable` and `unreachable` — always all three, with no variant
+returning a lone total. A single figure beside a broadcast button tells a
+restaurant it can reach people it cannot, and at ₹0.8631 a message it finds out
+by paying. The seeded Awadhi Biryani segment is **5 tagged · 3 reachable**
+precisely so that gap is visible rather than theoretical.
+
+**Two provenances that must never merge.** A customer tag is one person's
+judgement and carries `tagged_by` / `tagged_at`, both NOT NULL. A dish mention
+is a guest's own words in `guest_texts`. Nothing joins them, no column links
+them, and no commit may create the link by inference — an Instagram handle is
+not a phone number.
+
+**Contact import is BLOCKED.** `src/contact-import.js` is a stub with a named
+reason, the way `publish-adapters.js` stubs publishing. On Meta's Cloud API the
+contact identifier *is* the phone number (`wa_id` is E.164), so §11's decisions
+1 and 2 cannot both hold against it. The gate lifts when the client names a
+provider that issues a non-phone contact ID **and accepts it as a send target**.
+
 ## Known gaps
 
 Stated rather than hidden — none of these is finished:
@@ -177,6 +211,11 @@ Stated rather than hidden — none of these is finished:
   still fails — with a reason that says the channel is fine and the code is
   not. No `fetch` may be added there until the owner records a decision the way
   §10 requires for Places.
+- **No contact can be imported, and no screen shows a customer.** The tables,
+  the derivations and the tests are real; the import path is stubbed on the §11
+  gate and there is no HTTP route or UI yet. Sample rows carry `is_sample = 1`
+  and `sample:`-prefixed references, which is what keeps the seed inside that
+  gate — it blocks populating `contact_ref` with a REAL value.
 - **Nothing counts mentions yet.** The matcher and the menu are here; the guest
   corpus is still in `src/mock.jsx` and the Menu screen still renders the
   invented `mentions7d` / `sentiment` / `topPraise` / `topComplaint`. Part 2
@@ -222,5 +261,7 @@ src/posts.js         post lifecycle, channel-id translation, the derived summary
 src/publish-adapters.js  THE STUBBED SEAM — the only place a platform call would live
 src/text-normalize.js    guest-text normalizing + the negative results, recorded
 src/dish-matcher.js      dish-name matching with the evidence attached
-test/                137 tests, node:test, no network
+src/customers.js         reachability + segment derivation (nothing persisted)
+src/contact-import.js    THE BLOCKED SEAM — contact import, stubbed on the §11 gate
+test/                168 tests, node:test, no network
 ```
