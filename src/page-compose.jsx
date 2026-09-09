@@ -1,27 +1,129 @@
 // Compose Post page.
-
-// Why nothing on this screen can be saved, scheduled or sent. Written for a
-// restaurant marketing manager: it says what is missing and what that means
-// for the post they just typed, not which endpoint is absent.
 //
-// TWO SEPARATE MISSING THINGS, and they are stated apart on purpose because
-// they are fixed by different people at different times. Connecting Instagram
-// is an owner sign-in; somewhere to send the post to is a build. Connecting a
-// channel tomorrow would still not make Publish work, and a panel that named
-// only the connection would promise otherwise.
-const NO_PUBLISHING_REASON =
-  'Nothing you write here is saved anywhere yet — close this screen or reload the page ' +
-  'and the post is gone, so copy anything you want to keep. Saving, scheduling and ' +
-  'publishing are switched off for two reasons: no channel is connected yet, and there ' +
-  'is nowhere for a post to be stored or sent to. Both are still being built.';
+// 760ec7b disabled all three actions because nothing stored a post. 849c3b7
+// built `posts` + `post_targets` server-side, so they work now and the panel
+// that explained their absence has gone with them — it would be a false
+// statement of a different kind.
+//
+// WHAT THIS SCREEN MUST NOT DO IS FLATTEN THE RESULT. The server answers a
+// publish attempt with one row PER CHANNEL, and those rows disagree: Instagram
+// can fail because a sign-in lapsed while X fails because nobody ever
+// authorised it. Both are "it didn't publish" and they are not the same
+// problem. This screen renders every target, and takes its one-line headline
+// from the server's own `summary.label` rather than deriving a second one.
 
-// The short form, for the hover. Same two facts, one line.
-const NO_PUBLISHING_TIP =
-  'Off: no channel is connected, and there is nowhere yet to store or send a post.';
+// The offset AND the zone, because the server stores both and neither can be
+// reconstructed from the other (+05:30 is Asia/Kolkata and Asia/Colombo, and a
+// zone's offset moves across a DST boundary while "10am local" does not). The
+// select renders from this table rather than the label being parsed back apart.
+const COMPOSE_TIMEZONES = [
+  { label: 'Asia/Kolkata — IST (+05:30)', zone: 'Asia/Kolkata', offset: '+05:30' },
+  { label: 'Asia/Dubai — GST (+04:00)',   zone: 'Asia/Dubai',   offset: '+04:00' },
+  { label: 'Asia/Riyadh — AST (+03:00)',  zone: 'Asia/Riyadh',  offset: '+03:00' },
+  { label: 'UTC',                         zone: 'UTC',          offset: '+00:00' },
+];
+
+// WHAT HAPPENED, PER CHANNEL. The whole reason this commit exists.
+//
+// The headline is the SERVER's `summary.label` — "Published to 1, failed on 1"
+// when the channels disagree — and is not recomputed here. Two implementations
+// of one rule is the defect this repo has spent the most commits removing, and
+// the rule lives in server/src/posts.js where it is tested.
+//
+// Below it, EVERY target, with its own reason. Instagram failing because a
+// sign-in lapsed and X failing because nobody ever authorised it are different
+// problems with different fixes, and "Publishing failed" would erase that.
+function ComposeResult({ result, onDismiss, onRetry, busy }) {
+  const { post, plan, kind } = result;
+  const s = post.summary;
+  // WRITTEN OUT, NOT INTERPOLATED. `bg-${tone}-50` is a class name that exists
+  // only at runtime; the play CDN may or may not have generated it, and the
+  // failure is an invisibly unstyled badge rather than an error (CLAUDE.md §11
+  // trap 3 is the same shape for icon names). Full strings only.
+  const TONE = {
+    published:     'bg-emerald-50 text-emerald-700',
+    failed:        'bg-rose-50 text-rose-700',
+    mixed:         'bg-amber-50 text-amber-700',
+    in_flight:     'bg-saf-light text-saf-primary',
+    not_attempted: 'bg-saf-light text-saf-primary',
+  }[s.outcome] || 'bg-saf-light text-saf-primary';
+  const anyFailed = s.counts.failed > 0;
+
+  return (
+    <Card padding="p-4" className="mt-2">
+      <div className="flex items-start gap-3">
+        <span className={`w-9 h-9 rounded-lg grid place-items-center shrink-0 ${TONE}`}>
+          <Icon name={s.outcome === 'published' ? 'CheckCircle2' : s.outcome === 'not_attempted' ? 'FileText' : 'AlertTriangle'} size={18} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="text-[14px] font-semibold text-saf-text">{s.label}</div>
+          <p className="text-[12px] text-saf-muted mt-0.5">
+            {kind === 'draft' && 'Saved as a draft. It is on the server, not in this browser, and it has not been sent anywhere.'}
+            {kind === 'schedule' && `Stored for ${post.scheduledAt} (${post.scheduledTz}). Nothing runs a scheduled post yet — this records the intention.`}
+            {kind === 'publish' && 'The attempt was recorded. Each channel answered for itself:'}
+          </p>
+
+          {kind === 'publish' && (
+            <div className="mt-2.5 divide-y divide-saf-border border border-saf-border rounded-lg overflow-hidden">
+              {post.targets.map(tg => {
+                const meta = PLATFORM_BY_ID[tg.clientId];
+                const ok = tg.status === 'published';
+                return (
+                  <div key={tg.platform} className="flex items-start gap-2.5 p-2.5 bg-saf-card">
+                    <span className="w-6 h-6 rounded-full grid place-items-center text-white shrink-0 mt-px"
+                          style={{ background: meta ? (meta.gradient || meta.color) : '#7A6A5F' }}>
+                      <PlatformGlyph id={tg.clientId} size={11} />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-[12.5px] font-medium text-saf-text">{meta ? meta.name : tg.platform}</span>
+                        <span className={`px-1.5 h-4 inline-flex items-center rounded text-[10.5px] font-semibold ${ok ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>
+                          {ok ? 'Published' : 'Not published'}
+                        </span>
+                      </div>
+                      {/* The server's own sentence, verbatim. It already
+                          distinguishes never_connected / expired / revoked /
+                          not_implemented, and rewording it here would be a
+                          second vocabulary for the same four facts. */}
+                      {tg.reason && <p className="text-[11.5px] text-saf-muted mt-0.5 leading-relaxed">{tg.reason}</p>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* What the attempt cost, from the server's plan — CONVENTIONS.md §10. */}
+          {plan && (
+            <p className="text-[11px] text-saf-muted mt-2">
+              {plan.totalCalls === 0
+                ? 'No channel was reachable, so no API call was made and nothing was billed.'
+                : `${plan.totalCalls} API call${plan.totalCalls === 1 ? '' : 's'} would have been made${plan.billedCalls ? `, ${plan.billedCalls} of them billed (${plan.billedPlatforms.join(', ')})` : ', none of them billed'}.`}
+            </p>
+          )}
+
+          <div className="flex items-center gap-2 mt-3">
+            {kind === 'publish' && anyFailed && (
+              <Button size="sm" variant="secondary" leadingIcon="RefreshCw" loading={busy} disabled={busy} onClick={onRetry}>
+                Try the failed channels again
+              </Button>
+            )}
+            <Button size="sm" variant="ghost" onClick={onDismiss}>Write another post</Button>
+          </div>
+          <p className="text-[11px] text-saf-muted mt-2">
+            The composer above has been cleared so pressing a button twice cannot create two posts.
+            This one is stored as <span className="font-mono">{post.id}</span>.
+          </p>
+        </div>
+      </div>
+    </Card>
+  );
+}
 
 function ComposePage() {
   const t = useT();
-  const { lang } = React.useContext(AppCtx);
+  const toast = useToast();
+  const { lang, profile } = React.useContext(AppCtx);
 
   // Selection of platforms
   const [selected, setSelected] = React.useState(['ig', 'gg']);
@@ -49,6 +151,12 @@ function ComposePage() {
   const [scheduleDate, setScheduleDate] = React.useState('2026-09-05');
   const [scheduleTime, setScheduleTime] = React.useState('10:00');
   const [timezone, setTimezone] = React.useState('Asia/Kolkata — IST (+05:30)');
+
+  // What the last action produced, straight from the server. Null until one
+  // has run. This is the ONLY record of the outcome on this screen — nothing
+  // is re-derived from it.
+  const [result, setResult] = React.useState(null);
+  const [busy, setBusy] = React.useState(null);   // 'draft' | 'schedule' | 'publish'
 
   // Preview
   const [previewPlatform, setPreviewPlatform] = React.useState(selected[0] || 'ig');
@@ -81,6 +189,120 @@ function ComposePage() {
     } else {
       // simulate
       setMedia(prev => [...prev, { id: 'm' + Date.now(), kind: 'image', label: 'New upload.jpg', tone: 'sand' }]);
+    }
+  };
+
+  // ---- server actions ------------------------------------------------------
+
+  const tz = COMPOSE_TIMEZONES.find(z => z.label === timezone) || COMPOSE_TIMEZONES[0];
+  const scheduledAt = `${scheduleDate}T${scheduleTime}:00${tz.offset}`;
+
+  // The post's own shape, from what is attached. Not a server derivation — the
+  // server has no opinion about it — just a name for the composer's content.
+  const formatOf = () => {
+    if (!media.length) return 'text';
+    if (media.length > 1) return 'carousel';
+    return media[0].kind === 'video' ? 'video' : 'image';
+  };
+
+  const payload = (extra = {}) => ({
+    platforms: selected,
+    content: content.trim(),
+    tags,
+    format: formatOf(),
+    author: profile ? profile.name : null,
+    // THE SERVER HOLDS ONE MEDIA OBJECT PER POST AND THE COMPOSER ALLOWS
+    // SEVERAL. The first is sent and the rest are NOT silently dropped — the
+    // toast says so, because losing an attachment quietly is the class of
+    // defect this project keeps removing. See the commit report.
+    media: media.length ? { kind: media[0].kind, label: media[0].label, tone: media[0].tone } : null,
+    ...extra,
+  });
+
+  const extraMediaNote = media.length > 1
+    ? `Only the first attachment (${media[0].label}) was stored — this build keeps one image per post, so the other ${media.length - 1} ${media.length - 1 === 1 ? 'was' : 'were'} not saved.`
+    : undefined;
+
+  // A shared runner: one busy flag, one failure path, and — the point of it —
+  // the form is CLEARED on success. Pressing Save twice must not create two
+  // drafts, and there is no update endpoint to re-save into (849c3b7 left PATCH
+  // out deliberately), so the honest thing is to hand the post over to the
+  // server, say what was created, and start a clean sheet. Nothing is lost:
+  // what was written is now stored, which is more than was true before.
+  const run = async (kind, fn) => {
+    if (busy) return;
+    if (!selected.length) {
+      toast.push({ title: 'Choose at least one channel', kind: 'error' });
+      return;
+    }
+    if (!content.trim()) {
+      toast.push({ title: 'Write something first', desc: 'An empty post is not saved.', kind: 'error' });
+      return;
+    }
+    setBusy(kind);
+    try {
+      const out = await fn();
+      setResult(out);
+      setContent('');
+      setTags([]);
+      setMedia([]);
+    } catch (err) {
+      // A TRANSPORT failure, which is a different thing from a channel
+      // refusing the post. It must never read as "saved".
+      setResult(null);
+      toast.push({
+        title: 'Nothing was saved',
+        desc: `The data service could not be reached, so the post was not stored and nothing was sent. Your text is still on screen. ${err.message}`,
+        kind: 'error',
+      });
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const doSaveDraft = () => run('draft', async () => {
+    const post = await createPost(payload());
+    toast.push({ title: t.compose.drafted, desc: extraMediaNote, kind: 'success' });
+    return { kind: 'draft', post };
+  });
+
+  const doSchedule = () => run('schedule', async () => {
+    const post = await createPost(payload({ scheduledAt, scheduledTz: tz.zone }));
+    toast.push({
+      title: t.compose.scheduled.replace('{when}', `${scheduleDate} ${scheduleTime} ${tz.zone}`),
+      desc: extraMediaNote,
+      kind: 'success',
+    });
+    return { kind: 'schedule', post };
+  });
+
+  const doPublish = () => run('publish', async () => {
+    const post = await createPost(payload());
+    const { post: attempted, plan } = await publishPost(post.id);
+    // READ the outcomes; never assume them. `published` here is the count the
+    // server actually returned, not the number of channels that were selected.
+    const n = attempted.summary.counts.published;
+    toast.push({
+      title: attempted.summary.label,
+      desc: n === 0
+        ? 'The attempt was recorded. No channel accepted the post — see the breakdown on screen.'
+        : extraMediaNote,
+      kind: n === 0 ? 'error' : attempted.summary.outcome === 'mixed' ? 'info' : 'success',
+    });
+    return { kind: 'publish', post: attempted, plan };
+  });
+
+  const retryPublish = async () => {
+    if (busy || !result || !result.post) return;
+    setBusy('publish');
+    try {
+      const { post: attempted, plan } = await publishPost(result.post.id);
+      setResult({ kind: 'publish', post: attempted, plan });
+      toast.push({ title: attempted.summary.label, kind: attempted.summary.counts.published ? 'success' : 'error' });
+    } catch (err) {
+      toast.push({ title: 'Could not reach the data service', desc: `Nothing changed. ${err.message}`, kind: 'error' });
+    } finally {
+      setBusy(null);
     }
   };
 
@@ -294,10 +516,7 @@ function ComposePage() {
               </Field>
               <Field label={t.compose.timezone} icon="Globe">
                 <select value={timezone} onChange={(e) => setTimezone(e.target.value)} className="w-full bg-transparent text-[13px] text-saf-text">
-                  <option>Asia/Kolkata — IST (+05:30)</option>
-                  <option>Asia/Dubai — GST (+04:00)</option>
-                  <option>Asia/Riyadh — AST (+03)</option>
-                  <option>UTC</option>
+                  {COMPOSE_TIMEZONES.map(z => <option key={z.zone}>{z.label}</option>)}
                 </select>
               </Field>
             </div>
@@ -324,25 +543,19 @@ function ComposePage() {
             somebody can spend ten minutes writing this post, and the words are
             gone on reload. Everything else on this screen — writing, media,
             tags, the character counts, the previews — still works. */}
-        <div className="sticky bottom-0 bg-saf-surface/80 backdrop-blur-md py-3 -mx-6 px-6 -mb-6 mt-2 border-t border-saf-border space-y-3">
-          <div className="flex items-start gap-2 p-3 rounded-xl bg-saf-card border border-saf-border">
-            <Icon name="Info" size={14} className="text-saf-muted mt-0.5 shrink-0" />
-            <p className="text-[12px] text-saf-muted leading-relaxed">{NO_PUBLISHING_REASON}</p>
-          </div>
+        {result && <ComposeResult result={result} onDismiss={() => setResult(null)} onRetry={retryPublish} busy={busy === 'publish'} />}
+
+        <div className="sticky bottom-0 bg-saf-surface/80 backdrop-blur-md py-3 -mx-6 px-6 -mb-6 mt-2 border-t border-saf-border">
           <div className="flex flex-wrap items-center justify-end gap-2">
-            <Tooltip label={NO_PUBLISHING_TIP} side="top">
-              <span><Button variant="ghost" leadingIcon="Save" disabled>{t.compose.saveDraft}</Button></span>
-            </Tooltip>
-            <Tooltip label={NO_PUBLISHING_TIP} side="top">
-              <span><Button variant="secondary" leadingIcon="CalendarClock" disabled>{t.compose.schedule}</Button></span>
-            </Tooltip>
-            <Tooltip label={NO_PUBLISHING_TIP} side="top">
-              <span>
-                <Button variant="primary" disabled>
-                  <span className="inline-flex items-center gap-2"><Icon name="Send" size={16} />{t.compose.publish}</span>
-                </Button>
-              </span>
-            </Tooltip>
+            <Button variant="ghost" leadingIcon="Save" loading={busy === 'draft'} disabled={!!busy} onClick={doSaveDraft}>
+              {t.compose.saveDraft}
+            </Button>
+            <Button variant="secondary" leadingIcon="CalendarClock" loading={busy === 'schedule'} disabled={!!busy} onClick={doSchedule}>
+              {t.compose.schedule}
+            </Button>
+            <Button variant="primary" loading={busy === 'publish'} disabled={!!busy} onClick={doPublish}>
+              <span className="inline-flex items-center gap-2"><Icon name="Send" size={16} />{t.compose.publish}</span>
+            </Button>
           </div>
         </div>
       </div>

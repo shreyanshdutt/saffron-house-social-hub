@@ -48,6 +48,12 @@ const SERVER = {
   // Accounts tab invented these; there was no connection state anywhere.
   connections: [],
   self: null,
+  // Every post with its per-channel targets and the server's DERIVED summary.
+  // It lives on this snapshot rather than in the Composer's own state so there
+  // is one mechanism, and so `loadServerData({ force: true })` after a write
+  // actually refreshes it. Part 3 moves History, Calendar and Approvals onto
+  // this array; part 2 only writes to it.
+  posts: [],
   // The window below which a delta cannot be scaled. Served, not hardcoded:
   // the rule lives in server/src/derive.js and the copy on screen explains it,
   // so the two must not be able to disagree.
@@ -112,15 +118,17 @@ async function loadServerData({ force = false } = {}) {
   SERVER.error = null;
   notify();
   try {
-    const [ests, comps, conns] = await Promise.all([
+    const [ests, comps, conns, posts] = await Promise.all([
       getJson(`/establishments${filterQuery(SERVER.filters)}`),
       getJson('/competitors'),
       getJson('/connections'),
+      getJson('/posts'),
     ]);
     SERVER.establishments = ests.establishments;
     SERVER.competitors = comps.competitors;
     SERVER.connections = conns.connections;
     SERVER.self = comps.self;
+    SERVER.posts = posts.posts;
     if (Number.isFinite(comps.minWindowDays)) SERVER.minWindowDays = comps.minWindowDays;
     SERVER.lastSyncedAt = comps.lastSyncedAt || null;
     SERVER.status = 'ready';
@@ -133,6 +141,7 @@ async function loadServerData({ force = false } = {}) {
     SERVER.establishments = [];
     SERVER.competitors = [];
     SERVER.connections = [];
+    SERVER.posts = [];
     SERVER.self = null;
     SERVER.status = 'error';
     SERVER.error = err.message || String(err);
@@ -191,6 +200,57 @@ async function clearInstagramHandle(placeId) {
   const res = await fetch(`${apiBase()}/establishments/${encodeURIComponent(placeId)}/social/instagram`, { method: 'DELETE' });
   if (!res.ok) throw new Error(`clear failed: ${res.status}`);
   await loadServerData({ force: true });
+}
+
+// --- posts -----------------------------------------------------------------
+//
+// The Composer speaks in two-letter channel ids and so does the server's
+// response: every target carries `clientId` beside `platform` (849c3b7), so
+// there is no mapping table in `src/` to drift out of step with the one in
+// server/src/posts.js.
+
+async function postJson(path, body, method = 'POST') {
+  const res = await fetch(`${apiBase()}${path}`, {
+    method,
+    headers: { 'content-type': 'application/json' },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  let payload = null;
+  try { payload = await res.json(); } catch (e) { payload = null; }
+  if (!res.ok) {
+    throw new Error((payload && payload.error) || `${path} returned ${res.status} ${res.statusText}`);
+  }
+  return payload;
+}
+
+// Creates a draft, or a scheduled post when `scheduledAt` is present. Returns
+// the created post — the caller needs its id and its targets, and re-reading
+// the snapshot to find it would be a lookup that can fail.
+async function createPost({ platforms, content, tags, format, author, media, scheduledAt, scheduledTz }) {
+  const post = await postJson('/posts', {
+    platforms, content, tags, format, author, media, scheduledAt, scheduledTz,
+  });
+  await loadServerData({ force: true });
+  return post;
+}
+
+// THE ATTEMPT, AND ITS FAILURE IS NOT AN EXCEPTION.
+//
+// The server answers 200 with per-target outcomes even when every channel
+// failed, because MAKING the attempt succeeded and the outcomes are the answer
+// (849c3b7). Throwing here on "nothing published" would convert a detailed,
+// per-channel result into one thrown string — the exact collapse this week's
+// commits removed. Only a transport failure throws.
+async function publishPost(id) {
+  const result = await postJson(`/posts/${encodeURIComponent(id)}/publish`, undefined);
+  await loadServerData({ force: true });
+  return result;                    // { post, plan }
+}
+
+async function deletePost(id) {
+  const out = await postJson(`/posts/${encodeURIComponent(id)}`, undefined, 'DELETE');
+  await loadServerData({ force: true });
+  return out;
 }
 
 async function postObservations(observations) {
@@ -298,5 +358,8 @@ window.loadServerData = loadServerData;
 window.trackEstablishment = trackEstablishment;
 window.untrackEstablishment = untrackEstablishment;
 window.postObservations = postObservations;
+window.createPost = createPost;
+window.publishPost = publishPost;
+window.deletePost = deletePost;
 window.useServerData = useServerData;
 window.RequiresServerData = RequiresServerData;

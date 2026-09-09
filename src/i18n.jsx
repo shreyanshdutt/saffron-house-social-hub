@@ -73,6 +73,12 @@ const I18N = {
       saveDraft: 'Save as draft',
       schedule: 'Schedule post',
       publish: 'Publish now',
+      // Removed in 760ec7b when they were false; restored here because the
+      // server now really stores a draft and really stores a schedule.
+      // `published` is deliberately NOT restored: how many channels took the
+      // post is a per-attempt fact the server derives, not a fixed sentence.
+      drafted: 'Draft saved',
+      scheduled: 'Scheduled for {when}',
     },
     analytics: {
       title: 'Analytics overview',
