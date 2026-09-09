@@ -283,9 +283,89 @@ closing an item, not follow-up work.**
     feed) and there was nothing on the other end. Removed with the fake publish
     flow that was its only caller. — closed in this commit
 
+22. **The Reviews screen claimed replies were live and escalations had been
+    sent.** Two false success claims with two different shapes, fixed two
+    different ways.
+
+    *`submitReply` said "Reply published" / "…is live on Google".* The write
+    was real — `setReplies` puts the reply on the card — but the claim was
+    about the world, not the screen: nothing reaches Google Business Profile,
+    and with no `localStorage` and no `fetch` anywhere in the file the reply
+    does not survive a reload either. The word "live" was the specific defect;
+    it asserts a state of the world. Drafting is genuinely useful and still
+    works, so the flow stays enabled and was relabelled instead: the toast is
+    "Reply drafted — nothing sent" at `info` rather than `success`, the modal's
+    submit button says "Draft reply" rather than "Publish reply", the modal
+    carries the reason above the textarea, and the reply renders on the card as
+    a dashed-rule draft marked "Draft · not sent" rather than as the solid
+    terracotta block a guest would see. That marker is scoped by `isLocalDraft`
+    to replies written THIS SESSION: a seeded reply keeps the original
+    treatment, because the demo's narrative is that those went out and marking
+    them "not sent" would have invented five unsent drafts rather than removed
+    a false claim — over-applying an honesty marker is its own inaccuracy.
+    The draft block needed a new `html.dark .bg-saf-surface\/60` override
+    (CLAUDE.md § 8): the dark block enumerates opacity variants as separate
+    class names, so without it the LIGHT token was used in dark mode and the
+    muted text rendered at 1.07:1, i.e. invisible. It is 7.4:1 now. The modal's coaching about public
+    replies was kept — it is good advice and § 12.11 of CLAUDE.md forbids
+    weakening an inline caveat — but moved off the present tense, since it was
+    telling the user THIS reply was about to become public.
+
+    *`onEscalate` was a toast and nothing else.* No state write, no side
+    effect, and it claimed a complaint had reached the duty manager's WhatsApp.
+    The most consequential false claim in the product: a manager who believes
+    an escalation happened stops chasing it and the guest hears nothing.
+    Nothing honest could be left enabled, so it follows `c0e54f1` — disabled
+    for every role, reason on hover and beside the control. The
+    `review.escalate` permission gate was NOT dropped; it is folded into the
+    hover text, with the build reason leading because it is the unfixable half.
+    That precedence is the one `server/src/channels.js` already uses when a
+    platform limit and an account limit both say no. — closed in this commit
+
 #### Open
 
-None.
+1. **Eleven false success claims remain, in four files.** Found by the sweep
+   `760ec7b` was required to run, confirmed by reading each site, and NOT
+   fixed there or in `22` above because each is a separate screen with its own
+   decision about what — if anything — is honest to leave enabled (§ 4).
+   Recorded here rather than left in a chat log, because a known defect nobody
+   can find again is an unknown defect.
+
+   - **`page-approvals.jsx` — eight.** `'New draft created in Composer'`:115,
+     `'Cloned to a new draft'`:175, `'Post approved'`:239, `'Sent back to
+     author'`:247, `'Comment added'`:255, `'Flagged for review'`:263,
+     `'Published to channels'`:274, `'Submitted for review'`:287. The file's
+     only state is `tab`, `drawerPost` and `search` — there is no writer of any
+     kind, so all eight are pure no-ops. **The worst cluster in the product**,
+     and `'Published to channels'` is the same claim `760ec7b` removed from the
+     Composer, still live one screen away.
+   - **`page-stubs.jsx` — eight.** `'Asset uploaded'`:232, the delete at :249,
+     `'Color token added'`:268, `'Copy block added'`:286, `'Invitation
+     sent'`:347, `` `Role change recorded for ${u.name}` ``:393, and the two
+     download claims at :534 and :535. Zero `localStorage` and zero `fetch` in
+     the file. **The two downloads are the sharpest**: `page-reviews.jsx`:162
+     and the Listening exports really do build and download a CSV, so a user
+     has grounds to believe these do too, and no file ever arrives.
+   - **`page-messages.jsx`:48 and `page-history.jsx`:199 — `'Reply sent'`.**
+     Messages appends to local component state; History only clears the
+     textarea. Neither sends anything.
+
+   Priority order for the commits that fix these: `page-approvals.jsx` first
+   (eight claims, and it is a workflow screen a manager would act on), then
+   `page-messages.jsx` / `page-history.jsx` (a guest reply is believed to have
+   gone out), then `page-stubs.jsx` (admin surfaces, lowest traffic).
+
+2. **A drafted reply silently stops the SLA clock.** `slaState` returns
+   `'answered'` for any review with `replied` set (`page-reviews.jsx`:43-44),
+   and the local draft sets `replied: true` at :99 — so drafting a reply that
+   was never sent moves the review out of "Needs reply", clears its breach
+   state, and exports as `replied: yes` with the draft text in the CSV. Found
+   while fixing `22` and deliberately not fixed there: correcting it changes
+   the SLA counts and the answered/unanswered filter, which were the
+   verification conditions of that same commit, and whether an unsent draft
+   should count as answered is a product decision rather than a wording fix.
+   The reply and escalate claims were the defect being fixed; this is a third
+   one behind them.
 
 ## 4. Scope discipline
 

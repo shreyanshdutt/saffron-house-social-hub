@@ -166,6 +166,12 @@
   html.dark .bg-saf-card        { background-color: #221913; }
   html.dark .bg-saf-surface     { background-color: #17110D; }
   html.dark .bg-saf-surface\/80 { background-color: rgba(23,17,13, 0.80); }
+  /* The Reviews draft-reply block. Over the dark card this composites to
+     #1B140F: text-saf-text 15.2:1, text-saf-muted 7.4:1 — both AAA.
+     Without this line the LIGHT token was used in dark mode and the muted
+     text landed at 1.07:1, i.e. invisible. These opacity variants are
+     separate class names and each one needs its own override. */
+  html.dark .bg-saf-surface\/60 { background-color: rgba(23,17,13, 0.60); }
   html.dark .bg-saf-light       { background-color: rgba(180,69,31, 0.22); }
   html.dark .bg-saf-light\/30   { background-color: rgba(180,69,31, 0.14); }
   html.dark .bg-saf-light\/40   { background-color: rgba(180,69,31, 0.16); }

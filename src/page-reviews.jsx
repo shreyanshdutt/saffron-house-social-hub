@@ -21,6 +21,27 @@
 
 const REVIEW_SLA_MINS = REVIEW_STATS.slaMins;
 
+// Why a reply does not reach the guest, and why escalation is switched off.
+// Same voice as the Composer's panel (760ec7b) and the Settings connect
+// buttons (c0e54f1): plain sentences for a restaurant manager, the loss to
+// them stated first, and "still being built" as the closer. Three screens now
+// have to explain the same gap and they should sound like one product.
+//
+// TWO DIFFERENT SHAPES OF FIX, because the two actions differ. Drafting a
+// reply genuinely works and is useful, so it stays enabled and is relabelled;
+// escalation is a no-op with nothing honest to leave switched on, so it is
+// disabled with the reason, per c0e54f1.
+
+const NO_SENDING_REASON =
+  'Replies are not being sent yet. What you write appears on the review card on this ' +
+  'screen so the team can agree the wording — it does not reach the guest, it does not ' +
+  'reach the review site, and it is gone if you reload the page. Sending is still being built.';
+
+const NO_ESCALATION_REASON =
+  'Escalating is not connected to anything yet — there is no alert set up for the duty ' +
+  'manager, so pressing this would not reach anybody. Tell them directly for now. It is ' +
+  'still being built.';
+
 const REVIEW_EXPORT_COLUMNS = [
   'id', 'channel', 'author', 'rating', 'received_at',
   'replied', 'sla_state', 'themes', 'review_text', 'replied_by', 'reply_text',
@@ -96,7 +117,11 @@ function ReviewsPage({ role }) {
   const [replies, setReplies] = React.useState({});
 
   const withLocal = React.useMemo(
-    () => REVIEWS.map(r => (replies[r.id] ? { ...r, replied: true, reply: replies[r.id] } : r)),
+    // `isLocalDraft` separates a reply THIS SESSION wrote — which has gone
+    // nowhere — from a seeded one, which the demo's narrative says was
+    // published. Only the first gets the draft treatment; marking the seeded
+    // replies "not sent" would invent six unsent drafts that never existed.
+    () => REVIEWS.map(r => (replies[r.id] ? { ...r, replied: true, reply: { ...replies[r.id], isLocalDraft: true } } : r)),
     [replies]
   );
 
@@ -122,10 +147,15 @@ function ReviewsPage({ role }) {
       [review.id]: { by: PROFILES[role].name, t: new Date().toISOString(), text, comp },
     }));
     setOpen(null);
+    // NOT 'published', and NOT 'live'. The write above is real — the reply
+    // renders on the card — but it never leaves the browser. "Live" asserted a
+    // state of the WORLD when only the state of the SCREEN had changed, which
+    // is the whole of the defect. 'info', not 'success': nothing succeeded.
     toast.push({
-      title: 'Reply published',
-      desc: `Your reply to ${review.author} is live on ${PLATFORM_BY_ID[review.channel].name}.`,
-      kind: 'success',
+      title: 'Reply drafted — nothing sent',
+      desc: `It is on this screen only. ${review.author} cannot see it, nothing has gone to `
+        + `${PLATFORM_BY_ID[review.channel].name}, and it will be gone if you reload the page.`,
+      kind: 'info',
     });
   };
 
@@ -220,11 +250,6 @@ function ReviewsPage({ role }) {
               canReply={canReply}
               canEscalate={canEscalate}
               onReply={() => setOpen(r)}
-              onEscalate={() => toast.push({
-                title: 'Escalated to the floor',
-                desc: `${r.author}'s review was sent to the duty manager's WhatsApp.`,
-                kind: 'info',
-              })}
             />
           ))}
         </div>
@@ -363,7 +388,7 @@ function ReviewSummary({ breached, theme }) {
 }
 
 // --- Review card -------------------------------------------------------------
-function ReviewCard({ review, theme, canReply, canEscalate, onReply, onEscalate }) {
+function ReviewCard({ review, theme, canReply, canEscalate, onReply }) {
   const p = PLATFORM_BY_ID[review.channel];
   const st = slaState(review);
   const age = minsSince(review.t);
@@ -400,11 +425,27 @@ function ReviewCard({ review, theme, canReply, canEscalate, onReply, onEscalate 
           )}
 
           {review.reply ? (
-            <div className="mt-3 ps-3 border-s-2 border-saf-primary/40 bg-saf-light/30 rounded-e-lg p-3">
-              <div className="flex items-center gap-2 text-[12px]">
+            /* A REPLY WRITTEN HERE IS A DRAFT AND HAS TO LOOK LIKE ONE. The
+               solid terracotta rule and the word "replied" made it read as the
+               published reply a guest would see; it is neither published nor
+               kept. Dashed rule, muted ground, "drafted by", and the state in
+               words. A SEEDED reply keeps the original treatment — the demo's
+               narrative is that those went out, and marking them "not sent"
+               would invent unsent drafts rather than remove a false claim. */
+            <div className={`mt-3 ps-3 border-s-2 rounded-e-lg p-3 ${review.reply.isLocalDraft
+              ? 'border-dashed border-saf-border bg-saf-surface/60'
+              : 'border-saf-primary/40 bg-saf-light/30'}`}>
+              <div className="flex items-center gap-2 flex-wrap text-[12px]">
                 <SafLogoMark size={18} />
                 <span className="font-semibold text-saf-text">Saffron House</span>
-                <span className="text-saf-muted">replied by {review.reply.by} · {relTime(review.reply.t)}</span>
+                <span className="text-saf-muted">
+                  {review.reply.isLocalDraft ? 'drafted by' : 'replied by'} {review.reply.by} · {relTime(review.reply.t)}
+                </span>
+                {review.reply.isLocalDraft && (
+                  <span className="px-2 h-5 inline-flex items-center rounded-full bg-saf-card border border-saf-border text-saf-muted text-[11px] font-semibold">
+                    Draft · not sent
+                  </span>
+                )}
                 {review.reply.comp && (
                   <span className="ms-auto px-2 h-5 inline-flex items-center rounded-full bg-amber-50 text-amber-700 text-[11px] font-semibold">
                     Comp issued
@@ -412,6 +453,12 @@ function ReviewCard({ review, theme, canReply, canEscalate, onReply, onEscalate 
                 )}
               </div>
               <p className="mt-1.5 text-[13px] leading-relaxed text-saf-text">{review.reply.text}</p>
+              {review.reply.isLocalDraft && (
+                <p className="mt-1.5 text-[11.5px] text-saf-muted leading-relaxed">
+                  On this screen only — it has not gone to {PLATFORM_BY_ID[review.channel].name}, and it
+                  will be gone if you reload the page.
+                </p>
+              )}
             </div>
           ) : (
             <div className="mt-3 flex items-center gap-2">
@@ -425,17 +472,33 @@ function ReviewCard({ review, theme, canReply, canEscalate, onReply, onEscalate 
               >
                 Reply publicly
               </Button>
+              {/* DISABLED FOR EVERY ROLE, WITH THE REASON ON HOVER AND BESIDE IT.
+                  This was a toast and nothing else — no state write, no side
+                  effect — and it is the most consequential thing in the product
+                  to claim falsely: a manager who believes a complaint went to
+                  the floor stops chasing it, and the guest hears nothing.
+
+                  The permission gate is NOT dropped, it is folded into the
+                  reason. The build reason leads because it is the unfixable
+                  half — being granted the permission would still send nothing —
+                  which is the same precedence `server/src/channels.js` uses
+                  when a platform limit and an account limit both say no. */}
               {review.rating <= 2 && (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  leadingIcon="Siren"
-                  onClick={onEscalate}
-                  disabled={!canEscalate}
-                  title={canEscalate ? undefined : 'Requires Guest Relations Lead or Marketing Manager'}
-                >
-                  Escalate to duty manager
-                </Button>
+                <>
+                  <Tooltip
+                    label={canEscalate
+                      ? NO_ESCALATION_REASON
+                      : NO_ESCALATION_REASON + ' Your role could not escalate in any case — that is Guest Relations or the Marketing Manager.'}
+                    side="top"
+                  >
+                    <span>
+                      <Button size="sm" variant="ghost" leadingIcon="Siren" disabled>
+                        Escalate to duty manager
+                      </Button>
+                    </span>
+                  </Tooltip>
+                  <span className="text-[11.5px] text-saf-muted">Not connected yet — nothing would be sent.</span>
+                </>
               )}
               {!canReply && (
                 <span className="text-[11.5px] text-saf-muted">
@@ -510,11 +573,19 @@ function ReplyModal({ review, role, canComp, onClose, onSubmit }) {
           <div className="flex items-start gap-2 p-3 rounded-xl bg-amber-50 border border-amber-200 text-[12.5px] text-amber-700">
             <Icon name="Info" size={15} className="mt-px shrink-0" />
             <p>
-              This reply is public and permanent. Future guests will read it before they read the complaint —
-              answer the person, not the rating, and never argue the facts in public.
+              A published reply is public and permanent. Future guests read it before they read the
+              complaint — answer the person, not the rating, and never argue the facts in public.
             </p>
           </div>
         )}
+
+        {/* Before the textarea, not after: the Composer panel leads with the
+            same warning for the same reason — somebody can spend ten minutes on
+            this and the words do not survive a reload. */}
+        <div className="flex items-start gap-2 p-3 rounded-xl bg-saf-surface border border-saf-border">
+          <Icon name="Info" size={14} className="text-saf-muted mt-0.5 shrink-0" />
+          <p className="text-[12px] text-saf-muted leading-relaxed">{NO_SENDING_REASON}</p>
+        </div>
 
         <div>
           <div className="flex items-center gap-2 flex-wrap mb-2">
@@ -566,11 +637,11 @@ function ReplyModal({ review, role, canComp, onClose, onSubmit }) {
           <Button variant="ghost" onClick={onClose}>Cancel</Button>
           <Button
             variant="primary"
-            leadingIcon="Send"
+            leadingIcon="Reply"
             disabled={!text.trim() || over}
             onClick={() => onSubmit(review, text.trim(), comp)}
           >
-            Publish reply
+            Draft reply
           </Button>
         </div>
       </div>
