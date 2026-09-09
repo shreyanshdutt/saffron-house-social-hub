@@ -170,6 +170,20 @@ collision. A duplicate top-level `const` throws; a duplicate `function` or
 `var` silently shadows by load order, which is the bad case. `grep -n
 "^\(const\|function\) <Name>\b" src/*.jsx` before adding one.
 
+**This rule was already written here when it was next broken.** On 2026-09-09
+`page-customers.jsx` declared `SourceBadge`, which `page-recommendations.jsx`
+already defines and which loads AFTER it — so every source badge on the new
+screen rendered nothing, and the screen lost the one distinction it exists to
+make. Nothing threw, no test failed, and the defect was found by looking at a
+screenshot.
+
+The lesson is not that the instruction needs restating. It is that an
+instruction is the weakest control available for a silent failure, and this one
+is mechanically checkable: the pre-flight that already parses a changed file
+with `@babel/standalone` can collect its top-level declarations and compare
+them against every other `src/*.jsx`. Prefer adding that check over adding
+another sentence here.
+
 ## 6. The data layer
 
 Since `432ebc0` the data layer has two halves, and which half owns a dataset
@@ -356,9 +370,18 @@ one to make a demo flow smoother.
 position in `index.html` → add a `case` to `PageRouter` in `app.jsx` → add the
 route to `PAGE_PERMS` **and** `PAGE_LABEL` → add the nav entry to
 `SIDEBAR_SECTIONS` in `sidebar.jsx` (`workflow` / `insights` / `admin`) → add
-its strings to `i18n.jsx`. Six places. Missing the
-`PAGE_PERMS` entry is a permission hole; missing the `<script>` tag is a blank
-screen with no error.
+the label to **BOTH tables in `i18n.jsx`**: `nav`, which the sidebar reads, and
+`crumb`, which `topbar.jsx` reads as `t.crumb[page] || page`. Seven places.
+
+This entry said six until 2026-09-09. The Customers screen shipped its first
+pass with a lowercase `customers` in the breadcrumb, because "add its strings
+to i18n.jsx" did not say there were two tables and the fallback `|| page`
+renders the route key rather than failing. A checklist that undercounts is
+drift like any other, and the omission was found by looking at the screen.
+
+Missing the `PAGE_PERMS` entry is a permission hole; missing the `<script>` tag
+is a blank screen with no error; missing the `crumb` entry is a route key
+printed where a title belongs, and nothing throws.
 
 **A channel.** Only if it has a first-party public API the restaurant can be
 granted access to. Add to `PLATFORMS` with an honest `caps` list, `api` name
