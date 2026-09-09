@@ -116,12 +116,25 @@ function ReviewsPage({ role }) {
   // pretending to write to a backend.
   const [replies, setReplies] = React.useState({});
 
+  // A DRAFT GOES ON ITS OWN FIELD AND NEVER SETS `replied`.
+  //
+  // `replied` and `reply` mean one thing: a reply reached the platform and the
+  // guest can see it. This build sends nothing, so a reply typed here is not
+  // that, and 8ce1c20 setting `replied: true` for one made a 1★ complaint leave
+  // the queue because somebody started typing — "Past SLA now" fell 6 → 5, the
+  // review dropped out of Needs reply, and it exported as replied: yes.
+  //
+  // Carried on `draftReply` rather than as a flag on `reply`, so the two are
+  // different SHAPES rather than the same shape with a boolean. A consumer that
+  // means "answered" reads `replied` or `reply` and cannot accidentally get a
+  // draft, which a flag on a shared field would let it do. This retires
+  // `isLocalDraft`: the field name now carries the distinction. The five SEEDED
+  // replies are untouched — the demo's narrative is that those went out.
+  //
+  // Owner decision 2026-09-09: a drafted reply is INVISIBLE to the SLA. Nothing
+  // about a guest's experience changed because someone typed into a box.
   const withLocal = React.useMemo(
-    // `isLocalDraft` separates a reply THIS SESSION wrote — which has gone
-    // nowhere — from a seeded one, which the demo's narrative says was
-    // published. Only the first gets the draft treatment; marking the seeded
-    // replies "not sent" would invent six unsent drafts that never existed.
-    () => REVIEWS.map(r => (replies[r.id] ? { ...r, replied: true, reply: { ...replies[r.id], isLocalDraft: true } } : r)),
+    () => REVIEWS.map(r => (replies[r.id] ? { ...r, draftReply: replies[r.id] } : r)),
     [replies]
   );
 
@@ -184,6 +197,11 @@ function ReviewsPage({ role }) {
                 slaState(r),
                 (r.themes || []).join('; '),
                 r.text,
+                // DRAFTS DO NOT LEAVE THE PRODUCT. These columns are named
+                // `replied_by` / `reply_text` — putting an unsent draft in them
+                // is the same false claim this screen just removed, relocated
+                // into a file that outlives the session and can be quoted back.
+                // A CSV carries no "Draft · not sent" pill to travel with it.
                 r.reply ? r.reply.by : '',
                 r.reply ? r.reply.text : '',
               ])),
@@ -392,6 +410,11 @@ function ReviewCard({ review, theme, canReply, canEscalate, onReply }) {
   const p = PLATFORM_BY_ID[review.channel];
   const st = slaState(review);
   const age = minsSince(review.t);
+  // A sent reply and an unsent draft render in the same slot and are never both
+  // present. `isDraft` decides the treatment; the SLA badge above is unaffected
+  // by a draft, which is the point of the split.
+  const shown = review.reply || review.draftReply || null;
+  const isDraft = !review.reply && !!review.draftReply;
 
   return (
     <Card padding="p-4" className={st === 'breached' ? 'border-rose-300' : ''}>
@@ -424,7 +447,7 @@ function ReviewCard({ review, theme, canReply, canEscalate, onReply }) {
             </div>
           )}
 
-          {review.reply ? (
+          {shown ? (
             /* A REPLY WRITTEN HERE IS A DRAFT AND HAS TO LOOK LIKE ONE. The
                solid terracotta rule and the word "replied" made it read as the
                published reply a guest would see; it is neither published nor
@@ -432,28 +455,28 @@ function ReviewCard({ review, theme, canReply, canEscalate, onReply }) {
                words. A SEEDED reply keeps the original treatment — the demo's
                narrative is that those went out, and marking them "not sent"
                would invent unsent drafts rather than remove a false claim. */
-            <div className={`mt-3 ps-3 border-s-2 rounded-e-lg p-3 ${review.reply.isLocalDraft
+            <div className={`mt-3 ps-3 border-s-2 rounded-e-lg p-3 ${isDraft
               ? 'border-dashed border-saf-border bg-saf-surface/60'
               : 'border-saf-primary/40 bg-saf-light/30'}`}>
               <div className="flex items-center gap-2 flex-wrap text-[12px]">
                 <SafLogoMark size={18} />
                 <span className="font-semibold text-saf-text">Saffron House</span>
                 <span className="text-saf-muted">
-                  {review.reply.isLocalDraft ? 'drafted by' : 'replied by'} {review.reply.by} · {relTime(review.reply.t)}
+                  {isDraft ? 'drafted by' : 'replied by'} {shown.by} · {relTime(shown.t)}
                 </span>
-                {review.reply.isLocalDraft && (
+                {isDraft && (
                   <span className="px-2 h-5 inline-flex items-center rounded-full bg-saf-card border border-saf-border text-saf-muted text-[11px] font-semibold">
                     Draft · not sent
                   </span>
                 )}
-                {review.reply.comp && (
+                {shown.comp && (
                   <span className="ms-auto px-2 h-5 inline-flex items-center rounded-full bg-amber-50 text-amber-700 text-[11px] font-semibold">
                     Comp issued
                   </span>
                 )}
               </div>
-              <p className="mt-1.5 text-[13px] leading-relaxed text-saf-text">{review.reply.text}</p>
-              {review.reply.isLocalDraft && (
+              <p className="mt-1.5 text-[13px] leading-relaxed text-saf-text">{shown.text}</p>
+              {isDraft && (
                 <p className="mt-1.5 text-[11.5px] text-saf-muted leading-relaxed">
                   On this screen only — it has not gone to {PLATFORM_BY_ID[review.channel].name}, and it
                   will be gone if you reload the page.

@@ -322,6 +322,43 @@ closing an item, not follow-up work.**
     That precedence is the one `server/src/channels.js` already uses when a
     platform limit and an account limit both say no. — closed in this commit
 
+23. **An unsent draft stopped the SLA clock.** Carried as an open entry from
+    `8ce1c20` and ruled on by the owner 2026-09-09: a drafted reply is
+    INVISIBLE to the SLA. Nothing about a guest's experience changed because
+    somebody typed into a box.
+
+    `withLocal` set `replied: true` for a local draft and `slaState` returns
+    `'answered'` for anything with that flag, so one unsent draft on a 1★
+    complaint moved "Past SLA now" 6 → 5, dropped the review out of Needs
+    reply, promoted it past every genuinely unanswered review under the urgency
+    sort, and exported it as `replied: yes` / `sla_state: answered` with the
+    draft text sitting in `reply_text`. Reproduced in both themes before the
+    fix rather than taken on description.
+
+    **The draft moved to its own field, `draftReply`, rather than `replied`
+    staying false beside a populated `reply`.** Both would fix the four
+    consumers, but the second leaves two fields that must be read together to
+    mean anything, and the next person to write `if (r.reply)` meaning
+    "answered" gets a draft. Different shapes cannot be confused: a consumer
+    that means "sent" reads `replied` or `reply` and a draft is not reachable
+    from either. This also retires `isLocalDraft` from `8ce1c20` — the field
+    name now carries the seeded/local distinction that flag existed for.
+
+    Four consumers, all verified by measurement: `slaState` returns
+    open/due/breached for a drafted review; `urgencyScore` keeps a drafted 1★
+    ahead of every answered review because it reads `slaState`; the status
+    filter leaves it under unanswered; and the CSV exports `replied: no` with
+    the real `sla_state`. **`replied_by` and `reply_text` are left EMPTY for a
+    draft** — those columns assert a reply happened, an export outlives the
+    session and can be quoted back, and a CSV carries no "Draft · not sent"
+    pill to travel with the text. If drafts should leave the product they need
+    their own named columns, which is a schema change and a separate decision.
+
+    `8ce1c20`'s card rendering is unchanged and still correct: dashed block,
+    "drafted by", the pill, the reload line, and the five seeded replies still
+    reading "replied by" with their SLA answered. — closed in this commit
+
+
 #### Open
 
 1. **Eleven false success claims remain, in four files.** Found by the sweep
@@ -354,18 +391,6 @@ closing an item, not follow-up work.**
    (eight claims, and it is a workflow screen a manager would act on), then
    `page-messages.jsx` / `page-history.jsx` (a guest reply is believed to have
    gone out), then `page-stubs.jsx` (admin surfaces, lowest traffic).
-
-2. **A drafted reply silently stops the SLA clock.** `slaState` returns
-   `'answered'` for any review with `replied` set (`page-reviews.jsx`:43-44),
-   and the local draft sets `replied: true` at :99 — so drafting a reply that
-   was never sent moves the review out of "Needs reply", clears its breach
-   state, and exports as `replied: yes` with the draft text in the CSV. Found
-   while fixing `22` and deliberately not fixed there: correcting it changes
-   the SLA counts and the answered/unanswered filter, which were the
-   verification conditions of that same commit, and whether an unsent draft
-   should count as answered is a product decision rather than a wording fix.
-   The reply and escalate claims were the defect being fixed; this is a third
-   one behind them.
 
 ## 4. Scope discipline
 
