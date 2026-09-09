@@ -359,23 +359,55 @@ closing an item, not follow-up work.**
     reading "replied by" with their SLA answered. — closed in this commit
 
 
+24. **The Approvals screen claimed eight actions it did not perform.** The
+    worst cluster in the product, carried as part of the open entry below since
+    `8ce1c20` and closed here. Re-verified before editing rather than taken on
+    description: the file's only state is `tab`, `drawerPost` and `search`, it
+    contains no `localStorage` and no `fetch`, and every one of the eight was
+    an inline `toast.push` with no other statement in the handler. Nothing had
+    a local half worth leaving enabled the way drafting a reply did in
+    `8ce1c20`, so all eight follow `c0e54f1`: disabled, with the reason stated.
+
+    **One panel, not eight tooltips.** The whole approval chain is unbuilt for
+    a single reason, so it is said once above the tabs — where it is on screen
+    whichever tab is open — with a one-line hover on each control.
+
+    **The reason is deliberately NOT the Composer's.** `760ec7b` disabled the
+    Composer because no channel is connected and there is nowhere to store a
+    post. This screen is dead for a different reason: there is no approval
+    state anywhere — no server table, no client state, nothing that remembers a
+    decision — so a post cannot move between tabs and connecting Instagram
+    would not make Approve work. Copying the Composer's wording would have sent
+    someone off to fix the wrong thing.
+
+    **The permission gates stay**, because the distinction is real and
+    demoable: a Social Coordinator genuinely cannot approve. `ActionBtn` keeps
+    its `enabled` prop and now always renders the disabled form, composing the
+    hover as build reason first, permission reason second. That precedence —
+    the unfixable half leads — is the rule `server/src/channels.js` uses for
+    platform-before-account and `8ce1c20`'s escalate tooltip already follows.
+    The prop carrying the gate text was renamed `tooltip` → `permissionReason`,
+    because it is no longer the tooltip but one input to it, and a prop whose
+    name misdescribes its value is the same class of quiet inaccuracy this
+    series exists to remove. — closed in this commit
+
+
 #### Open
 
-1. **Eleven false success claims remain, in four files.** Found by the sweep
+1. **Ten false success claims remain, in three files** — eight in
+   `page-stubs.jsx` plus one each in `page-messages.jsx` and
+   `page-history.jsx`, counted by grep rather than carried over. **The
+   headline on this entry said "Eleven" from `8ce1c20` until `24` corrected
+   it, and that number was never right**: it was written against a list of
+   8 + 8 + 1 + 1 = 18 claims. The individual file counts underneath were
+   accurate throughout; only the total was wrong, which is the failure mode a
+   register is supposed to prevent rather than cause. Found by the sweep
    `760ec7b` was required to run, confirmed by reading each site, and NOT
    fixed there or in `22` above because each is a separate screen with its own
    decision about what — if anything — is honest to leave enabled (§ 4).
    Recorded here rather than left in a chat log, because a known defect nobody
    can find again is an unknown defect.
 
-   - **`page-approvals.jsx` — eight.** `'New draft created in Composer'`:115,
-     `'Cloned to a new draft'`:175, `'Post approved'`:239, `'Sent back to
-     author'`:247, `'Comment added'`:255, `'Flagged for review'`:263,
-     `'Published to channels'`:274, `'Submitted for review'`:287. The file's
-     only state is `tab`, `drawerPost` and `search` — there is no writer of any
-     kind, so all eight are pure no-ops. **The worst cluster in the product**,
-     and `'Published to channels'` is the same claim `760ec7b` removed from the
-     Composer, still live one screen away.
    - **`page-stubs.jsx` — eight.** `'Asset uploaded'`:232, the delete at :249,
      `'Color token added'`:268, `'Copy block added'`:286, `'Invitation
      sent'`:347, `` `Role change recorded for ${u.name}` ``:393, and the two
@@ -387,10 +419,20 @@ closing an item, not follow-up work.**
      Messages appends to local component state; History only clears the
      textarea. Neither sends anything.
 
-   Priority order for the commits that fix these: `page-approvals.jsx` first
-   (eight claims, and it is a workflow screen a manager would act on), then
-   `page-messages.jsx` / `page-history.jsx` (a guest reply is believed to have
-   gone out), then `page-stubs.jsx` (admin surfaces, lowest traffic).
+   The `page-approvals.jsx` eight were closed in `24` above.
+
+   **`page-history.jsx` is not a screen and its `'Reply sent'` is NOT dead
+   code.** The file defines no `HistoryPage` at all — it defines
+   `PostDetailDrawer`, `Stat`, `Dropdown`, `EmptyState`, `SentimentPill`,
+   `Metric` and `statusTone`, and `page-approvals.jsx` (which defines only
+   `ApprovalsPage`) consumes them by global scope, which is why `index.html`
+   loads history at :311 immediately before approvals at :312. So the drawer
+   the Approvals screen opens IS that file, and its `'Reply sent'` is reachable
+   from it. Whoever fixes :199 is editing the Approvals drawer.
+
+   Priority order for the commits that fix these: `page-messages.jsx` /
+   `page-history.jsx` first (a guest reply is believed to have gone out), then
+   `page-stubs.jsx` (admin surfaces, lowest traffic).
 
 ## 4. Scope discipline
 

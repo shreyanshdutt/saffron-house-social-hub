@@ -11,6 +11,28 @@
 // explaining the gate. Hidden actions are reserved only for items truly
 // outside a role's scope (e.g. Templates).
 
+// WHY EVERY ACTION ON THIS SCREEN IS OFF, said once at the top of the screen
+// rather than eight times on eight hovers. Same pattern as the Settings connect
+// buttons (c0e54f1), Channel Health (688c020), the Composer (760ec7b) and the
+// Reviews escalate control (8ce1c20).
+//
+// THE REASON IS NOT THE COMPOSER'S AND MUST NOT BE WORDED LIKE IT. The Composer
+// cannot publish because no channel is connected and there is nowhere to store
+// a post. This screen cannot approve because there is no approval state
+// anywhere — no server table, no client state, nothing that remembers a
+// decision. Connecting Instagram would not make Approve work, and a panel that
+// implied otherwise would send someone off to fix the wrong thing.
+const NO_APPROVAL_STATE_REASON =
+  'Approving, publishing, sending back, commenting, flagging and submitting are all switched ' +
+  'off. Nothing here can record a decision — no approval status is stored anywhere, so a post ' +
+  'cannot move between these tabs and a decision would be forgotten the moment you left the ' +
+  'page. This is not about a channel being connected: connecting Instagram would not make ' +
+  'Approve work. Reading the queue, switching tabs, searching and opening a post all still work.';
+
+// The short form for a hover. The panel carries the full sentence.
+const NO_APPROVAL_STATE_TIP =
+  'Off: there is nowhere to record an approval decision yet.';
+
 const APPROVAL_TABS = [
   { id: 'draft',     label: 'Draft',     icon: 'FileEdit',   tone: 'bg-slate-100 text-slate-700' },
   { id: 'in_review', label: 'In Review', icon: 'Eye',         tone: 'bg-amber-50 text-amber-700' },
@@ -50,7 +72,6 @@ const APPROVAL_TEMPLATES = [
 
 function ApprovalsPage({ role, openedPost, onCloseDrawer }) {
   const t = useT();
-  const toast = useToast();
   const [tab, setTab] = React.useState('in_review');
   const [drawerPost, setDrawerPost] = React.useState(null);
   const [search, setSearch] = React.useState('');
@@ -76,14 +97,21 @@ function ApprovalsPage({ role, openedPost, onCloseDrawer }) {
   const canReview  = hasPerm(role, 'draft.review');
   const canSubmit  = hasPerm(role, 'draft.submit');
 
-  function ActionBtn({ enabled, label, leadingIcon, variant = 'primary', size = 'sm', tooltip, onClick }) {
-    if (enabled) {
-      return (
-        <Button variant={variant} size={size} leadingIcon={leadingIcon} onClick={onClick}>{label}</Button>
-      );
-    }
+  // ALWAYS RENDERS THE DISABLED FORM. Every one of these was an inline
+  // toast.push and nothing else — no state write, no side effect — so there is
+  // no local half worth leaving enabled the way drafting a reply was in
+  // 8ce1c20. `enabled` is kept because the permission distinction is real and
+  // demoable: a Social Coordinator genuinely cannot approve, and a draft of a
+  // screen that hides that is less honest, not more.
+  //
+  // The build reason LEADS and the permission reason follows, because the build
+  // reason is the unfixable half — being granted `draft.approve` would still
+  // record nothing. Same precedence `server/src/channels.js` uses when a
+  // platform limit and an account limit both say no, and the same order
+  // 8ce1c20's escalate tooltip uses.
+  function ActionBtn({ enabled, label, leadingIcon, variant = 'primary', size = 'sm', permissionReason }) {
     return (
-      <Tooltip label={tooltip} side="top">
+      <Tooltip label={enabled ? NO_APPROVAL_STATE_TIP : `${NO_APPROVAL_STATE_TIP} ${permissionReason}`} side="top">
         <span className={`inline-flex items-center justify-center gap-2 h-8 px-3 rounded-lg font-medium select-none whitespace-nowrap text-[13px]
           opacity-60 cursor-not-allowed
           ${variant === 'primary' ? 'bg-saf-primary text-white' :
@@ -111,10 +139,16 @@ function ApprovalsPage({ role, openedPost, onCloseDrawer }) {
             label="Submit new for approval"
             leadingIcon="Send"
             variant="primary"
-            tooltip="Requires draft.submit — Executive, Sr. Exec or Manager"
-            onClick={() => toast.push({ title: 'New draft created in Composer' })}
+            permissionReason="Requires draft.submit — Executive, Sr. Exec or Manager"
           />
         </div>
+      </div>
+
+      {/* Stated once, above the tabs, so it is on screen whichever tab is open
+          and whether or not a row happens to carry an action. */}
+      <div className="flex items-start gap-2 p-3 rounded-xl bg-saf-surface border border-saf-border">
+        <Icon name="Info" size={14} className="text-saf-muted mt-0.5 shrink-0" />
+        <p className="text-[12px] text-saf-muted leading-relaxed">{NO_APPROVAL_STATE_REASON}</p>
       </div>
 
       {/* Tabs */}
@@ -171,8 +205,7 @@ function ApprovalsPage({ role, openedPost, onCloseDrawer }) {
                   label="Use template"
                   leadingIcon="Plus"
                   variant="secondary"
-                  tooltip="Requires draft.submit — Executive, Sr. Exec or Manager"
-                  onClick={() => toast.push({ title: 'Cloned to a new draft' })}
+                  permissionReason="Requires draft.submit — Executive, Sr. Exec or Manager"
                 />
               </div>
             ))}
@@ -235,32 +268,28 @@ function ApprovalsPage({ role, openedPost, onCloseDrawer }) {
                         label="Approve"
                         leadingIcon="CheckCircle2"
                         variant="primary"
-                        tooltip="Approve requires the Manager role"
-                        onClick={() => toast.push({ title: 'Post approved' })}
+                        permissionReason="Approve requires the Manager role"
                       />
                       <ActionBtn
                         enabled={canReview}
                         label="Send back"
                         leadingIcon="Undo2"
                         variant="secondary"
-                        tooltip="Send back requires Sr. Exec or Manager"
-                        onClick={() => toast.push({ title: 'Sent back to author' })}
+                        permissionReason="Send back requires Sr. Exec or Manager"
                       />
                       <ActionBtn
                         enabled={canReview}
                         label="Comment"
                         leadingIcon="MessageCircle"
                         variant="secondary"
-                        tooltip="Commenting requires Sr. Exec or Manager"
-                        onClick={() => toast.push({ title: 'Comment added' })}
+                        permissionReason="Commenting requires Sr. Exec or Manager"
                       />
                       <ActionBtn
                         enabled={canReview}
                         label="Flag"
                         leadingIcon="Flag"
                         variant="secondary"
-                        tooltip="Flagging requires Sr. Exec or Manager"
-                        onClick={() => toast.push({ title: 'Flagged for review' })}
+                        permissionReason="Flagging requires Sr. Exec or Manager"
                       />
                     </>
                   )}
@@ -270,8 +299,7 @@ function ApprovalsPage({ role, openedPost, onCloseDrawer }) {
                       label="Publish now"
                       leadingIcon="Send"
                       variant="primary"
-                      tooltip="Publish requires the Manager role"
-                      onClick={() => toast.push({ title: 'Published to channels' })}
+                      permissionReason="Publish requires the Manager role"
                     />
                   )}
                   {p.status === 'sent_back' && (
@@ -283,8 +311,7 @@ function ApprovalsPage({ role, openedPost, onCloseDrawer }) {
                       label="Submit for approval"
                       leadingIcon="Send"
                       variant="primary"
-                      tooltip="Submitting requires Executive, Sr. Exec or Manager"
-                      onClick={() => toast.push({ title: 'Submitted for review' })}
+                      permissionReason="Submitting requires Executive, Sr. Exec or Manager"
                     />
                   )}
                 </div>
