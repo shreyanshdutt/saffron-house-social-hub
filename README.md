@@ -112,19 +112,19 @@ over:
   "most talked about" is just the bestseller you already knew about.
 - **Competitor insights** (`src/page-listening-competitors.jsx`) compares the
   restaurant against a named catchment — Sector 10 Market, Dwarka, 2.5km — on
-  the four things public data actually supports: posting cadence, engagement
-  rate, Google rating and review velocity. Plus a content-positioning split of
-  themes nobody nearby posts versus themes two or more rivals own. Every figure
-  is Business Discovery or Places; their reach and sentiment are private and
-  are not shown at any confidence. Each competitor row expands into their last
-  14 days of posts, one at a time — caption, format, likes, comments, derived
-  theme, offer flag, and how the post performed against that competitor's own
-  median. There is no sentiment on the Instagram posts shown here: Business
-  Discovery returns comment counts, not comment text, so there is nothing to
-  classify. That is a limit of Instagram specifically, not of competitor data
-  generally — YouTube and X both return comment text, which is why `PLATFORMS`
-  carries `comments` for them and `DATA-SOURCES.md` states the ceiling per
-  channel rather than once.
+  four public-data figures: posting cadence, engagement rate, Google rating and
+  review velocity. Plus a content-positioning split of themes nobody nearby
+  posts versus themes two or more rivals own. Every figure is Business
+  Discovery or Places; their reach and impressions are private on every channel
+  and are not shown at any confidence. Each competitor row expands into their
+  last 14 days of posts, one at a time — caption, format, likes, comments,
+  derived theme, offer flag, and how the post performed against that
+  competitor's own median. There is no sentiment on the Instagram posts shown
+  here: Business Discovery returns comment counts, not comment text, so there
+  is nothing to classify. That is a limit of Instagram specifically, not of
+  competitor data generally — YouTube and X both return comment text, which is
+  why `PLATFORMS` carries `comments` for them and `DATA-SOURCES.md` states the
+  ceiling per channel rather than once.
 - **Establishments** (`src/page-establishments.jsx`) is the candidate pool the
   competitor set is chosen from, with a per-channel verdict on whether each can
   be analysed at all. A **radius** and a **minimum rating** drive the query —
