@@ -6,6 +6,7 @@
 // alone, because real rows carry is_sample = 0 and are never touched here.
 
 import { openAndMigrate, nowIso } from '../src/db.js';
+import { CHANNEL_BY_CLIENT_ID } from '../src/posts.js';
 import { insertObservation } from '../src/observations.js';
 import { config, loadDotEnv } from '../src/config.js';
 import { pathToFileURL } from 'node:url';
@@ -71,7 +72,10 @@ export function seed(db, _repoRoot, { trackedBy = 'admin', now = Date.now() } = 
   const isSample = SEED_DATA.isSampleData ? 1 : 0;
   const stamp = new Date(now).toISOString();
 
-  const counts = { establishments: 0, social: 0, connections: 0, tracked: 0, observations: 0 };
+  const SEED_POSTS = SEED_DATA.posts || [];
+  const SEED_SCHEDULED = SEED_DATA.scheduled || [];
+
+  const counts = { establishments: 0, social: 0, connections: 0, tracked: 0, observations: 0, posts: 0, postTargets: 0 };
 
   db.exec('BEGIN');
   try {
@@ -151,6 +155,89 @@ export function seed(db, _repoRoot, { trackedBy = 'admin', now = Date.now() } = 
     ]) {
       insConn.run(...c);
       counts.connections = (counts.connections || 0) + 1;
+    }
+
+    // POSTS AND SCHEDULED, and the metrics trap that decided the schema.
+    //
+    // Every seeded post carries `metricsFrom: 'ig'` — including p1, p3 and p5,
+    // which went to BOTH Instagram and Google. Those figures were never the
+    // post's totals; they are Instagram's. So they are written to the
+    // INSTAGRAM TARGET and the Google target is left with NULL metrics, which
+    // reads as "not measured" rather than as zero reach. Hanging them on the
+    // post row would have turned one channel's numbers into every channel's,
+    // silently, for three of seven posts.
+    //
+    // The client's `status` collapses two facts and is unpicked here: it is the
+    // post's LIFECYCLE plus its OUTCOME in one word. 'published' and 'failed'
+    // both become state 'attempted' with the outcome carried per target.
+    db.prepare(`DELETE FROM posts WHERE is_sample = 1`).run();   // targets cascade
+    const insPost = db.prepare(
+      `INSERT INTO posts (id, state, content, format, author, tags,
+                          media_kind, media_label, media_tone,
+                          created_at, updated_at, scheduled_at, scheduled_tz, is_sample)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`
+    );
+    const insTarget = db.prepare(
+      `INSERT INTO post_targets (post_id, platform, status, failure_kind, reason,
+                                 attempted_at, published_at,
+                                 views, reach, likes, comments, shares, saves, engagement_rate, is_sample)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`
+    );
+
+    for (const post of SEED_POSTS) {
+      const state = post.status === 'draft' ? 'draft' : 'attempted';
+      insPost.run(
+        post.id, state, post.content, post.format ?? null, post.author ?? null,
+        JSON.stringify(post.tags || []),
+        post.media?.kind ?? null, post.media?.label ?? null, post.media?.tone ?? null,
+        post.date, post.date, null, null
+      );
+      for (const clientId of post.platforms) {
+        const platform = CHANNEL_BY_CLIENT_ID[clientId];
+        if (!platform) throw new Error(`seed post ${post.id} names unknown channel '${clientId}'`);
+        // A draft has been attempted nowhere; its targets are still pending.
+        const targetStatus = state === 'draft' ? 'pending'
+          : post.status === 'failed' ? 'failed' : 'published';
+        // THE TRAP: metrics only on the channel they actually came from.
+        const owns = clientId === post.metricsFrom && post.metrics && targetStatus === 'published';
+        const m = owns ? post.metrics : null;
+        insTarget.run(
+          post.id, platform, targetStatus,
+          targetStatus === 'failed' ? 'expired' : null,
+          targetStatus === 'failed' ? (post.error || null) : null,
+          state === 'draft' ? null : post.date,
+          targetStatus === 'published' ? post.date : null,
+          m ? m.views : null, m ? m.reach : null, m ? m.likes : null,
+          m ? m.comments : null, m ? m.shares : null, m ? m.saves : null,
+          m ? m.rate : null
+        );
+        counts.postTargets = (counts.postTargets || 0) + 1;
+      }
+      counts.posts = (counts.posts || 0) + 1;
+    }
+
+    // SCHEDULED rows are the same lifecycle, not a second mechanism — owner
+    // decision 2026-09-09. They are posts in state 'scheduled' whose targets
+    // are pending, and the Calendar reads them from the same table History does.
+    for (const s of SEED_SCHEDULED) {
+      insPost.run(
+        s.id, 'scheduled', s.content, null, null,
+        JSON.stringify(s.tags || []),
+        null, null, null,
+        s.when, s.when, s.when,
+        // The seed's `when` carries +05:30 but not the zone that produced it.
+        // The restaurant is in Dwarka, so the zone is recorded rather than left
+        // to be re-derived from an offset that cannot identify it (schema.sql).
+        'Asia/Kolkata'
+      );
+      for (const clientId of s.platforms) {
+        const platform = CHANNEL_BY_CLIENT_ID[clientId];
+        if (!platform) throw new Error(`seed scheduled ${s.id} names unknown channel '${clientId}'`);
+        insTarget.run(s.id, platform, 'pending', null, null, null, null,
+          null, null, null, null, null, null, null);
+        counts.postTargets = (counts.postTargets || 0) + 1;
+      }
+      counts.posts = (counts.posts || 0) + 1;
     }
 
     for (const id of TRACKED_DEFAULT) {

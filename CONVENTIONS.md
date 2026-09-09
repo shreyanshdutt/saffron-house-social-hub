@@ -494,7 +494,25 @@ closing an item, not follow-up work.**
 
 #### Open
 
-None.
+1. **`POSTS` and `SCHEDULED` now exist in two places, and will until part 3.**
+   This commit moved the post lifecycle to the server — `posts` and
+   `post_targets`, seeded from `src/mock.jsx` frozen at `03c0471` — but
+   deliberately did NOT touch `src/`, so the client constants are still there
+   and still what every screen reads. Nothing is broken and nothing disagrees
+   yet, because the server copy has no client reader.
+
+   **It will disagree the moment either side is edited alone.** The same
+   duplication existed for establishments between the schema commit and
+   `432ebc0`, and it was closed by deleting the client copy rather than by
+   syncing the two. Part 3 does that here: `page-dashboard.jsx`,
+   `page-analytics.jsx`, `page-scheduled.jsx`, `page-approvals.jsx` and
+   `recommend.jsx` all read `POSTS` or `SCHEDULED` and move to `api.jsx`, after
+   which both constants come out of `mock.jsx`.
+
+   Until then: **edit the seed, not the client array**, and re-seed. A change
+   made only to `mock.jsx` is invisible to the server and will be overwritten
+   when part 3 lands.
+
 
 ## 4. Scope discipline
 

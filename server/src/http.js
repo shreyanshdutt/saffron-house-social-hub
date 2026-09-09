@@ -12,6 +12,7 @@
 import http from 'node:http';
 import * as repo from './repo.js';
 import { MIN_WINDOW_DAYS } from './derive.js';
+import { POST_STATES } from './posts.js';
 
 const ROLES = new Set(['admin', 'executive', 'srexec', 'manager']);
 
@@ -119,6 +120,46 @@ export function createServer(db) {
         // exist yet, and an endpoint that accepted a status change would be
         // the same fabrication in a new place.
         return send(res, 200, { connections: repo.listConnections(db) });
+      }
+      // --- posts -------------------------------------------------------
+      // Three routes plus a delete. What is deliberately NOT here is a PATCH:
+      // nothing in parts 2 or 3 edits an existing post — the Composer creates
+      // new ones — and an endpoint with no caller is the dead-export class the
+      // drift register already has three entries about (12, 13, 18).
+      if (req.method === 'GET' && path === '/posts') {
+        const state = url.searchParams.get('state');
+        if (state && !POST_STATES.includes(state)) {
+          return send(res, 400, { error: 'unknown state', allowed: POST_STATES });
+        }
+        return send(res, 200, { posts: repo.listPosts(db, { state }) });
+      }
+      if (req.method === 'GET' && /^\/posts\/[^/]+$/.test(path)) {
+        const id = decodeURIComponent(path.slice('/posts/'.length));
+        const post = repo.getPost(db, id);
+        return post ? send(res, 200, post) : send(res, 404, { error: 'no such post', id });
+      }
+      if (req.method === 'POST' && path === '/posts') {
+        const body = await readJson(req);
+        try {
+          return send(res, 201, repo.createPost(db, body));
+        } catch (err) {
+          return send(res, 400, { error: err.message });
+        }
+      }
+      // The attempt. It RECORDS rather than refuses — a post with nothing
+      // connected comes back with every target failed and a reason on each,
+      // which is the owner's decision of 2026-09-09 and the whole point of the
+      // route. 200, not 4xx: the attempt succeeded in being made, and the
+      // outcomes are in the body.
+      if (req.method === 'POST' && /^\/posts\/[^/]+\/publish$/.test(path)) {
+        const id = decodeURIComponent(path.slice('/posts/'.length, path.length - '/publish'.length));
+        const result = await repo.publishPost(db, id);
+        return result ? send(res, 200, result) : send(res, 404, { error: 'no such post', id });
+      }
+      if (req.method === 'DELETE' && /^\/posts\/[^/]+$/.test(path)) {
+        const id = decodeURIComponent(path.slice('/posts/'.length));
+        const out = repo.deletePost(db, id);
+        return send(res, out.deleted ? 200 : 409, out.deleted ? { deleted: id } : { error: out.reason, id });
       }
       if (req.method === 'GET' && path === '/tracked') {
         return send(res, 200, { tracked: repo.listTracked(db) });

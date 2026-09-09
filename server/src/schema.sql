@@ -220,3 +220,124 @@ CREATE TABLE IF NOT EXISTS scans (
   status              TEXT NOT NULL DEFAULT 'ok' CHECK (status IN ('ok', 'partial', 'failed')),
   error               TEXT
 );
+
+-- ---------------------------------------------------------------------------
+-- posts  +  post_targets
+--
+-- TWO TABLES BECAUSE A POST HAS ONE PIECE OF CONTENT AND N INDEPENDENT
+-- OUTCOMES. Instagram can succeed while X fails on cost and Google fails on an
+-- expired token, and those are three different problems needing three
+-- different sentences in front of a user. Putting the outcomes in a JSON
+-- column on the post row would be the same collapse this codebase has already
+-- undone twice — `draftReply` split from `replied` (6a7a75c) because "a reply
+-- exists" and "a reply was sent" are different facts, and social handles moved
+-- to `establishment_social` (3949f8b) for the same reason.
+--
+-- THE STATE SPLIT IS THE WHOLE DESIGN AND IT IS DELIBERATE:
+--
+--   posts.state         is what the USER ASKED FOR.
+--   post_targets.status is what HAPPENED, per channel.
+--
+-- There is deliberately NO 'published' state on a post. A post that succeeded
+-- on Instagram and failed on X is not "published", and it is not "failed"
+-- either; any single word here would have to lie about one of the two. This is
+-- the same mistake `connections.status` avoids by keeping never_connected /
+-- expired / revoked apart instead of flattening them to "not working". A
+-- screen that wants one line derives it — `summarisePost()` in src/posts.js,
+-- which is tested and is the only place that derivation exists.
+CREATE TABLE IF NOT EXISTS posts (
+  id                  TEXT PRIMARY KEY,
+
+  -- FOUR STATES, none of which is an outcome:
+  --   draft     — written, not submitted anywhere.
+  --   scheduled — submitted for a future time. `scheduled_at` is then NOT NULL.
+  --   sending   — an attempt is in flight. A row should not rest here; if one
+  --               does, a run died midway and that is worth seeing.
+  --   attempted — the attempt has run and every target has settled. It says
+  --               the attempt HAPPENED, not that it worked. Read the targets.
+  state               TEXT NOT NULL DEFAULT 'draft'
+                        CHECK (state IN ('draft', 'scheduled', 'sending', 'attempted')),
+
+  content             TEXT NOT NULL,
+  format              TEXT CHECK (format IN ('image', 'video', 'carousel', 'reel', 'text')),
+  author              TEXT,
+
+  -- The tag list is ONE fact — an ordered list of strings that belongs to the
+  -- post as a whole — so JSON is honest here in a way it would not be for
+  -- per-channel outcomes. Stored as a JSON array of strings.
+  tags                TEXT NOT NULL DEFAULT '[]',
+
+  -- Media is three scalars, so it is three columns rather than a JSON blob.
+  media_kind          TEXT CHECK (media_kind IN ('image', 'video', 'pdf')),
+  media_label         TEXT,
+  media_tone          TEXT,
+
+  created_at          TEXT NOT NULL,
+  updated_at          TEXT NOT NULL,
+
+  -- BOTH, and neither is derivable from the other. `scheduled_at` carries an
+  -- absolute instant with its offset; `scheduled_tz` records the zone the user
+  -- actually chose, which an offset cannot reconstruct (+05:30 is Asia/Kolkata
+  -- and Asia/Colombo, and a zone's offset changes across a DST boundary while
+  -- the user's intent — "9am local" — does not).
+  scheduled_at        TEXT,
+  scheduled_tz        TEXT,
+
+  is_sample           INTEGER NOT NULL DEFAULT 0 CHECK (is_sample IN (0, 1)),
+
+  CHECK (state <> 'scheduled' OR scheduled_at IS NOT NULL)
+);
+
+CREATE TABLE IF NOT EXISTS post_targets (
+  post_id             TEXT NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+
+  -- The SAME vocabulary as `connections.platform`, on purpose: the publish
+  -- attempt joins these two, and two spellings of "Instagram" across a join is
+  -- how a channel silently never matches. The client's short ids (ig/gg/wa)
+  -- are translated at the edge — see CHANNEL_BY_CLIENT_ID in src/posts.js.
+  platform            TEXT NOT NULL
+                        CHECK (platform IN ('instagram', 'google_business', 'whatsapp', 'x', 'youtube')),
+
+  --   pending   — selected, not yet attempted.
+  --   published — the channel accepted it.
+  --   failed    — attempted and refused. `reason` says why, in words.
+  --   skipped   — deliberately not attempted this run.
+  status              TEXT NOT NULL DEFAULT 'pending'
+                        CHECK (status IN ('pending', 'published', 'failed', 'skipped')),
+
+  -- WHY, machine-readable, kept apart from the human sentence. The first three
+  -- mirror `connections.status` exactly, because a publish that fails on a
+  -- channel that was never connected is a different problem from one whose
+  -- token lapsed, and the connections table already draws that line — losing
+  -- it here would reintroduce the collapse one table over.
+  failure_kind        TEXT CHECK (failure_kind IN
+                        ('never_connected', 'expired', 'revoked', 'not_implemented', 'api_error')),
+  reason              TEXT,
+
+  external_id         TEXT,             -- the platform's id for the post, once it has one
+  attempted_at        TEXT,
+  published_at        TEXT,
+
+  -- METRICS LIVE HERE, NOT ON THE POST, and the seed is why. Every seeded post
+  -- carries `metricsFrom: 'ig'` while three of them went to two channels — so
+  -- those figures describe INSTAGRAM ONLY and were never the post's totals.
+  -- Hanging them on the post row would have silently turned one channel's
+  -- numbers into every channel's. A target with no metrics holds NULL, which
+  -- is "not measured", not zero.
+  views               INTEGER,
+  reach               INTEGER,
+  likes               INTEGER,
+  comments            INTEGER,
+  shares              INTEGER,
+  saves               INTEGER,
+  engagement_rate     REAL,
+
+  is_sample           INTEGER NOT NULL DEFAULT 0 CHECK (is_sample IN (0, 1)),
+
+  PRIMARY KEY (post_id, platform)
+);
+
+CREATE INDEX IF NOT EXISTS posts_state_time
+  ON posts (state, COALESCE(scheduled_at, created_at));
+CREATE INDEX IF NOT EXISTS post_targets_platform
+  ON post_targets (platform, status);

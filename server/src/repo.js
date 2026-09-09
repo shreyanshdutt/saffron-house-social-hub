@@ -6,6 +6,8 @@ import { channelCapabilities } from './channels.js';
 import { seriesFor, insertObservation, SELF_SUBJECT } from './observations.js';
 import { velocityFromSeries, changeFromSeries, newestWith } from './derive.js';
 import { nowIso } from './db.js';
+import { summarisePost, normaliseChannel, PUBLISHABLE_CHANNELS, CLIENT_ID_BY_CHANNEL } from './posts.js';
+import { publishPlan, callAdapter } from './publish-adapters.js';
 
 // "Do we hold Business Discovery content for this establishment." Keyed on the
 // DATA being present, not on the `source` label: the seed writes its
@@ -183,6 +185,8 @@ export function health(db) {
     tracked: count('tracked'),
     observations: count('observations'),
     scans: count('scans'),
+    posts: count('posts'),
+    postTargets: count('post_targets'),
   };
 }
 
@@ -422,4 +426,187 @@ export function listConnections(db) {
     lastError: r.last_error,
     isSample: !!r.is_sample,
   }));
+}
+
+// ---------------------------------------------------------------------------
+// posts
+//
+// Reads return the post WITH its targets and a derived summary. The summary is
+// computed by summarisePost() and never stored — see src/posts.js for why.
+
+const targetRow = (r) => ({
+  platform: r.platform,
+  clientId: CLIENT_ID_BY_CHANNEL[r.platform] || null,
+  status: r.status,
+  failureKind: r.failure_kind,
+  reason: r.reason,
+  externalId: r.external_id,
+  attemptedAt: r.attempted_at,
+  publishedAt: r.published_at,
+  // NULL means NOT MEASURED, and it stays null rather than becoming 0. A post
+  // nobody has pulled figures for has not got zero reach (CLAUDE.md §11 trap 1).
+  metrics: (r.views == null && r.reach == null && r.likes == null)
+    ? null
+    : { views: r.views, reach: r.reach, likes: r.likes, comments: r.comments,
+        shares: r.shares, saves: r.saves, rate: r.engagement_rate },
+  isSample: !!r.is_sample,
+});
+
+function hydratePost(db, row) {
+  const targets = db.prepare(
+    `SELECT * FROM post_targets WHERE post_id = ? ORDER BY platform`
+  ).all(row.id).map(targetRow);
+  const post = {
+    id: row.id,
+    state: row.state,
+    content: row.content,
+    format: row.format,
+    author: row.author,
+    tags: JSON.parse(row.tags || '[]'),
+    media: row.media_kind ? { kind: row.media_kind, label: row.media_label, tone: row.media_tone } : null,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    scheduledAt: row.scheduled_at,
+    scheduledTz: row.scheduled_tz,
+    isSample: !!row.is_sample,
+    targets,
+  };
+  return { ...post, summary: summarisePost(post, targets) };
+}
+
+export function listPosts(db, { state } = {}) {
+  const rows = state
+    ? db.prepare(`SELECT * FROM posts WHERE state = ? ORDER BY COALESCE(scheduled_at, created_at) DESC`).all(state)
+    : db.prepare(`SELECT * FROM posts ORDER BY COALESCE(scheduled_at, created_at) DESC`).all();
+  return rows.map(r => hydratePost(db, r));
+}
+
+export function getPost(db, id) {
+  const row = db.prepare(`SELECT * FROM posts WHERE id = ?`).get(id);
+  return row ? hydratePost(db, row) : null;
+}
+
+let postSeq = 0;
+const newPostId = (now) => `post-${now}-${(++postSeq).toString(36)}`;
+
+// Create a draft or a scheduled post. A `scheduledAt` makes it scheduled; its
+// absence makes it a draft. There is no third way to say the same thing.
+export function createPost(db, input, now = new Date().toISOString()) {
+  const channels = (input.platforms || []).map(normaliseChannel);
+  if (!channels.length) throw new Error('at least one channel is required');
+  if (channels.some(c => c === null)) {
+    throw new Error(`unknown channel in platforms; allowed: ${PUBLISHABLE_CHANNELS.join(', ')}`);
+  }
+  if (!input.content || !String(input.content).trim()) throw new Error('content is required');
+  if (input.scheduledAt && Number.isNaN(Date.parse(input.scheduledAt))) {
+    throw new Error('scheduledAt must be an ISO 8601 instant');
+  }
+
+  const id = input.id || newPostId(Date.parse(now) || Date.now());
+  const state = input.scheduledAt ? 'scheduled' : 'draft';
+
+  db.exec('BEGIN');
+  try {
+    db.prepare(
+      `INSERT INTO posts (id, state, content, format, author, tags,
+                          media_kind, media_label, media_tone,
+                          created_at, updated_at, scheduled_at, scheduled_tz, is_sample)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).run(
+      id, state, String(input.content), input.format ?? null, input.author ?? null,
+      JSON.stringify(input.tags || []),
+      input.media?.kind ?? null, input.media?.label ?? null, input.media?.tone ?? null,
+      now, now, input.scheduledAt ?? null, input.scheduledTz ?? null,
+      input.isSample ? 1 : 0
+    );
+    const insT = db.prepare(
+      `INSERT INTO post_targets (post_id, platform, status, is_sample) VALUES (?, ?, 'pending', ?)`
+    );
+    for (const platform of [...new Set(channels)]) insT.run(id, platform, input.isSample ? 1 : 0);
+    db.exec('COMMIT');
+  } catch (err) { db.exec('ROLLBACK'); throw err; }
+  return getPost(db, id);
+}
+
+// Only work that has not been attempted can be deleted. An attempted post is
+// history — including its failures — and deleting it would erase the record of
+// something that really happened to a real channel.
+export function deletePost(db, id) {
+  const row = db.prepare(`SELECT state FROM posts WHERE id = ?`).get(id);
+  if (!row) return { deleted: false, reason: 'no such post' };
+  if (row.state === 'attempted' || row.state === 'sending') {
+    return { deleted: false, reason: `a ${row.state} post is a record of an attempt and is not deletable` };
+  }
+  db.prepare(`DELETE FROM posts WHERE id = ?`).run(id);
+  return { deleted: true };
+}
+
+// THE PUBLISH ATTEMPT.
+//
+// It RECORDS rather than refuses. Owner decision 2026-09-09: pressing Publish
+// with nothing connected writes the attempt and marks each target failed with
+// the reason — it does not bail out before writing. A refusal leaves no trace,
+// and "I pressed it and nothing happened" is exactly the class of silence this
+// codebase has spent seven commits removing.
+//
+// The connection is read PER TARGET, and the four connection states produce
+// four different outcomes, because they are four different problems.
+export async function publishPost(db, id, now = new Date().toISOString()) {
+  const existing = db.prepare(`SELECT * FROM posts WHERE id = ?`).get(id);
+  if (!existing) return null;
+
+  const targets = db.prepare(`SELECT platform FROM post_targets WHERE post_id = ? ORDER BY platform`).all(id);
+  const conns = Object.fromEntries(
+    db.prepare(`SELECT platform, status, last_error FROM connections`).all().map(c => [c.platform, c])
+  );
+
+  // Decide, for every target, whether an adapter would be reached — BEFORE
+  // anything runs, so the cost report describes the run that is about to
+  // happen rather than the one that did.
+  const decisions = targets.map(t => {
+    const conn = conns[t.platform];
+    if (!conn || conn.status === 'never_connected') {
+      return { platform: t.platform, call: false, failureKind: 'never_connected',
+        reason: `${t.platform} has never been connected. Nobody has authorised this channel, so there is no account to post to. This needs setting up, not signing in again.` };
+    }
+    if (conn.status === 'expired') {
+      return { platform: t.platform, call: false, failureKind: 'expired',
+        reason: `The ${t.platform} sign-in has expired. The account is still known and its history is still ours — the credential needs replacing. ${conn.last_error || ''}`.trim() };
+    }
+    if (conn.status === 'revoked') {
+      return { platform: t.platform, call: false, failureKind: 'revoked',
+        reason: `Access to ${t.platform} was withdrawn at the provider end. Reconnecting may not be ours to do — someone with access to that account has to grant it again.` };
+    }
+    return { platform: t.platform, call: true };
+  });
+
+  const plan = publishPlan(decisions.filter(d => d.call).map(d => d.platform));
+
+  db.prepare(`UPDATE posts SET state = 'sending', updated_at = ? WHERE id = ?`).run(now, id);
+
+  const upd = db.prepare(
+    `UPDATE post_targets
+        SET status = ?, failure_kind = ?, reason = ?, external_id = ?,
+            attempted_at = ?, published_at = ?
+      WHERE post_id = ? AND platform = ?`
+  );
+
+  for (const d of decisions) {
+    if (!d.call) {
+      upd.run('failed', d.failureKind, d.reason, null, now, null, id, d.platform);
+      continue;
+    }
+    const result = await callAdapter(d.platform, existing);
+    if (result.ok) {
+      upd.run('published', null, null, result.externalId ?? null, now, now, id, d.platform);
+    } else {
+      upd.run('failed', result.failureKind, result.reason, null, now, null, id, d.platform);
+    }
+  }
+
+  // 'attempted', never 'published'. Whether it worked is a per-target fact and
+  // the summary derives it; the row itself only records that it was tried.
+  db.prepare(`UPDATE posts SET state = 'attempted', updated_at = ? WHERE id = ?`).run(now, id);
+
+  return { post: getPost(db, id), plan };
 }

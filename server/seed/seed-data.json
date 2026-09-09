@@ -1,5 +1,5 @@
 {
-  "_generated": "Extracted once from src/mock.jsx at commit 40c9100, immediately before that data was deleted from the client. Regenerate with: git show 40c9100:src/mock.jsx",
+  "_generated": "Extracted once from src/mock.jsx at commit 40c9100, immediately before that data was deleted from the client. Regenerate with: git show 40c9100:src/mock.jsx | posts+scheduled frozen from src/mock.jsx at 03c0471",
   "establishments": [
     {
       "id": "est-1",
@@ -447,5 +447,289 @@
     "est-5",
     "est-6"
   ],
-  "isSampleData": true
+  "isSampleData": true,
+  "posts": [
+    {
+      "id": "p1",
+      "format": "carousel",
+      "platforms": [
+        "ig",
+        "gg"
+      ],
+      "metricsFrom": "ig",
+      "status": "published",
+      "date": "2026-09-03T12:30:00+05:30",
+      "author": "Priya Menon",
+      "content": "The monsoon menu is here. Twelve plates built around what Delhi actually eats when it rains — corn and chilli pakoras with saffron chutney, Kashmiri morel pulao, and a ginger-jaggery kheer worth the walk in the wet. Available all week, lunch and dinner. Sector 10 Market, Dwarka.",
+      "media": {
+        "kind": "image",
+        "label": "Monsoon thali overhead, rain on the window",
+        "tone": "warm"
+      },
+      "tags": [
+        "#SaffronHouse",
+        "#MonsoonMenu",
+        "#Dwarka",
+        "#DelhiFood"
+      ],
+      "metrics": {
+        "views": 21200,
+        "reach": 16400,
+        "likes": 490,
+        "comments": 88,
+        "shares": 142,
+        "saves": 296,
+        "rate": 6.2
+      }
+    },
+    {
+      "id": "p2",
+      "format": "reel",
+      "platforms": [
+        "ig"
+      ],
+      "metricsFrom": "ig",
+      "status": "published",
+      "date": "2026-09-02T18:10:00+05:30",
+      "author": "Priya Menon",
+      "content": "Chef Meera spent three months in Lucknow to get this one right. The galouti is now made the way it was meant to be — 27 spices, ground fresh every morning, cooked on the tawa to order. On the menu from tonight. 🔥",
+      "media": {
+        "kind": "video",
+        "label": "Galouti kebab on the tawa, close crop",
+        "tone": "night"
+      },
+      "tags": [
+        "#Galouti",
+        "#SaffronHouse",
+        "#ChefsTable"
+      ],
+      "metrics": {
+        "views": 58000,
+        "reach": 42000,
+        "likes": 2010,
+        "comments": 214,
+        "shares": 486,
+        "saves": 1120,
+        "rate": 9.1
+      }
+    },
+    {
+      "id": "p3",
+      "format": "image",
+      "platforms": [
+        "gg",
+        "ig"
+      ],
+      "metricsFrom": "ig",
+      "status": "published",
+      "date": "2026-09-01T11:00:00+05:30",
+      "author": "Vikram Suri",
+      "content": "Saffron House has been listed in the Delhi Top 50 for the third year running. Thank you to every guest who walked up those stairs in Sector 10 Market, Dwarka and gave us a table to cook for. We are open seven days, 12pm to 11:30pm.",
+      "media": null,
+      "tags": [
+        "#SaffronHouse",
+        "#DelhiTop50",
+        "#Dwarka"
+      ],
+      "metrics": {
+        "views": 11400,
+        "reach": 9100,
+        "likes": 343,
+        "comments": 34,
+        "shares": 71,
+        "saves": 62,
+        "rate": 5.6
+      }
+    },
+    {
+      "id": "p4",
+      "format": "image",
+      "platforms": [
+        "ig"
+      ],
+      "metricsFrom": "ig",
+      "status": "failed",
+      "date": "2026-09-01T08:00:00+05:30",
+      "author": "Ananya Rao",
+      "content": "Weekday lunch, sorted. Two courses and a cooler for ₹649, 12 to 4pm. Walk in or book on WhatsApp.",
+      "tags": [
+        "#SaffronHouse",
+        "#LunchDeal",
+        "#Dwarka"
+      ],
+      "metrics": {
+        "views": 0,
+        "reach": 0,
+        "likes": 0,
+        "comments": 0,
+        "shares": 0,
+        "saves": 0,
+        "rate": 0
+      },
+      "error": "Instagram access token expired. Please reconnect the account."
+    },
+    {
+      "id": "p5",
+      "format": "image",
+      "platforms": [
+        "ig",
+        "gg"
+      ],
+      "metricsFrom": "ig",
+      "status": "published",
+      "date": "2026-08-31T16:45:00+05:30",
+      "author": "Vikram Suri",
+      "content": "Every Sunday our kitchen cooks 200 extra meals for the Nizamuddin community kitchen. No campaign, no hashtag needed — just what a restaurant with a working stove should do. If you want to help, the door is open.",
+      "media": {
+        "kind": "image",
+        "label": "Kitchen team packing meal boxes",
+        "tone": "sand"
+      },
+      "tags": [
+        "#SaffronHouse",
+        "#DelhiCommunity"
+      ],
+      "metrics": {
+        "views": 23400,
+        "reach": 18200,
+        "likes": 849,
+        "comments": 112,
+        "shares": 238,
+        "saves": 148,
+        "rate": 7.4
+      }
+    },
+    {
+      "id": "p6",
+      "format": "reel",
+      "platforms": [
+        "ig"
+      ],
+      "metricsFrom": "ig",
+      "status": "published",
+      "date": "2026-08-29T20:00:00+05:30",
+      "author": "Ananya Rao",
+      "content": "60 seconds inside a Saffron House dinner service. Sound on — that clatter is 140 covers going out in ninety minutes.",
+      "media": {
+        "kind": "video",
+        "label": "Kitchen pass, dinner service",
+        "tone": "tech"
+      },
+      "tags": [
+        "#SaffronHouse",
+        "#BehindTheScenes",
+        "#DelhiFood"
+      ],
+      "metrics": {
+        "views": 32800,
+        "reach": 24600,
+        "likes": 1095,
+        "comments": 96,
+        "shares": 284,
+        "saves": 518,
+        "rate": 8.1
+      }
+    },
+    {
+      "id": "p7",
+      "format": "image",
+      "platforms": [
+        "ig"
+      ],
+      "metricsFrom": "ig",
+      "status": "draft",
+      "date": "2026-09-05T00:00:00+05:30",
+      "author": "Ananya Rao",
+      "content": "Diwali menu drops Monday. Six courses, one seating a night, 24 seats. You will want to be quick. ✨",
+      "tags": [
+        "#Diwali",
+        "#SaffronHouse"
+      ],
+      "metrics": {
+        "views": 0,
+        "reach": 0,
+        "likes": 0,
+        "comments": 0,
+        "shares": 0,
+        "saves": 0,
+        "rate": 0
+      }
+    }
+  ],
+  "scheduled": [
+    {
+      "id": "s1",
+      "platforms": [
+        "ig"
+      ],
+      "when": "2026-09-05T11:00:00+05:30",
+      "content": "Weekend brunch is back. Unlimited chai, five small plates, and the terrace open from 11am. Carousel below →",
+      "tags": [
+        "#SaffronHouse",
+        "#DelhiBrunch"
+      ]
+    },
+    {
+      "id": "s2",
+      "platforms": [
+        "gg"
+      ],
+      "when": "2026-09-05T15:30:00+05:30",
+      "content": "Updated hours for the festive season: we are open till 12:30am from 5 October through Diwali week.",
+      "tags": [
+        "#Dwarka"
+      ]
+    },
+    {
+      "id": "s3",
+      "platforms": [
+        "ig",
+        "gg"
+      ],
+      "when": "2026-09-06T13:00:00+05:30",
+      "content": "Saturday special — the Awadhi biryani is back, limited to 40 portions a day.",
+      "tags": [
+        "#Biryani",
+        "#SaffronHouse"
+      ]
+    },
+    {
+      "id": "s4",
+      "platforms": [
+        "ig"
+      ],
+      "when": "2026-09-07T19:00:00+05:30",
+      "content": "Meet Ramesh, who has been rolling our rotis for eleven years. He does 600 on a Saturday and has never once dropped one.",
+      "tags": [
+        "#SaffronHouse",
+        "#TeamStories"
+      ]
+    },
+    {
+      "id": "s5",
+      "platforms": [
+        "ig",
+        "gg"
+      ],
+      "when": "2026-09-09T11:00:00+05:30",
+      "content": "Diwali menu, six courses, one seating a night from 18 October. Bookings open Monday 9am on WhatsApp.",
+      "tags": [
+        "#Diwali",
+        "#SaffronHouse"
+      ]
+    },
+    {
+      "id": "s6",
+      "platforms": [
+        "ig",
+        "gg"
+      ],
+      "when": "2026-09-12T09:00:00+05:30",
+      "content": "The terrace reopens for the season this weekend — 30 covers, first come, no bookings.",
+      "tags": [
+        "#SaffronHouse",
+        "#Dwarka"
+      ]
+    }
+  ]
 }

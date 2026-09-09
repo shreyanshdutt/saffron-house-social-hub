@@ -47,13 +47,19 @@ const REQUIRED_CHECK_VALUES = [
   // the separate check below; this catches a table that exists but predates a
   // status value.
   { table: 'connections', column: 'status', values: ['never_connected', 'revoked'] },
+  // `posts` / `post_targets` arrived with the publish path. A database made
+  // before it has neither table; a database made during it could have an
+  // earlier CHECK. Both are caught — the table check below, and these values.
+  { table: 'posts', column: 'state', values: ['draft', 'scheduled', 'sending', 'attempted'] },
+  { table: 'post_targets', column: 'status', values: ['pending', 'published', 'failed', 'skipped'] },
+  { table: 'post_targets', column: 'failure_kind', values: ['never_connected', 'expired', 'revoked', 'not_implemented'] },
 ];
 
 // Tables added after a database may already have been created. CREATE TABLE IF
 // NOT EXISTS does create these, so this is belt-and-braces — but a table that
 // silently does not exist is the same failure mode as a stale CHECK, and the
 // endpoint reading it would return an empty list rather than an error.
-const REQUIRED_TABLES = ['establishments', 'establishment_social', 'tracked', 'observations', 'connections', 'scans'];
+const REQUIRED_TABLES = ['establishments', 'establishment_social', 'tracked', 'observations', 'connections', 'scans', 'posts', 'post_targets'];
 
 export function assertSchemaCurrent(db) {
   const stale = [];
