@@ -119,27 +119,90 @@ mentions divided by mentions across a competitor set *you* chose, over a corpus
 
 ### Competitors (`LISTENING_COMPETITORS`)
 
-The thinnest data in the product. The Competitors screen has been cut back to
-public counts only — the fields that used to sit there and could not be
-obtained (their reach, mention volume and sentiment) are gone.
+Still the thinnest data in the product, but no longer a single verdict. What we
+can know about a rival depends on WHICH CHANNEL you ask, and the answers differ
+enough that stating one of them as a universal fact is wrong. On Instagram the
+screen is cut back to public counts, because comment text cannot be obtained
+there at any price. On YouTube the same question has a different answer: public
+comment text is readable with an API key. On X it is readable and billed per
+read. That is the whole reason the server models capability per channel
+(`server/src/channels.js`) rather than per establishment.
+
+Do not read this as the competitor data getting rich. Reach, impressions, ad
+spend and audience remain private on every channel, and most rivals in a
+neighbourhood market have no YouTube or X presence at all — so for the typical
+row the practical answer is still Instagram counts plus a Google rating. What
+changed is that the ceiling is now per channel instead of set by the weakest
+one.
+
+**Two different things decide each answer, and the model keeps them apart.**
+
+- **The platform** — what an API can EVER return. Static, and no account,
+  budget or permission changes it. Instagram will not return comment text.
+- **The account** — whether THIS rival has a readable presence on that channel.
+  Per establishment, from `establishment_social`.
+
+A capability is the product of the two, and when it comes out false the reason
+has to say which side produced the no. "We cannot read their comments" and
+"they have no account there" are different problems with different fixes, and
+only the second is something a user can act on. The server carries this as
+`blockedBy: 'platform' | 'account'`; the screen must not flatten it.
+
+#### What each channel can ever return
+
+The specification is `CHANNEL_CAPABILITIES` in `server/src/channels.js`. This
+table describes it; if they disagree, the code is right and this is the defect.
+
+| Channel | Their posts | Comment / reply TEXT | Rating + review count | Review text | Cost of a read |
+|---|---|---|---|---|---|
+| **Instagram** | ✔ Business Discovery `media` edge, public Business/Creator only | ✗ **counts only, at any tier** — a hard API limit, not a price | ✗ n/a | ✗ n/a | Quota, not billed |
+| **YouTube** | ✔ public videos, Data API v3 | ✔ **`commentThreads.list`, API key alone, 1 quota unit** | ✗ n/a | ✗ n/a | Quota, not billed |
+| **X** | ✔ public posts | ✔ replies | ✗ n/a | ✗ n/a | **Billed per read** |
+| **Google** | ✗ no competitor feed | ✗ | ✔ Places Details | ✗ **the number yes, the words no** | Billed per call |
+
+Instagram's ✗ and a rival's missing YouTube channel are not the same ✗. The
+first is the platform; the second is the account.
+
+#### Per-field detail
 
 | Field | Source | Availability |
 |---|---|---|
-| Follower count, post count | Instagram Business Discovery | API (public accounts) |
-| Their follower **change** | Business Discovery counts stored over time, differenced | Derived, needs history |
+| Follower / subscriber count, post count | Instagram Business Discovery; YouTube Data API; X | API (public accounts) |
+| Their follower **change** | Counts stored over time, differenced | Derived, needs history |
 | Their engagement-rate **change** | Stored interactions ÷ followers, differenced | Derived, needs history |
-| Their likes + comments per post | Instagram Business Discovery | API |
-| Their captions, format, timestamps, permalinks | Instagram Business Discovery `media` edge | API |
+| Their likes + comment COUNTS per post | Instagram Business Discovery; equivalents on YouTube and X | API |
+| Their captions, format, timestamps, permalinks | Instagram `media` edge; YouTube video metadata; X posts | API |
 | Their post themes + offer detection | Your classification of their captions | Derived |
 | Their per-post performance vs own median | Computed from public counts | Derived |
-| **Comment TEXT on their posts** | Not returned — counts only | ✗ **no competitor sentiment possible** |
+| **Comment text — Instagram** | Not returned; Business Discovery gives counts only | ✗ **impossible at any tier** |
+| **Comment text — YouTube** | `commentThreads.list` on public videos | ✔ API key, 1 quota unit |
+| **Reply text — X** | Public replies | ✔ **billed per read — see the cost note below** |
+| Competitor sentiment | Classification of whatever comment text we hold | ✔ YouTube / X · ✗ Instagram |
 | Their star rating + review count | Google Places API | API |
 | Their review **velocity** (new reviews/month) | Places review counts stored over time, differenced | Derived, needs history |
 | Engagement **rate** | Computed as interactions ÷ followers | Derived, approximate |
-| Their **reach / impressions** | Private to them | ✗ — removed from the screen |
+| Their **reach / impressions** | Private to them | ✗ — on every channel |
 | Their mention volume | Not visible | ✗ — removed from the screen |
-| Their sentiment | Not visible at any useful volume | ✗ — removed from the screen |
 | Their ad spend | Meta Ad Library shows creatives, not spend | Partial |
+
+#### The cost fact that split posts from comment text
+
+Posts and comment text are modelled as separate capabilities, and this is why.
+Everything else in the product runs **$0–11 per outlet per month**. X does not.
+
+| What you read, for 10 competitors | Roughly |
+|---|---|
+| Their posts, weekly | **~$4 / month** |
+| Their posts **and replies**, weekly | **~$48 / month** |
+| Their posts and replies, daily | **~$330 / month** |
+
+Reading a rival's replies costs about ten times reading their posts, because
+there are about ten times as many of them at the same per-read price. That is a
+different order of spending from the rest of the product, and it is why the
+expensive capability can be switched off without disabling the channel: a
+caller can take X posts and refuse X replies. Any job that fans out over
+tracked establishments states its call count before it runs, and must be able
+to say which of those reads are billed (CONVENTIONS.md §10).
 
 `engagementRate` is computed the same way for us and for them — interactions
 ÷ followers — so the comparison is at least like-for-like, and our own row
@@ -221,11 +284,31 @@ personal or private account returns nothing at all — not partial data, nothing
 — and you cannot tell which it is from the outside without trying. Expect to
 lose a meaningful share of a neighbourhood market this way.
 
-**X / Twitter is not counted toward availability.** Reading another account's
-posts requires a paid API tier; the free tier is effectively write-only.
-Pricing has changed repeatedly and the entry tier costs more per month than a
-single-outlet restaurant spends on software. In this catchment almost nobody
-posts there. A handle is displayed where one exists, and that is all.
+**X is included for competitors, replies included — but it is not counted
+toward the availability tier.** Those are two separate statements and both
+still hold.
+
+The tier (full / ratings / none) means what it has always meant: a Google
+listing plus a readable Instagram account. X does not raise or lower it. What
+changed is that X is now modelled as a channel a competitor can be read on, and
+that includes reply text — the owner's decision, and the reason the capability
+model carries X at all.
+
+**The pricing description here used to be out of date.** X replaced its tiered
+plans with pay-per-use as the default on **6 February 2026**: credits are
+bought up front in the developer console and drawn down per call, and there is
+no free tier for new developers. It is no longer "the entry tier costs $X a
+month" — it is a meter. That makes reading X the only competitor data in this
+product with a direct per-read price, and the numbers are in the cost table in
+the Competitors section above. Budget before enabling it.
+
+**A handle is still not readability.** Knowing a rival's X handle tells you
+nothing about whether their posts can be read, the same way an Instagram handle
+does not tell you whether the account is a Business or a personal one. The
+handle is recorded; whether anything can be pulled with it is a separate fact
+the model tracks separately. And in this catchment most rivals still post
+nothing on X, so a readable handle often leads to an empty feed — which is a
+finding, not a failure.
 
 ### Analytics (`ANALYTICS_*`)
 
@@ -264,7 +347,13 @@ The honest split, by screen:
   public API a competitor could also call.
 - **Analytics** — real per channel, structured per channel. Not joinable to
   covers without your POS.
-- **Competitors** — public counts only. Thin, and honest about being thin.
+- **Competitors** — thin, and honest about being thin, but the ceiling is per
+  channel rather than one verdict. Instagram is public counts only and comment
+  text is impossible there at any price; YouTube returns public comment text
+  for a quota unit; X returns replies and bills per read. Most rivals in a
+  neighbourhood market are on Instagram and Google alone, so in practice the
+  typical row is still counts plus a rating — but that is a fact about who is
+  present, not about what the APIs allow.
 - **Listening trends** — only as good as the day you started collecting.
 - **Actions** — computed from all of the above; every recommendation carries
   the source of each figure it used.
