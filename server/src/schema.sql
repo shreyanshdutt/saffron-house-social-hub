@@ -149,6 +149,59 @@ CREATE INDEX IF NOT EXISTS observations_subject_time
   ON observations (subject, observed_at);
 
 -- ---------------------------------------------------------------------------
+-- connections
+--
+-- OUR OWN accounts — which channels this restaurant has connected, and the
+-- state of each. Nothing described this before: the Settings > Accounts tab
+-- hardcoded three plausible-looking rows with a follower count and a "Token
+-- expired" pill, and there was no token, no expiry and no connection record
+-- anywhere in the system.
+--
+-- VOCABULARY TRAP — this CHECK is NOT the one on establishment_social.
+-- That column lists ('instagram','x','youtube','facebook') because it
+-- describes COMPETITORS, and a competitor has no Google Business Profile or
+-- WhatsApp line *with us*. This table describes the channels WE connect to,
+-- which is a different set: Google Business Profile and WhatsApp are in, and
+-- Facebook is out because the product does not model it. Reusing the other
+-- constraint would let a row exist that neither table means, so they stay
+-- separate on purpose.
+CREATE TABLE IF NOT EXISTS connections (
+  platform            TEXT PRIMARY KEY
+                        CHECK (platform IN ('instagram', 'google_business', 'whatsapp', 'x', 'youtube')),
+
+  -- FOUR STATES, and the distinction between the middle two is the entire
+  -- point of this table:
+  --   never_connected — nobody has ever authorised this channel. There is no
+  --                     credential to be expired, and no account to name.
+  --   connected       — authorised, credential valid.
+  --   expired         — WAS connected and the credential has since lapsed. The
+  --                     account reference is still known and the history is
+  --                     still ours; only the token needs replacing.
+  --   revoked         — access was withdrawn at the provider end, by the
+  --                     account owner or the platform. Reconnecting may not be
+  --                     ours to do, so it is not the same problem as `expired`.
+  -- Collapsing never_connected and expired into one "not working" value is
+  -- exactly the lie this commit removes: one is "set this up", the other is
+  -- "sign in again", and they need different words in front of a user.
+  status              TEXT NOT NULL
+                        CHECK (status IN ('never_connected', 'connected', 'expired', 'revoked')),
+
+  -- What the connection points AT, in whatever form the channel uses: a
+  -- handle, a Business Profile location name, or a phone number. One column
+  -- rather than three nullable ones, because only ever one applies, and the
+  -- label beside it is decided by `platform`.
+  account_ref         TEXT,
+  account_label       TEXT,             -- what to call that reference on screen
+
+  connected_at        TEXT,             -- NULL while never_connected
+  last_synced_at      TEXT,             -- NULL until something has actually run
+  expires_at          TEXT,             -- NULL when there is no credential
+  last_error          TEXT,             -- why it broke, verbatim, or NULL
+
+  is_sample           INTEGER NOT NULL DEFAULT 0 CHECK (is_sample IN (0, 1))
+);
+
+-- ---------------------------------------------------------------------------
 -- scans
 --
 -- A Places Nearby Search run. Auditable after the fact INCLUDING WHAT IT COST:

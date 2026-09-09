@@ -71,7 +71,7 @@ export function seed(db, _repoRoot, { trackedBy = 'admin', now = Date.now() } = 
   const isSample = SEED_DATA.isSampleData ? 1 : 0;
   const stamp = new Date(now).toISOString();
 
-  const counts = { establishments: 0, social: 0, tracked: 0, observations: 0 };
+  const counts = { establishments: 0, social: 0, connections: 0, tracked: 0, observations: 0 };
 
   db.exec('BEGIN');
   try {
@@ -115,6 +115,42 @@ export function seed(db, _repoRoot, { trackedBy = 'admin', now = Date.now() } = 
         insSocial.run(pid, s.platform, s.handle, s.accountType, s.readable, s.lastPostDaysAgo, s.verifiedAt, s.discoveredFrom);
         counts.social++;
       }
+    }
+
+    // OUR OWN channel connections. Every row is_sample = 1: none of these is a
+    // real authorisation, and the screen says so in the same amber banner the
+    // Establishments and Competitors screens already use for invented data.
+    //
+    // Three are shown connected and two never connected, which mirrors the
+    // product's actual position: Instagram, Google Business Profile and
+    // WhatsApp are the channels it was built around, while X and YouTube were
+    // added to the model in 1917fc9 / 16cb119 and have no integration at all.
+    // That is a truthful shape even though the values are fabricated.
+    db.prepare(`DELETE FROM connections WHERE is_sample = 1`).run();
+    const insConn = db.prepare(
+      `INSERT INTO connections
+         (platform, status, account_ref, account_label, connected_at, last_synced_at,
+          expires_at, last_error, is_sample)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)`
+    );
+    const daysFromNow = (d) => new Date(now + d * 86_400_000).toISOString();
+    const minsAgo = (m) => new Date(now - m * 60_000).toISOString();
+    for (const c of [
+      // Expired rather than broken: it WAS connected, the history is ours, and
+      // the fix is to sign in again — a different sentence from "set this up".
+      ['instagram',       'expired',         '@saffronhouse',                    'Instagram account',
+       daysFromNow(-120), minsAgo(48),  daysFromNow(-2),
+       'Long-lived token expired. Instagram tokens last 60 days and must be refreshed before then.'],
+      ['google_business', 'connected',       'Saffron House · Sector 10 Dwarka', 'Business Profile location',
+       daysFromNow(-180), minsAgo(1),   daysFromNow(38),  null],
+      ['whatsapp',        'connected',       '+91 11 4160 2200',                 'Business phone number',
+       daysFromNow(-95),  minsAgo(6),   null,             null],
+      // Never connected: no credential, so no expiry and no account to name.
+      ['x',               'never_connected', null, null, null, null, null, null],
+      ['youtube',         'never_connected', null, null, null, null, null, null],
+    ]) {
+      insConn.run(...c);
+      counts.connections = (counts.connections || 0) + 1;
     }
 
     for (const id of TRACKED_DEFAULT) {

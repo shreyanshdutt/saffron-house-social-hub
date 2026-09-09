@@ -114,6 +114,12 @@ export function createServer(db) {
           self: repo.selfMetrics(db),
         });
       }
+      if (req.method === 'GET' && path === '/connections') {
+        // No write route. Connecting a channel is an OAuth flow that does not
+        // exist yet, and an endpoint that accepted a status change would be
+        // the same fabrication in a new place.
+        return send(res, 200, { connections: repo.listConnections(db) });
+      }
       if (req.method === 'GET' && path === '/tracked') {
         return send(res, 200, { tracked: repo.listTracked(db) });
       }

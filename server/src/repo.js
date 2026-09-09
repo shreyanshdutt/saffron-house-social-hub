@@ -397,3 +397,29 @@ export function clearInstagramHandle(db, placeId, { at = nowIso() } = {}) {
        discovered_from = 'manual'`
   ).run(placeId, at);
 }
+
+// ---------------------------------------------------------------------------
+// Our own channel connections.
+//
+// The Settings > Accounts tab used to hardcode three of these with a follower
+// count and a "Token expired" pill, none of which corresponded to anything.
+// This serves the real row, including the states that were previously
+// indistinguishable: a channel nobody has ever connected is NOT the same as
+// one whose credential lapsed, and the screen needs different words for each.
+export function listConnections(db) {
+  return db.prepare(
+    `SELECT platform, status, account_ref, account_label, connected_at,
+            last_synced_at, expires_at, last_error, is_sample
+       FROM connections ORDER BY platform`
+  ).all().map(r => ({
+    platform: r.platform,
+    status: r.status,
+    accountRef: r.account_ref,
+    accountLabel: r.account_label,
+    connectedAt: r.connected_at,
+    lastSyncedAt: r.last_synced_at,
+    expiresAt: r.expires_at,
+    lastError: r.last_error,
+    isSample: !!r.is_sample,
+  }));
+}

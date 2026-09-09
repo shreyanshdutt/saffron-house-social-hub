@@ -44,6 +44,9 @@ const SERVER = {
   error: null,
   establishments: [],
   competitors: [],
+  // OUR OWN channel connections, one row per channel. Previously the Settings
+  // Accounts tab invented these; there was no connection state anywhere.
+  connections: [],
   self: null,
   // The window below which a delta cannot be scaled. Served, not hardcoded:
   // the rule lives in server/src/derive.js and the copy on screen explains it,
@@ -109,12 +112,14 @@ async function loadServerData({ force = false } = {}) {
   SERVER.error = null;
   notify();
   try {
-    const [ests, comps] = await Promise.all([
+    const [ests, comps, conns] = await Promise.all([
       getJson(`/establishments${filterQuery(SERVER.filters)}`),
       getJson('/competitors'),
+      getJson('/connections'),
     ]);
     SERVER.establishments = ests.establishments;
     SERVER.competitors = comps.competitors;
+    SERVER.connections = conns.connections;
     SERVER.self = comps.self;
     if (Number.isFinite(comps.minWindowDays)) SERVER.minWindowDays = comps.minWindowDays;
     SERVER.lastSyncedAt = comps.lastSyncedAt || null;
@@ -127,6 +132,7 @@ async function loadServerData({ force = false } = {}) {
     // the quiet lie this whole commit exists to avoid.
     SERVER.establishments = [];
     SERVER.competitors = [];
+    SERVER.connections = [];
     SERVER.self = null;
     SERVER.status = 'error';
     SERVER.error = err.message || String(err);

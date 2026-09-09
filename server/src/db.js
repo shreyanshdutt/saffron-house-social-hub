@@ -43,10 +43,24 @@ export function migrate(db) {
 const REQUIRED_CHECK_VALUES = [
   { table: 'establishment_social', column: 'platform', values: ['youtube'] },
   { table: 'observations', column: 'source', values: ['youtube_data', 'x_api'] },
+  // `connections` is newer than some databases. A missing TABLE is caught by
+  // the separate check below; this catches a table that exists but predates a
+  // status value.
+  { table: 'connections', column: 'status', values: ['never_connected', 'revoked'] },
 ];
+
+// Tables added after a database may already have been created. CREATE TABLE IF
+// NOT EXISTS does create these, so this is belt-and-braces — but a table that
+// silently does not exist is the same failure mode as a stale CHECK, and the
+// endpoint reading it would return an empty list rather than an error.
+const REQUIRED_TABLES = ['establishments', 'establishment_social', 'tracked', 'observations', 'connections', 'scans'];
 
 export function assertSchemaCurrent(db) {
   const stale = [];
+  for (const t of REQUIRED_TABLES) {
+    const row = db.prepare(`SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?`).get(t);
+    if (!row) stale.push(`table ${t} does not exist`);
+  }
   for (const req of REQUIRED_CHECK_VALUES) {
     const row = db.prepare(`SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?`).get(req.table);
     if (!row || !row.sql) continue;                 // table not created yet — migrate() will make it

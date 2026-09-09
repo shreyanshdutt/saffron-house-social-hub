@@ -29,40 +29,148 @@ function SettingsPage() {
   );
 }
 
+// Our own channel connections, served from the `connections` table.
+//
+// This tab used to hardcode three accounts — "@saffronhouse · 218K followers ·
+// synced 48 min ago" and a red "Token expired" pill — with no token, no expiry
+// and no connection record anywhere in the system. Every figure was invented,
+// and it survived every audit because nobody opened Settings. The array is
+// deleted; what follows renders whatever the server actually holds.
 function AccountsTab() {
-  const t = useT();
-  const accounts = [
-    { id: 'ig', handle: '@saffronhouse',            followers: '218K', status: 'expired',   last: '48 min ago' },
-    { id: 'gg', handle: 'Saffron House · Sector 10 Dwarka', followers: '1.3K reviews', status: 'connected', last: 'just now' },
-    { id: 'wa', handle: '+91 11 4160 2200',         followers: '6.4K contacts', status: 'connected', last: '1 min ago' },
-  ];
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-      {accounts.map(a => {
-        const p = PLATFORM_BY_ID[a.id];
-        return (
-          <Card padding="p-4" key={a.id} className="flex items-center gap-3">
-            <span className="w-12 h-12 rounded-xl grid place-items-center text-white shrink-0" style={{ background: p.color }}>
-              <PlatformGlyph id={a.id} size={20} />
-            </span>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="text-[14px] font-medium text-saf-text">{p.name}</span>
-                {a.status === 'connected'
-                  ? <Pill tone="green"><Icon name="CheckCircle2" size={11} />{t.settings.connected}</Pill>
-                  : <Pill tone="red"><Icon name="AlertTriangle" size={11} />Token expired</Pill>
-                }
-              </div>
-              <div className="text-[12px] text-saf-muted mt-0.5">{a.handle} · {a.followers} followers · synced {a.last}</div>
-            </div>
-            {a.status === 'connected'
-              ? <Button variant="ghost" size="sm">{t.settings.disconnect}</Button>
-              : <Button variant="primary" size="sm">{t.settings.reconnect}</Button>
-            }
-          </Card>
-        );
-      })}
+    <RequiresServerData what="your channel connections">
+      {(data) => <AccountsTabInner connections={data.connections} />}
+    </RequiresServerData>
+  );
+}
+
+// Which channel a connection row belongs to. The `connections` table names
+// channels in full (`google_business`) because it describes what WE connect
+// to; PLATFORMS uses two-letter client ids. This is the join, and it is a
+// lookup rather than string surgery so an unmapped value shows up as a gap
+// instead of silently producing a wrong glyph.
+const CONNECTION_PLATFORM_ID = {
+  instagram: 'ig',
+  google_business: 'gg',
+  whatsapp: 'wa',
+  x: 'x',
+  youtube: 'yt',
+};
+
+// Every state gets its own words. `never_connected` and `expired` are the two
+// that used to be one red pill, and they are different problems: one is "set
+// this up", the other is "sign in again".
+const CONNECTION_STATE = {
+  connected:       { tone: 'green', icon: 'CheckCircle2', label: 'Connected' },
+  expired:         { tone: 'amber', icon: 'AlertTriangle', label: 'Sign-in expired' },
+  revoked:         { tone: 'red',   icon: 'Ban',           label: 'Access withdrawn' },
+  never_connected: { tone: 'grey',  icon: 'Circle',        label: 'Not connected' },
+};
+
+// Why every button on this tab is disabled. Written for a restaurant manager:
+// it says what is missing and who fixes it, not which environment variable is
+// unset.
+const NO_CREDENTIALS_REASON =
+  'Connecting a channel needs this app to be registered with Instagram, Google, ' +
+  'WhatsApp, X or YouTube first. That has not been set up yet, so there is nothing ' +
+  'to sign in to. Your developer does this once, per channel.';
+
+function AccountsTabInner({ connections }) {
+  const anySample = connections.some(c => c.isSample);
+  return (
+    <div className="space-y-3">
+      {/* Same amber marker the Establishments and Competitors screens use for
+          invented data, rather than a fourth way of saying it. */}
+      {anySample && (
+        <div className="flex items-start gap-2 p-3 rounded-xl bg-amber-50 border border-amber-200">
+          <Icon name="AlertTriangle" size={15} className="text-amber-700 mt-px shrink-0" />
+          <p className="text-[12.5px] text-amber-700 leading-relaxed">
+            <span className="font-semibold">Sample data.</span> No channel is really connected —
+            these rows are seeded so the screen has something to show. Nothing here reflects a live
+            account, and no figure on this tab came from a platform.
+          </p>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        {connections.map(c => <ConnectionCard key={c.platform} c={c} />)}
+      </div>
+
+      <div className="flex items-start gap-2 p-3 rounded-xl bg-saf-surface border border-saf-border">
+        <Icon name="Info" size={14} className="text-saf-muted mt-0.5 shrink-0" />
+        <p className="text-[12px] text-saf-muted leading-relaxed">{NO_CREDENTIALS_REASON}</p>
+      </div>
     </div>
+  );
+}
+
+function ConnectionCard({ c }) {
+  const id = CONNECTION_PLATFORM_ID[c.platform];
+  const p = id ? PLATFORM_BY_ID[id] : null;
+  const state = CONNECTION_STATE[c.status] || CONNECTION_STATE.never_connected;
+  const never = c.status === 'never_connected';
+
+  return (
+    <Card padding="p-4" className="flex items-start gap-3">
+      <span
+        className="w-12 h-12 rounded-xl grid place-items-center text-white shrink-0"
+        style={{ background: p ? p.color : '#7A6A5F' }}
+      >
+        {id ? <PlatformGlyph id={id} size={20} /> : <Icon name="HelpCircle" size={20} />}
+      </span>
+
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-[14px] font-medium text-saf-text">{p ? p.name : c.platform}</span>
+          <span className={`inline-flex items-center gap-1 px-2 h-5 rounded-full text-[10.5px] font-semibold border ${
+            state.tone === 'green' ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+            : state.tone === 'amber' ? 'bg-amber-50 text-amber-700 border-amber-200'
+            : state.tone === 'red' ? 'bg-rose-50 text-rose-700 border-rose-200'
+            : 'bg-saf-surface text-saf-muted border-saf-border'}`}>
+            <Icon name={state.icon} size={10} />
+            {state.label}
+          </span>
+        </div>
+
+        {/* A never-connected channel has no account, no sync time and no
+            expiry. It says that, rather than rendering blanks that read as
+            zero (CLAUDE.md §11 trap 1). */}
+        <div className="text-[12px] text-saf-muted mt-1 leading-relaxed">
+          {never ? (
+            <>No account linked yet. Nothing has been fetched from this channel.</>
+          ) : (
+            <>
+              <span className="text-saf-text">{c.accountRef}</span>
+              {c.accountLabel ? <span className="text-saf-muted"> · {c.accountLabel}</span> : null}
+              <br />
+              {c.lastSyncedAt
+                ? <>Last synced {relTime(c.lastSyncedAt)}</>
+                : <>Connected, but nothing has synced yet</>}
+              {c.expiresAt && (
+                <> · {Date.parse(c.expiresAt) < Date.now()
+                  ? <span className="text-amber-700">sign-in expired {relTime(c.expiresAt)}</span>
+                  : <>sign-in valid until {fmtTime(c.expiresAt, { withDate: true })}</>}</>
+              )}
+            </>
+          )}
+        </div>
+
+        {c.lastError && (
+          <p className="text-[11.5px] text-amber-700 mt-1.5 leading-relaxed">{c.lastError}</p>
+        )}
+      </div>
+
+      {/* DISABLED, WITH THE REASON ON HOVER AND IN THE PANEL BELOW. A greyed
+          control the user has to guess about is the same lie in a quieter
+          voice, so the tooltip carries the same sentence the footer does. */}
+      <Tooltip label={NO_CREDENTIALS_REASON} side="left">
+        <span className="shrink-0">
+          <Button variant={never ? 'secondary' : 'primary'} size="sm" disabled>
+            {never ? 'Connect' : 'Reconnect'}
+          </Button>
+        </span>
+      </Tooltip>
+    </Card>
   );
 }
 
