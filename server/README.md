@@ -195,6 +195,20 @@ contact identifier *is* the phone number (`wa_id` is E.164), so §11's decisions
 1 and 2 cannot both hold against it. The gate lifts when the client names a
 provider that issues a non-phone contact ID **and accepts it as a send target**.
 
+## One test looks outside server/
+
+`test/client-globals.test.js` invokes `tools/check-globals.mjs` at the repo
+root, which reads every `src/*.jsx` **as text** to find a top-level name
+declared in more than one file. It never imports, executes or requires client
+code, and nothing under `server/src/` touches `src/` — the service still has no
+client dependency.
+
+It lives here because the client is permanently buildless and `npm test` is the
+only automated runner in the repo. The alternative was a check somebody has to
+remember to run, which is the same weak control as the CLAUDE.md §5 instruction
+it exists to back up — and that instruction was already written when
+`SourceBadge` shadowed silently on 2026-09-09.
+
 ## Known gaps
 
 Stated rather than hidden — none of these is finished:
@@ -238,9 +252,12 @@ Stated rather than hidden — none of these is finished:
   It is quarantined in `src/db.js` so swapping to `better-sqlite3` is one file.
 - **The seed data is frozen in `seed/seed-data.json`**, extracted once from
   `src/mock.jsx` at commit `40c9100` immediately before that data was deleted
-  from the client. The server no longer reads anything under `src/`, so
-  CLAUDE.md §2's "the server never imports from `src/`" now holds with no
-  exception. Regenerate with `git show 40c9100:src/mock.jsx`.
+  from the client. The SERVICE reads nothing under the client's `src/`, so
+  CLAUDE.md §2's "the server never imports from `src/`" holds: no module under
+  `server/src/` touches it and nothing imports from it. One TEST reads
+  `src/*.jsx` as text — see *One test looks outside server/* below — which is a
+  static scan rather than an import, and does not travel with the service.
+  Regenerate with `git show 40c9100:src/mock.jsx`.
 
 ## Layout
 
@@ -261,6 +278,9 @@ src/posts.js         post lifecycle, channel-id translation, the derived summary
 src/publish-adapters.js  THE STUBBED SEAM — the only place a platform call would live
 src/text-normalize.js    guest-text normalizing + the negative results, recorded
 src/dish-matcher.js      dish-name matching with the evidence attached
+
+(and outside server/, invoked by one test:)
+../tools/check-globals.mjs  top-level name collisions across src/*.jsx
 src/customers.js         reachability + segment derivation (nothing persisted)
 src/contact-import.js    THE BLOCKED SEAM — contact import, stubbed on the §11 gate
 test/                168 tests, node:test, no network
