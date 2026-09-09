@@ -876,6 +876,20 @@ prompt missing them is incomplete and should not be dispatched:
    which theme — rather than "test it".
 5. **State the scope boundary**: what must NOT change.
 6. **Require the deviation self-report** (§ 6j) as part of the deliverable.
+7. **Verify, in the turn the prompt is written, every claim it makes about the
+   repo.** A prompt is not exempt from §2. Three prompts in this series carried
+   a premise the planning side had asserted from memory: *"branch off main"*
+   when the prerequisites sat on an unmerged branch and the task would have
+   been impossible there; *"wire it where the parse pre-flight already runs"*
+   when that pre-flight had never been in the repo at all; and a standards
+   ruling described as landed when it was an unstaged edit with no backup.
+
+   All three were caught downstream by guard 3, which is the guard working and
+   is not a reason to keep leaning on it. The asymmetry is the point: checking
+   a premise before dispatch costs one command, and checking it after costs a
+   round trip, a wasted branch, and somebody else's attention. **The planning
+   side is the cheapest place in this system to catch a wrong premise and the
+   only one that pays nothing to look.**
 ## 10. External data, secrets and retention (owner directive 2026-09-05)
 
 The `server/` workspace exists to hold the two things a browser cannot: other
