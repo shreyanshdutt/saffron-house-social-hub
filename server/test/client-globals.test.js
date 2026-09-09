@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
   findCollisions, formatCollisions, declarationsIn, loadOrder, listClientFiles, REPO_ROOT,
+  checkClientPresent, reportGlobals,
 } from '../../tools/check-globals.mjs';
 
 // WHY A CHECK ABOUT THE CLIENT RUNS IN THE SERVER'S TEST SUITE.
@@ -124,4 +125,65 @@ test('a clean tree formats as a plain sentence, not an empty report', () => {
 
 test('REPO_ROOT resolves to the repo, not to server/', () => {
   assert.deepEqual(listClientFiles(REPO_ROOT).includes('app.jsx'), true);
+});
+
+// --- the client is not here -------------------------------------------------
+//
+// A server-only checkout is a STATE, not a crash. Before this, `src/` missing
+// died on a raw ENOENT stack trace out of readdirSync — absence rendered as
+// breakage, which is the defect this repo has spent twenty commits removing
+// from its screens.
+
+test('a root with no src/ states the absence and does not throw', () => {
+  const root = mkdtempSync(join(tmpdir(), 'globals-nosrc-'));
+  writeFileSync(join(root, 'index.html'), '<html></html>');
+  try {
+    const presence = checkClientPresent(root);
+    assert.equal(presence.ok, false);
+    assert.deepEqual(presence.missing, ['src/']);
+    assert.match(presence.message, /src\//, 'the message names the directory it looked for');
+    assert.ok(presence.message.includes(root), 'and the root it resolved from');
+    assert.match(presence.message, /state rather than\s+a failure/);
+
+    // The path a person actually hits, and it returns rather than throwing.
+    const report = reportGlobals(root);
+    assert.equal(report.code, 2, '2 is "could not check" — distinct from 1, "found collisions"');
+    assert.equal(report.collisions, null, 'and it must NOT report an empty list, which would read as clean');
+    assert.equal(report.output, presence.message);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test('a BARE server checkout — no index.html either — also states it', () => {
+  // The real scenario. index.html is read by loadOrder(), which runs first, so
+  // this crashed before ever reaching the directory listing.
+  const root = mkdtempSync(join(tmpdir(), 'globals-bare-'));
+  try {
+    const presence = checkClientPresent(root);
+    assert.equal(presence.ok, false);
+    assert.deepEqual(presence.missing, ['index.html', 'src/']);
+    assert.match(presence.message, /index\.html/);
+    assert.match(presence.message, /load order/);
+    assert.equal(reportGlobals(root).code, 2);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test('a present client still reports normally — the guard changed nothing else', () => {
+  const root = mkdtempSync(join(tmpdir(), 'globals-ok-'));
+  mkdirSync(join(root, 'src'));
+  writeFileSync(join(root, 'src', 'a.jsx'), 'function Dup() {}\n');
+  writeFileSync(join(root, 'src', 'b.jsx'), 'function Dup() {}\n');
+  writeFileSync(join(root, 'index.html'),
+    '<script type="text/babel" src="src/a.jsx"></script>\n<script type="text/babel" src="src/b.jsx"></script>');
+  try {
+    assert.equal(checkClientPresent(root).ok, true);
+    const report = reportGlobals(root);
+    assert.equal(report.code, 1, 'found collisions');
+    assert.equal(report.collisions.length, 1);
+    assert.match(report.output, /WINS/);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test('this repo has its client, so the check really ran above', () => {
+  assert.equal(checkClientPresent().ok, true);
+  assert.equal(reportGlobals().code, 0);
 });

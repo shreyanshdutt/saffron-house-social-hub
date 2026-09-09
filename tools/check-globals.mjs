@@ -20,7 +20,7 @@
 // load-bearing for a service that exists to hold credentials. This is a small
 // script over files the repo already ships.
 
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -64,6 +64,51 @@ export function declarationsIn(source) {
 
 export function listClientFiles(repoRoot = REPO_ROOT) {
   return readdirSync(join(repoRoot, 'src')).filter(f => f.endsWith('.jsx')).sort();
+}
+
+// IS THE CLIENT EVEN HERE.
+//
+// The one situation where it is not is the server standing alone without the
+// client checkout — the exact boundary server/README.md documents an exception
+// for. Reporting that as an unhandled ENOENT would be absence rendered as
+// breakage, which is the defect this product has spent twenty commits removing
+// from its screens; a tool that checks the client is not exempt from the rule
+// it exists to enforce.
+//
+// BOTH inputs are checked, not just `src/`. `loadOrder()` reads `index.html`
+// and runs FIRST, so a bare server checkout crashed there before ever reaching
+// the directory listing — fixing only one of the two would have left the very
+// scenario this is for still throwing.
+export function checkClientPresent(repoRoot = REPO_ROOT) {
+  const wanted = [
+    { path: join(repoRoot, 'index.html'), what: 'index.html', why: 'it is what defines load order' },
+    { path: join(repoRoot, 'src'), what: 'src/', why: 'it holds the files whose declarations are compared' },
+  ];
+  const missing = wanted.filter(w => !existsSync(w.path));
+  if (!missing.length) return { ok: true, missing: [], message: null };
+
+  const lines = [
+    'Cannot check for name collisions: the client is not here.',
+    '',
+    `  looked in: ${repoRoot}`,
+  ];
+  for (const m of missing) lines.push(`  missing:   ${m.what}  — ${m.why}`);
+  lines.push(
+    '',
+    'This is what a server-only checkout looks like, and it is a state rather than',
+    'a failure of the check. Run this from a working tree that has the client, or',
+    'skip it where the client is deliberately absent.',
+  );
+  return { ok: false, missing: missing.map(m => m.what), message: lines.join('\n') };
+}
+
+// What the CLI prints and what the test asserts on — ONE path, so the test
+// verifies exactly what a person sees. It never throws.
+export function reportGlobals(repoRoot = REPO_ROOT) {
+  const presence = checkClientPresent(repoRoot);
+  if (!presence.ok) return { code: 2, output: presence.message, collisions: null };
+  const collisions = findCollisions(repoRoot);
+  return { code: collisions.length ? 1 : 0, output: formatCollisions(collisions), collisions };
 }
 
 // Every name declared at column 0 in more than one file.
@@ -124,8 +169,11 @@ export function formatCollisions(collisions) {
 
 // CLI. `node tools/check-globals.mjs` — exits 1 when it finds something, so it
 // is usable from a hook or a CI step without further glue.
+// Exit codes are distinct on purpose: 1 means "checked, and found collisions";
+// 2 means "could not check". A caller that conflates them would treat a missing
+// checkout as a clean bill of health, which is the failure being removed here.
 if (process.argv[1] && import.meta.url === new URL(`file://${process.argv[1]}`).href) {
-  const collisions = findCollisions();
-  console.log(formatCollisions(collisions));
-  process.exit(collisions.length ? 1 : 0);
+  const { code, output } = reportGlobals();
+  console.log(output);
+  process.exit(code);
 }
