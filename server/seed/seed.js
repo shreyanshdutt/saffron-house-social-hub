@@ -74,10 +74,11 @@ export function seed(db, _repoRoot, { trackedBy = 'admin', now = Date.now() } = 
   const stamp = new Date(now).toISOString();
 
   const SEED_MENU = SEED_DATA.menuItems || [];
+  const SEED_GUEST = SEED_DATA.guestTexts || [];
   const SEED_POSTS = SEED_DATA.posts || [];
   const SEED_SCHEDULED = SEED_DATA.scheduled || [];
 
-  const counts = { establishments: 0, social: 0, connections: 0, tracked: 0, observations: 0, posts: 0, postTargets: 0, menuItems: 0, menuAliases: 0 };
+  const counts = { establishments: 0, social: 0, connections: 0, tracked: 0, observations: 0, posts: 0, postTargets: 0, menuItems: 0, menuAliases: 0, guestTexts: 0 };
 
   db.exec('BEGIN');
   try {
@@ -279,6 +280,19 @@ export function seed(db, _repoRoot, { trackedBy = 'admin', now = Date.now() } = 
         }
         counts.menuAliases++;
       }
+    }
+
+    // THE GUEST CORPUS. See schema.sql for why listening signals and our own
+    // replies are not in it.
+    db.prepare(`DELETE FROM guest_texts WHERE is_sample = 1`).run();
+    const insGuest = db.prepare(
+      `INSERT INTO guest_texts (id, kind, body, author, channel, said_at, source_kind, source_id, is_sample)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)`
+    );
+    for (const g of SEED_GUEST) {
+      insGuest.run(g.id, g.kind, g.body, g.author ?? null, g.channel ?? null,
+                   g.saidAt ?? null, g.sourceKind ?? null, g.sourceId ?? null);
+      counts.guestTexts++;
     }
 
     for (const id of TRACKED_DEFAULT) {

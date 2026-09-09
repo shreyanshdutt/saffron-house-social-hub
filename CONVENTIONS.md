@@ -561,6 +561,42 @@ closing an item, not follow-up work.**
     the singular is a word the variant map already knows. — closed in this commit
 
 
+29. **The Menu screen shows real mention counts and the guests' own words; the
+    invented sentiment is gone.** `mentions7d: 412` became **0**. Across all
+    eight dishes the seeded figures totalled 1,552 and the measured answer is
+    **6**, from a guest corpus of 31 fragments and 3.5 KB.
+
+    Deleted from `MENU_ITEMS` and from every derivation over them: `mentions7d`,
+    `mentionsChange7dPct`, `sentiment`, `sentimentDelta`, `spark`, `isMoment`,
+    `topPraise`, `topComplaint` — and with them the SentimentBar, the shift
+    column, the sparkline and the two hero cards that picked a "rising" and a
+    "slipping" dish. Name, category and price stay: those are real, and the
+    server's `menu_items` seed is generated from them.
+
+    **What replaced the hero cards is the denominator.** A count of 2 means one
+    thing over 31 fragments and another over 31,000, so the screen states how
+    much text was read. **Zero is rendered as a sentence, not a dash or a 0** —
+    four of eight dishes are there, including the flagship — because "measured
+    at zero" and "nobody said anything" are identical as a numeral and are
+    different facts.
+
+    **FOUR RECOMMENDATION RULES WENT WITH THE FIELDS, and that was the largest
+    judgement call in this commit.** `rising-dish`, `sinking-dish`,
+    `menu-discoverability` and `price-resistance` keyed on `sentiment`,
+    `sentimentDelta` and `topComplaint`, citing them as evidence with
+    `source: 'nlp'`. They could not be kept without keeping the invented data,
+    and rewriting them over six real mentions would have been inventing new
+    product behaviour rather than removing a false claim. 18 rules became 14.
+    `projectReach()` had one caller and went with them; `ctx.menu` and
+    `medianDishMentions` became unread and went too.
+
+    Two stale claims found while doing it and corrected: the comment above
+    `MENU_ITEMS` still described sentiment as "the most defensible screen in
+    the product", and the **binding** Data & access field map
+    (`CLAUDE.md` § 3) still advertised "Per-dish mentions + sentiment".
+    — closed in this commit
+
+
 #### Open
 
 1. **`POSTS` survives in `mock.jsx` for `page-approvals.jsx` alone, and moving
@@ -595,6 +631,27 @@ closing an item, not follow-up work.**
    **Until it is decided:** a draft written in the Composer is stored on the
    server and does NOT appear in the Approvals Draft tab, which still shows the
    seeded `p7`. That divergence is visible today and is the cost of leaving it.
+
+2. **The guest corpus now exists in two places.** `guest_texts` holds a frozen
+   copy of the reviews, guest comments and inbound DMs from `src/mock.jsx` at
+   `99d8f04`, because the mention counting and the evidence quoting happen
+   server-side. `page-reviews.jsx` still reads `REVIEWS` and
+   `page-messages.jsx` still reads `CONVERSATIONS` from `mock.jsx`, and both
+   were deliberately NOT rewired — that was the small-slice decision, and
+   rewiring the Inbox in particular is a screen with its own PII masking and
+   reply flow.
+
+   **The fix is to migrate them, not to sync the two.** The same duplication
+   existed for establishments before `432ebc0` and for posts between `849c3b7`
+   and `04f442b`, and both were closed by deleting the client copy. Until then:
+   **edit the seed, not the client array**, and re-seed. A guest sentence added
+   only to `mock.jsx` is invisible to the mention counts; one added only to the
+   seed will not appear on Reviews or Inbox.
+
+   Note that the copies are already not identical in shape: `guest_texts`
+   deliberately excludes our own replies and every listening signal, so it is a
+   subset by design rather than a mirror. A future migration has to keep that
+   distinction rather than assume the two should converge.
 
 ## 4. Scope discipline
 

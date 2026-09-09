@@ -161,6 +161,12 @@ export function createServer(db) {
         const out = repo.deletePost(db, id);
         return send(res, out.deleted ? 200 : 409, out.deleted ? { deleted: id } : { error: out.reason, id });
       }
+      // The menu with real mention counts and the evidence for each. Read-only:
+      // nothing on this screen writes, and the count is derived per request
+      // from the stored corpus rather than being a column that could drift.
+      if (req.method === 'GET' && path === '/menu') {
+        return send(res, 200, repo.menuWithMentions(db));
+      }
       if (req.method === 'GET' && path === '/tracked') {
         return send(res, 200, { tracked: repo.listTracked(db) });
       }

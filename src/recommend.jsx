@@ -15,9 +15,16 @@
 //      that posts for you: "tell the kitchen", "update the Google listing",
 //      "brief the floor". Each carries an owner and a place.
 //   3. No invented causality. The engine never claims "this will raise your
-//      rating by 0.2". It states what is true (mentions up 240%, sentiment
-//      0.78, nothing scheduled) and what it projects, labelled as projection
-//      with the arithmetic attached.
+//      rating by 0.2". It states what is true (a review past SLA, nothing
+//      scheduled on your best day) and what it projects, labelled as
+//      projection with the arithmetic attached.
+//
+//      FOUR DISH RULES WERE REMOVED for failing this test, not for being
+//      unpopular: rising-dish, sinking-dish, menu-discoverability and
+//      price-resistance all keyed on `sentiment`, `sentimentDelta` and
+//      `topComplaint` fields that were invented in mock.jsx. Advice founded on
+//      a fabricated number is invented causality wearing a citation. If they
+//      come back it will be over the real mention counts.
 //
 // Adding a rule: append to REC_RULES. A rule takes the context and returns
 // zero or more recommendation objects. It must attach evidence with sources.
@@ -104,7 +111,6 @@ function buildRecommendationContext() {
     scheduled: scheduledPosts(),
     reviews: REVIEWS,
     reviewStats: REVIEW_STATS,
-    menu: MENU_ITEMS,
     signals: LISTENING_SIGNALS,
     // Only what the user marked on the Establishments screen, so the
     // engine compares against the set they actually chose.
@@ -122,30 +128,10 @@ function buildRecommendationContext() {
     analytics: ANALYTICS_IG.daily,
     trends: LISTENING_TRENDS,
     medianReach: median(publishedReach),
-    medianDishMentions: median(MENU_ITEMS.map(m => m.mentions7d)),
     slaMins: REVIEW_STATS.slaMins,
   };
 }
 
-// Projected reach for a content recommendation. Deliberately transparent: the
-// median reach of your published posts, scaled by BOTH how fast a dish is
-// moving and how much is actually being said about it.
-//
-// Momentum alone was the first version and it was wrong — a dish with 174
-// mentions growing 240% projected higher reach than one with 412 mentions
-// growing 68%, which inverts the sensible ordering. Percentage growth on a
-// small base is not the same opportunity as volume. Volume is therefore
-// weighted more heavily (range 0.5–1.8) than momentum (0.25 coefficient), and
-// the combined multiplier is capped so nothing runs away.
-function projectReach(ctx, dish) {
-  const momentum = 1 + (dish.mentionsChange7dPct / 100) * 0.25;
-  const volume = Math.max(0.5, Math.min(1.8, dish.mentions7d / (ctx.medianDishMentions || 1)));
-  const multiplier = Math.min(2.2, momentum * volume);
-  return {
-    value: Math.round(ctx.medianReach * multiplier),
-    basis: `median post reach ${Math.round(ctx.medianReach).toLocaleString('en-IN')} × ${momentum.toFixed(2)} momentum × ${volume.toFixed(2)} volume = ×${multiplier.toFixed(2)}`,
-  };
-}
 
 // --- Rules -------------------------------------------------------------------
 // Each returns an array of recommendations. impact / confidence / effort are
@@ -463,71 +449,7 @@ const REC_RULES = [
     },
   },
 
-  // ---------------------------------------------------------------------
-  {
-    id: 'rising-dish',
-    title: 'Dishes gaining attention with nothing scheduled',
-    run(ctx) {
-      return ctx.menu
-        .filter(m => m.mentionsChange7dPct >= 60 && m.sentiment >= 0.6)
-        .map(m => {
-          const covered = dishHasCoverage(m, ctx);
-          const proj = projectReach(ctx, m);
-          return {
-            kind: 'content',
-            title: `Post the ${m.name} while it is climbing`,
-            detail: covered
-              ? `${m.name} is up ${m.mentionsChange7dPct}% and already has content out. Push a second angle — a short reel of it being cooked to order — rather than repeating the launch post.`
-              : `${m.name} is up ${m.mentionsChange7dPct}% in guest conversation at ${m.sentiment.toFixed(2)} sentiment, and there is nothing published or scheduled about it. This is the cheapest post you can make this week.`,
-            action: covered ? 'Shoot a second-angle reel' : 'Shoot and publish this week',
-            owner: 'executive',
-            where: 'Instagram · Google post',
-            channels: covered ? ['ig'] : ['ig', 'gg'],
-            window: 'Within 3 days — momentum decays',
-            projected: `~${proj.value.toLocaleString('en-IN')} reach`,
-            projectedBasis: proj.basis,
-            evidence: [
-              { label: `${m.name} mentions (7d)`, value: `${m.mentions7d} (+${m.mentionsChange7dPct}%)`, source: 'nlp' },
-              { label: 'Sentiment', value: `${m.sentiment.toFixed(2)} (${m.sentimentDelta >= 0 ? '+' : ''}${m.sentimentDelta.toFixed(2)} in 7d)`, source: 'nlp' },
-              { label: 'Guests are saying', value: m.topPraise, source: 'nlp' },
-              { label: 'Existing content', value: covered ? 'Already posted' : 'None published or scheduled', source: 'internal' },
-            ],
-            impact: covered ? 0.5 : 0.85,
-            confidence: 0.8,
-            effort: 0.3,
-          };
-        });
-    },
-  },
 
-  // ---------------------------------------------------------------------
-  {
-    id: 'sinking-dish',
-    title: 'Dishes losing ground',
-    run(ctx) {
-      return ctx.menu
-        .filter(m => m.sentimentDelta <= -0.15)
-        .map(m => ({
-          kind: 'menu',
-          title: `${m.name} is sliding — do not promote it`,
-          detail: `Sentiment down ${Math.abs(m.sentimentDelta).toFixed(2)} over 7 days to ${m.sentiment.toFixed(2)}. The complaint is consistent: ${m.topComplaint.toLowerCase()}. Marketing will not fix this and will amplify it — put it in front of the kitchen instead.`,
-          action: 'Kitchen review: recipe, portion or price',
-          owner: 'admin',
-          where: 'Kitchen · menu meeting',
-          channels: [],
-          window: 'Next menu meeting',
-          evidence: [
-            { label: `${m.name} sentiment`, value: `${m.sentiment.toFixed(2)} (${m.sentimentDelta.toFixed(2)} in 7d)`, source: 'nlp' },
-            { label: 'Mentions (7d)', value: `${m.mentions7d} (${m.mentionsChange7dPct > 0 ? '+' : ''}${m.mentionsChange7dPct}%)`, source: 'nlp' },
-            { label: 'Recurring complaint', value: m.topComplaint, source: 'nlp' },
-            { label: 'Menu price', value: `₹${m.price}`, source: 'pos' },
-          ],
-          impact: 0.7,
-          confidence: 0.75,
-          effort: 0.6,
-        }));
-    },
-  },
 
   // ---------------------------------------------------------------------
   {
@@ -613,42 +535,6 @@ const REC_RULES = [
     },
   },
 
-  // ---------------------------------------------------------------------
-  {
-    id: 'menu-discoverability',
-    title: 'Dishes guests cannot find',
-    run(ctx) {
-      // A well-loved dish whose main complaint is that people cannot find it
-      // is a menu-design problem wearing a marketing costume.
-      const candidate = ctx.menu
-        .filter(m => m.sentiment >= 0.75 && /not obvious|not listed|menu|ask whether/i.test(m.topComplaint))
-        .sort((a, b) => b.sentiment - a.sentiment)[0];
-      if (!candidate) return [];
-      const asking = ctx.reviews.filter(r =>
-        (r.themes || []).some(t => candidate.name.toLowerCase().includes(t.toLowerCase()))
-      ).length;
-
-      return [{
-        kind: 'menu',
-        title: `Guests cannot find the ${candidate.name}`,
-        detail: `It runs at ${candidate.sentiment.toFixed(2)} sentiment — the highest on the menu — and its most common complaint is not the dish, it is that people do not know it exists. Guests are asking in Instagram DMs and Google Q&A for something already on the menu. That is a printing problem, not a cooking one.`,
-        action: 'Give it its own line on the menu and pin an Instagram highlight',
-        owner: 'manager',
-        where: 'Menu design · Instagram profile',
-        channels: ['ig'],
-        window: 'Next menu print',
-        evidence: [
-          { label: `${candidate.name} sentiment`, value: candidate.sentiment.toFixed(2), source: 'nlp' },
-          { label: 'Its top complaint', value: candidate.topComplaint, source: 'nlp' },
-          { label: 'Mentions (7d)', value: `${candidate.mentions7d} (+${candidate.mentionsChange7dPct}%)`, source: 'nlp' },
-          { label: 'Reviews naming it', value: `${asking}`, source: 'gbp' },
-        ],
-        impact: 0.7,
-        confidence: 0.7,
-        effort: 0.3,
-      }];
-    },
-  },
 
   // ---------------------------------------------------------------------
   {
@@ -840,37 +726,6 @@ const REC_RULES = [
     },
   },
 
-  // ---------------------------------------------------------------------
-  {
-    id: 'price-resistance',
-    title: 'Price resistance on a well-liked dish',
-    run(ctx) {
-      const items = ctx.menu.filter(
-        m => /price|₹|expensive|cost/i.test(m.topComplaint) && m.sentiment >= 0.5
-      );
-      if (!items.length) return [];
-      const m = items.sort((a, b) => b.price - a.price)[0];
-      return [{
-        kind: 'promo',
-        title: `${m.name} is liked but resisted on price`,
-        detail: `Sentiment is ${m.sentiment.toFixed(2)} — the dish is not the problem, the ₹${m.price} ticket is. Bundling it into a set menu moves the comparison away from the single line item, which is usually cheaper than discounting it.`,
-        action: 'Build it into a set menu rather than discounting',
-        owner: 'manager',
-        where: 'Menu · Instagram',
-        channels: ['ig'],
-        window: 'Next menu print',
-        evidence: [
-          { label: `${m.name} price`, value: `₹${m.price}`, source: 'pos' },
-          { label: 'Sentiment', value: m.sentiment.toFixed(2), source: 'nlp' },
-          { label: 'Recurring complaint', value: m.topComplaint, source: 'nlp' },
-          { label: 'Mentions (7d)', value: `${m.mentions7d}`, source: 'nlp' },
-        ],
-        impact: 0.5,
-        confidence: 0.55,
-        effort: 0.45,
-      }];
-    },
-  },
 ];
 
 // --- Scoring -----------------------------------------------------------------

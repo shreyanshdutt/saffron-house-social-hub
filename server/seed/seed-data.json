@@ -1,5 +1,5 @@
 {
-  "_generated": "Extracted once from src/mock.jsx at commit 40c9100, immediately before that data was deleted from the client. Regenerate with: git show 40c9100:src/mock.jsx | posts+scheduled frozen from src/mock.jsx at 03c0471 | menuItems frozen from src/mock.jsx at 04f442b",
+  "_generated": "Extracted once from src/mock.jsx at commit 40c9100, immediately before that data was deleted from the client. Regenerate with: git show 40c9100:src/mock.jsx | posts+scheduled frozen from src/mock.jsx at 03c0471 | menuItems frozen from src/mock.jsx at 04f442b | guestTexts frozen from src/mock.jsx at 99d8f04",
   "establishments": [
     {
       "id": "est-1",
@@ -819,6 +819,306 @@
       "aliases": [
         "butter chicken"
       ]
+    }
+  ],
+  "guestTexts": [
+    {
+      "id": "gt-rv-rv-1",
+      "kind": "review",
+      "body": "Waited 55 minutes for a table we had booked for 8pm. When we finally sat, two of the four dishes we ordered were unavailable. Nobody apologised. For these prices in Sector 10 Market, Dwarka, this is not acceptable.",
+      "author": "Ishaan Kapoor",
+      "channel": "gg",
+      "sourceKind": "review",
+      "sourceId": "rv-1"
+    },
+    {
+      "id": "gt-rv-rv-2",
+      "kind": "review",
+      "body": "Booked a table for 8, seated at 8:50. The food when it arrived was very good but the front of house is clearly under-staffed on weekends.",
+      "author": "Sameer Vohra",
+      "channel": "gg",
+      "sourceKind": "review",
+      "sourceId": "rv-2"
+    },
+    {
+      "id": "gt-rv-rv-3",
+      "kind": "review",
+      "body": "Came in at 9pm with a toddler expecting to be tolerated, and instead got a warm welcome, a high chair before we asked, and plain parathas for her. Farhan on the floor was outstanding. The galouti is as good as everyone says.",
+      "author": "Meenakshi Reddy",
+      "channel": "gg",
+      "sourceKind": "review",
+      "sourceId": "rv-3"
+    },
+    {
+      "id": "gt-rv-rv-4",
+      "kind": "review",
+      "body": "Second Saturday running that our booking meant nothing. Turned up at 8:30, told it would be \"ten minutes\", stood at the bar for forty. If you cannot hold the tables, stop taking the bookings.",
+      "author": "Divya Nair",
+      "channel": "gg",
+      "sourceKind": "review",
+      "sourceId": "rv-4"
+    },
+    {
+      "id": "gt-rv-rv-5",
+      "kind": "review",
+      "body": "The monsoon menu is the best thing happening in Sector 10 Market, Dwarka right now. Corn and chilli pakoras with that saffron chutney — I would walk here in the rain for them, which is exactly the point I suppose.",
+      "author": "Nikhil Bansal",
+      "channel": "gg",
+      "sourceKind": "review",
+      "sourceId": "rv-5"
+    },
+    {
+      "id": "gt-rv-rv-6",
+      "kind": "review",
+      "body": "Excellent food, generous portions, attentive staff on a quiet Tuesday. Docking one star because it is very loud once the room fills up.",
+      "author": "Farah Qureshi",
+      "channel": "gg",
+      "sourceKind": "review",
+      "sourceId": "rv-6"
+    },
+    {
+      "id": "gt-rv-rv-7",
+      "kind": "review",
+      "body": "Food is genuinely very good. But it is loud — we could not hold a conversation at the table on a Saturday night, and the acoustics upstairs make it worse. Come for the food, not for a catch-up.",
+      "author": "Aditi Chaudhary",
+      "channel": "gg",
+      "sourceKind": "review",
+      "sourceId": "rv-7"
+    },
+    {
+      "id": "gt-rv-rv-8",
+      "kind": "review",
+      "body": "Walked in at 10:45pm on a whim expecting to be turned away and instead got the full menu and a genuinely warm welcome. The Awadhi biryani at that hour was better than most sit-down places in Delhi manage at 8pm.",
+      "author": "Rohan Grover",
+      "channel": "gg",
+      "sourceKind": "review",
+      "sourceId": "rv-8"
+    },
+    {
+      "id": "gt-rv-rv-9",
+      "kind": "review",
+      "body": "The kathal galouti is a genuine achievement. I have fed it to three meat-eaters who did not notice. Please never take it off the menu.",
+      "author": "Priyanka Sood",
+      "channel": "gg",
+      "sourceKind": "review",
+      "sourceId": "rv-9"
+    },
+    {
+      "id": "gt-rv-rv-10",
+      "kind": "review",
+      "body": "Excellent food, thoughtful wine list, slightly cramped seating downstairs. Ask for a table upstairs if you can.",
+      "author": "Tarun Bhatia",
+      "channel": "gg",
+      "sourceKind": "review",
+      "sourceId": "rv-10"
+    },
+    {
+      "id": "gt-rv-rv-11",
+      "kind": "review",
+      "body": "Good food, but we were seated next to the service station and asked twice to move. Fine for a quick dinner, not for an occasion.",
+      "author": "Kavya Menon",
+      "channel": "gg",
+      "sourceKind": "review",
+      "sourceId": "rv-11"
+    },
+    {
+      "id": "gt-rv-rv-12",
+      "kind": "review",
+      "body": "Booked well in advance for a birthday, and the table was not ready. Staff were apologetic but clearly overwhelmed. The food is very good — the front of house is not keeping up with how busy you have become.",
+      "author": "Aman Thakur",
+      "channel": "gg",
+      "sourceKind": "review",
+      "sourceId": "rv-12"
+    },
+    {
+      "id": "gt-cm-cm1",
+      "kind": "comment",
+      "body": "Booked for Saturday the moment I saw this. The kheer alone is worth it.",
+      "author": "Rahul Khanna",
+      "channel": "ig",
+      "saidAt": "2026-09-03T14:02:00+05:30",
+      "sourceKind": "post_comment",
+      "sourceId": "cm1"
+    },
+    {
+      "id": "gt-cm-cm2",
+      "kind": "comment",
+      "body": "Is the monsoon menu vegetarian-friendly? Half of us do not eat meat.",
+      "author": "Sneha Iyer",
+      "channel": "ig",
+      "saidAt": "2026-09-03T14:15:00+05:30",
+      "sourceKind": "post_comment",
+      "sourceId": "cm2"
+    },
+    {
+      "id": "gt-cm-cm3",
+      "kind": "comment",
+      "body": "Food is great but we waited nearly an hour for a booked table on Saturday 😕",
+      "author": "Arjun Mehta",
+      "channel": "ig",
+      "saidAt": "2026-09-03T14:42:00+05:30",
+      "sourceKind": "post_comment",
+      "sourceId": "cm3"
+    },
+    {
+      "id": "gt-cm-cm5",
+      "kind": "comment",
+      "body": "Went last night. Corn pakoras were the best thing I have eaten this month. 👌",
+      "author": "Nikhil Bansal",
+      "channel": "ig",
+      "saidAt": "2026-09-03T17:21:00+05:30",
+      "sourceKind": "post_comment",
+      "sourceId": "cm5"
+    },
+    {
+      "id": "gt-cm-cm6",
+      "kind": "comment",
+      "body": "Do you take walk-ins on a weekday or is it bookings only?",
+      "author": "Aditi Chaudhary",
+      "channel": "ig",
+      "saidAt": "2026-09-03T18:55:00+05:30",
+      "sourceKind": "post_comment",
+      "sourceId": "cm6"
+    },
+    {
+      "id": "gt-dm-c1-0",
+      "kind": "dm",
+      "body": "Hi, I have a booking for Saturday 8pm under Khanna, reference BKG-2026-08421. It is our anniversary — is the terrace open that night?",
+      "author": "Rahul Khanna",
+      "channel": "wa",
+      "saidAt": "2026-09-04T09:14:00+05:30",
+      "sourceKind": "conversation",
+      "sourceId": "c1"
+    },
+    {
+      "id": "gt-dm-c1-1",
+      "kind": "dm",
+      "body": "Also can you do something for dessert? She loves the kheer.",
+      "author": "Rahul Khanna",
+      "channel": "wa",
+      "saidAt": "2026-09-04T09:15:00+05:30",
+      "sourceKind": "conversation",
+      "sourceId": "c1"
+    },
+    {
+      "id": "gt-dm-c1-3",
+      "kind": "dm",
+      "body": "Perfect, thank you so much 🙏",
+      "author": "Rahul Khanna",
+      "channel": "wa",
+      "saidAt": "2026-09-04T09:19:00+05:30",
+      "sourceKind": "conversation",
+      "sourceId": "c1"
+    },
+    {
+      "id": "gt-dm-c1-4",
+      "kind": "dm",
+      "body": "One more thing — is there parking at Sector 10 Market, Dwarka on a Saturday?",
+      "author": "Rahul Khanna",
+      "channel": "wa",
+      "saidAt": "2026-09-04T09:42:00+05:30",
+      "sourceKind": "conversation",
+      "sourceId": "c1"
+    },
+    {
+      "id": "gt-dm-c2-0",
+      "kind": "dm",
+      "body": "Saw the galouti reel and now I need it, but I am vegetarian. Do you do a veg version?",
+      "author": "Sneha Iyer",
+      "channel": "ig",
+      "saidAt": "2026-09-04T08:51:00+05:30",
+      "sourceKind": "conversation",
+      "sourceId": "c2"
+    },
+    {
+      "id": "gt-dm-c3-0",
+      "kind": "dm",
+      "body": "We had a table booked for 8pm on Saturday and were not seated until 8:50. Nobody told us anything. Third time this has happened.",
+      "author": "Arjun Mehta",
+      "channel": "wa",
+      "saidAt": "2026-09-03T21:32:00+05:30",
+      "sourceKind": "conversation",
+      "sourceId": "c3"
+    },
+    {
+      "id": "gt-dm-c3-1",
+      "kind": "dm",
+      "body": "The food was excellent as always, which makes it more frustrating.",
+      "author": "Arjun Mehta",
+      "channel": "wa",
+      "saidAt": "2026-09-03T21:34:00+05:30",
+      "sourceKind": "conversation",
+      "sourceId": "c3"
+    },
+    {
+      "id": "gt-dm-c3-2",
+      "kind": "dm",
+      "body": "Is anyone there?",
+      "author": "Arjun Mehta",
+      "channel": "wa",
+      "saidAt": "2026-09-04T08:10:00+05:30",
+      "sourceKind": "conversation",
+      "sourceId": "c3"
+    },
+    {
+      "id": "gt-dm-c4-0",
+      "kind": "dm",
+      "body": "Do you take bookings for a group of 12 on a weeknight? And is there a set menu for groups?",
+      "author": "Divya Nair",
+      "channel": "ig",
+      "saidAt": "2026-09-04T07:02:00+05:30",
+      "sourceKind": "conversation",
+      "sourceId": "c4"
+    },
+    {
+      "id": "gt-dm-c4-1",
+      "kind": "dm",
+      "body": "Hoping for the 18th if possible.",
+      "author": "Divya Nair",
+      "channel": "ig",
+      "saidAt": "2026-09-04T07:05:00+05:30",
+      "sourceKind": "conversation",
+      "sourceId": "c4"
+    },
+    {
+      "id": "gt-dm-c5-0",
+      "kind": "dm",
+      "body": "Do you have high chairs and anything on the menu for a two-year-old?",
+      "author": "Meenakshi Reddy",
+      "channel": "gg",
+      "saidAt": "2026-09-02T19:14:00+05:30",
+      "sourceKind": "conversation",
+      "sourceId": "c5"
+    },
+    {
+      "id": "gt-dm-c6-0",
+      "kind": "dm",
+      "body": "Hi team! 240k followers, Delhi food page. Would love to shoot the monsoon menu this week — happy to do a reel + carousel. Are you open to collabs?",
+      "author": "Delhi Food Diaries",
+      "channel": "ig",
+      "saidAt": "2026-09-01T12:10:00+05:30",
+      "sourceKind": "conversation",
+      "sourceId": "c6"
+    },
+    {
+      "id": "gt-dm-c6-2",
+      "kind": "dm",
+      "body": "Completely fair. Tuesday works!",
+      "author": "Delhi Food Diaries",
+      "channel": "ig",
+      "saidAt": "2026-09-01T12:15:00+05:30",
+      "sourceKind": "conversation",
+      "sourceId": "c6"
+    },
+    {
+      "id": "gt-dm-c7-0",
+      "kind": "dm",
+      "body": "Looking at a corporate dinner for 30 in mid-October. Do you have a private dining area, and what is the per-head on a set menu?",
+      "author": "Kabir Sethi",
+      "channel": "wa",
+      "saidAt": "2026-09-01T15:00:00+05:30",
+      "sourceKind": "conversation",
+      "sourceId": "c7"
     }
   ]
 }

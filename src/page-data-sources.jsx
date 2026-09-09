@@ -106,7 +106,7 @@ const FIELD_MAP = [
   { screen: 'Analytics', field: 'Content-type split',                       source: 'Your own post tagging', status: 'own' },
 
   { screen: 'Menu Items', field: 'Dish list, category, price',              source: 'Your menu system', status: 'own' },
-  { screen: 'Menu Items', field: 'Per-dish mentions + sentiment',           source: 'Your NLP over IG comments and Google reviews', status: 'derived' },
+  { screen: 'Menu Items', field: 'Per-dish mention count + the quotes',     source: 'Alias matching over guest reviews, comments and DMs', status: 'derived' },
 
   { screen: 'Listening', field: 'Mentions, tags, story tags',               source: 'IG mentions + webhooks', status: 'live' },
   { screen: 'Listening', field: 'Hashtag activity',                         source: 'IG hashtag search — capped, no history', status: 'live' },

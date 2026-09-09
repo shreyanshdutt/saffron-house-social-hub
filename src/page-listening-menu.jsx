@@ -1,88 +1,83 @@
 // Listening → Menu Items.
 //
-// The dimension a generic social tool cannot give a restaurant. Hashtag and
-// channel trends tell you *where* conversation is happening; this tells you
-// *what it is about*, in the only vocabulary a kitchen can act on — dishes.
+// WHAT THIS SCREEN USED TO BE, AND WHY IT IS NOT THAT ANY MORE.
 //
-// The reading order is deliberate:
-//   - Two callout cards first, because the actionable insight is almost never
-//     "which dish is most talked about" (that is the bestseller, and you knew).
-//     It is "which dish is moving" — up, so you push it, or down, so you fix it.
-//   - Then the full table, sortable, with a sentiment bar per row.
+// It was a sentiment dashboard: `mentions7d: 412` for the Galouti Kebab, a
+// [-1,+1] sentiment bar, a 7-day sparkline, a movement percentage, and two
+// hero cards naming the "rising" and "slipping" dish. Every one of those
+// numbers was invented in `mock.jsx`, and the guest opinion beneath them —
+// "repeatedly called the best in Delhi" — was a sentence no guest ever wrote.
 //
-// Sentiment is shown on a [-1, +1] scale as a diverging bar from a centre
-// line rather than a percentage, because "62% positive" hides whether the
-// remaining 38% is neutral or furious.
-
-const MENU_SORTS = [
-  { id: 'mentions',  label: 'Mentions',  get: m => m.mentions7d },
-  { id: 'movement',  label: 'Movement',  get: m => m.mentionsChange7dPct },
-  { id: 'sentiment', label: 'Sentiment', get: m => m.sentiment },
-  { id: 'shift',     label: 'Shift',     get: m => m.sentimentDelta },
-];
+// The whole seeded guest corpus is 31 fragments and 3.5 KB. 412 cannot come
+// from that, and neither can a trend, a delta or a sparkline: seven points of
+// daily history do not exist to plot.
+//
+// So the screen now shows the two things that ARE true: how many times a guest
+// named the dish, and THE SENTENCES THEY NAMED IT IN. A count you can check by
+// reading is worth more than a precise-looking number you cannot. The most
+// useful cell on this screen is a quote, not a figure.
+//
+// THERE IS NO SENTIMENT HERE, by owner decision (2026-09-09) and because the
+// resource to do it honestly does not exist offline — the negative results are
+// recorded in server/src/text-normalize.js.
 
 function MenuScreen({ theme }) {
-  const [sort, setSort] = React.useState('mentions');
-  const [dir, setDir] = React.useState('desc');
+  return (
+    <RequiresServerData what="dish mentions">
+      {(data) => <MenuScreenInner data={data} />}
+    </RequiresServerData>
+  );
+}
+
+function MenuScreenInner({ data }) {
   const [category, setCategory] = React.useState('all');
+  const items = data.menu;
+  const corpus = data.menuCorpus;
 
   const categories = React.useMemo(
-    () => ['all', ...Array.from(new Set(MENU_ITEMS.map(m => m.category)))],
-    []
+    () => ['all', ...Array.from(new Set(items.map(m => m.category).filter(Boolean)))],
+    [items]
   );
 
-  const rows = React.useMemo(() => {
-    const get = MENU_SORTS.find(s => s.id === sort).get;
-    const list = category === 'all' ? MENU_ITEMS : MENU_ITEMS.filter(m => m.category === category);
-    return [...list].sort((a, b) => (dir === 'desc' ? get(b) - get(a) : get(a) - get(b)));
-  }, [sort, dir, category]);
+  // Already ordered by the server, most-mentioned first. Filtering does not
+  // reorder: the ranking is the server's answer, not this screen's.
+  const rows = category === 'all' ? items : items.filter(m => m.category === category);
 
-  // The two callouts: biggest positive mover and the dish losing ground
-  // fastest. Both are computed rather than hand-picked so the screen stays
-  // honest if the seed data changes.
-  const rising = React.useMemo(
-    () => [...MENU_ITEMS].sort((a, b) => b.mentionsChange7dPct - a.mentionsChange7dPct)[0],
-    []
-  );
-  const slipping = React.useMemo(
-    () => [...MENU_ITEMS].sort((a, b) => a.sentimentDelta - b.sentimentDelta)[0],
-    []
-  );
-
-  const toggleSort = (id) => {
-    if (sort === id) setDir(d => (d === 'desc' ? 'asc' : 'desc'));
-    else { setSort(id); setDir('desc'); }
-  };
+  const totalMentions = items.reduce((n, m) => n + m.mentionCount, 0);
+  const namedDishes = items.filter(m => m.mentionCount > 0).length;
 
   return (
     <div className="space-y-4" id="listening-menu">
-      <div className="grid grid-cols-12 gap-4">
-        <MenuCallout
-          className="col-span-12 lg:col-span-6"
-          tone="positive"
-          eyebrow="Rising fastest"
-          item={rising}
-          theme={theme}
-          note={`Mentions up ${rising.mentionsChange7dPct}% in 7 days. ${rising.topPraise}`}
-          action="Worth a post while the interest is live."
-        />
-        <MenuCallout
-          className="col-span-12 lg:col-span-6"
-          tone="negative"
-          eyebrow="Losing ground"
-          item={slipping}
-          theme={theme}
-          note={`Sentiment down ${Math.abs(slipping.sentimentDelta).toFixed(2)} in 7 days. ${slipping.topComplaint}`}
-          action="This is a kitchen or pricing conversation, not a marketing one."
-        />
-      </div>
+      {/* THE DENOMINATOR, STATED. A count of 2 means one thing over 31
+          fragments and another over 31,000, and a reader cannot judge the
+          number without it. This replaces the two invented hero cards. */}
+      {corpus && (
+        <Card padding="p-4">
+          <div className="flex items-start gap-3">
+            <span className="w-9 h-9 rounded-xl bg-saf-light text-saf-primary grid place-items-center shrink-0">
+              <Icon name="Quote" size={18} />
+            </span>
+            <div className="min-w-0">
+              <div className="text-[15px] font-semibold text-saf-text">
+                {totalMentions} dish {totalMentions === 1 ? 'mention' : 'mentions'} from {namedDishes} of {items.length} dishes
+              </div>
+              <p className="text-[12.5px] text-saf-muted mt-1 leading-relaxed">
+                Counted across <strong className="text-saf-text">{corpus.fragments} pieces of guest text</strong> —
+                {' '}{corpus.kinds.review || 0} reviews, {corpus.kinds.comment || 0} comments and {corpus.kinds.dm || 0} direct
+                messages, {(corpus.characters / 1024).toFixed(1)} KB in total. Only what a guest wrote counts: our own
+                replies and the app's own analytics summaries are excluded, because neither is a guest naming a dish.
+              </p>
+            </div>
+          </div>
+        </Card>
+      )}
 
       <Card padding="p-0">
         <div className="p-4 flex items-center gap-3 flex-wrap border-b border-saf-border">
           <div>
-            <h2 className="text-[15px] font-semibold text-saf-text">Menu conversation</h2>
+            <h2 className="text-[15px] font-semibold text-saf-text">What guests said about each dish</h2>
             <p className="text-[12px] text-saf-muted mt-0.5">
-              Mentions and sentiment per dish across every channel, trailing 7 days.
+              Every mention, in the guest's own words. No sentiment score — the count and the quote are the finding.
             </p>
           </div>
 
@@ -101,141 +96,92 @@ function MenuScreen({ theme }) {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[860px] text-[13px]">
-            <caption className="sr-only">
-              Menu items by mention volume and sentiment over the trailing seven days
-            </caption>
-            <thead>
-              <tr className="text-[11.5px] uppercase tracking-wider text-saf-muted border-b border-saf-border">
-                <th scope="col" className="text-start font-medium px-4 py-2.5">Dish</th>
-                {MENU_SORTS.map(s => (
-                  <th key={s.id} scope="col" className="text-end font-medium px-4 py-2.5" aria-sort={sort === s.id ? (dir === 'desc' ? 'descending' : 'ascending') : 'none'}>
-                    <button
-                      onClick={() => toggleSort(s.id)}
-                      aria-label={`Sort by ${s.label}`}
-                      className={`inline-flex items-center gap-1 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saf-accent rounded px-1 ${sort === s.id ? 'text-saf-primary' : 'hover:text-saf-text'}`}
-                    >
-                      {s.label}
-                      {sort === s.id && <Icon name={dir === 'desc' ? 'ArrowDown' : 'ArrowUp'} size={12} />}
-                    </button>
-                  </th>
-                ))}
-                <th scope="col" className="text-start font-medium px-4 py-2.5 w-[180px]">7-day trend</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-saf-border">
-              {rows.map(m => (
-                <tr key={m.id} className="hover:bg-saf-light/30 transition-colors">
-                  <th scope="row" className="text-start font-normal px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[13.5px] font-medium text-saf-text">{m.name}</span>
-                      {m.isMoment && (
-                        <Tooltip label="Moved more than 50% this week — check Signals" side="top">
-                          <span className="w-1.5 h-1.5 rounded-full bg-saf-accent" aria-label="Notable movement" />
-                        </Tooltip>
-                      )}
-                    </div>
-                    <div className="text-[11.5px] text-saf-muted mt-0.5">
-                      {m.category} · ₹{m.price}
-                    </div>
-                  </th>
-
-                  <td className="px-4 py-3 text-end tabular-nums text-saf-text">{fmt(m.mentions7d)}</td>
-
-                  <td className="px-4 py-3 text-end">
-                    <DeltaText value={m.mentionsChange7dPct} suffix="%" />
-                  </td>
-
-                  <td className="px-4 py-3">
-                    <SentimentBar value={m.sentiment} />
-                  </td>
-
-                  <td className="px-4 py-3 text-end">
-                    <DeltaText value={m.sentimentDelta} decimals={2} />
-                  </td>
-
-                  <td className="px-4 py-3">
-                    <Sparkline
-                      data={m.spark}
-                      width={150}
-                      height={30}
-                      stroke={m.sentiment < 0.2 ? '#C0342B' : theme === 'dark' ? '#F0A07A' : '#B4451F'}
-                    />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="divide-y divide-saf-border">
+          {rows.map(m => <MenuRow key={m.id} item={m} />)}
+          {rows.length === 0 && (
+            <div className="p-6 text-[13px] text-saf-muted">No dishes in this category.</div>
+          )}
         </div>
       </Card>
     </div>
   );
 }
 
-// Callout card for the two dishes that actually need a decision this week.
-function MenuCallout({ item, tone, eyebrow, note, action, theme, className = '' }) {
-  const positive = tone === 'positive';
+// One dish: the count, then the evidence for it, or the reason there is none.
+function MenuRow({ item }) {
+  const none = item.mentionCount === 0;
   return (
-    <Card className={className}>
-      <div className="flex items-start gap-3">
-        <div className={`w-9 h-9 rounded-xl grid place-items-center shrink-0 ${positive ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>
-          <Icon name={positive ? 'TrendingUp' : 'TrendingDown'} size={18} />
-        </div>
+    <div className="p-4">
+      <div className="flex items-start gap-3 flex-wrap">
         <div className="min-w-0 flex-1">
-          <div className="text-[11.5px] uppercase tracking-wider text-saf-muted">{eyebrow}</div>
-          <div className="text-[16px] font-semibold text-saf-text mt-0.5">{item.name}</div>
-          <p className="text-[12.5px] text-saf-muted mt-1.5 leading-relaxed">{note}</p>
-          <p className="text-[12.5px] text-saf-text mt-2 font-medium">{action}</p>
+          <div className="text-[14px] font-medium text-saf-text">{item.name}</div>
+          <div className="text-[11.5px] text-saf-muted mt-0.5">{item.category} · ₹{item.price}</div>
         </div>
-        <Sparkline
-          data={item.spark}
-          width={72}
-          height={34}
-          stroke={positive ? '#2E7D4F' : '#C0342B'}
-        />
+        <div className="text-end shrink-0">
+          <div className={`text-[20px] font-semibold tabular-nums ${none ? 'text-saf-muted' : 'text-saf-text'}`}>
+            {item.mentionCount}
+          </div>
+          <div className="text-[11px] text-saf-muted">{item.mentionCount === 1 ? 'mention' : 'mentions'}</div>
+        </div>
       </div>
-    </Card>
-  );
-}
 
-// Diverging sentiment bar on a [-1, +1] scale. The centre line is zero, so a
-// dish sitting just below neutral reads visibly differently from one that is
-// genuinely disliked — which a 0-100% bar would flatten.
-function SentimentBar({ value }) {
-  const v = Math.max(-1, Math.min(1, value));
-  const pct = Math.abs(v) * 50;
-  const positive = v >= 0;
-  return (
-    <div className="flex items-center gap-2">
-      <div className="relative flex-1 min-w-[80px] h-2.5 rounded-full bg-saf-light" role="img" aria-label={`Sentiment ${v.toFixed(2)} on a scale of minus one to one`}>
-        <span className="absolute inset-y-0 left-1/2 w-px bg-saf-border" aria-hidden="true" />
-        <span
-          className="absolute inset-y-0 rounded-full"
-          style={{
-            left: positive ? '50%' : `${50 - pct}%`,
-            width: `${pct}%`,
-            background: positive ? '#2E7D4F' : '#C0342B',
-          }}
-          aria-hidden="true"
-        />
-      </div>
-      <span className="w-10 text-end text-[12px] tabular-nums text-saf-text">{v.toFixed(2)}</span>
+      {none ? (
+        /* ZERO IS A FINDING, NOT A BLANK. Four of the eight dishes sit here,
+           including the flagship that claimed 412. It is stated in a sentence
+           rather than as a dash or a bare 0, because "measured at zero" and
+           "nobody said anything" read identically as a numeral and are
+           different facts — the trap CLAUDE.md §11 opens with. */
+        <div className="mt-2.5 flex items-start gap-2 p-2.5 rounded-lg bg-saf-surface border border-saf-border">
+          <Icon name="Info" size={13} className="text-saf-muted mt-0.5 shrink-0" />
+          <p className="text-[11.5px] text-saf-muted leading-relaxed">
+            No guest has named this dish in the text we can see. That is a finding about the
+            conversation, not about the dish — it may still be selling well. It means nobody
+            wrote its name in a review, a comment or a message we hold.
+          </p>
+        </div>
+      ) : (
+        <ul className="mt-2.5 space-y-2">
+          {item.mentions.map((m, i) => <MentionQuote key={i} mention={m} />)}
+        </ul>
+      )}
     </div>
   );
 }
 
-// Signed change, with an arrow glyph as well as colour so direction never
-// depends on hue alone.
-function DeltaText({ value, decimals = 0, suffix = '' }) {
-  const v = Number(value) || 0;
-  const flat = Math.abs(v) < (decimals ? 0.005 : 0.5);
-  const tone = flat ? 'text-saf-muted' : v > 0 ? 'text-emerald-700' : 'text-rose-700';
+// The guest's sentence, with the matched words marked inside it so a reader
+// can see exactly what was counted and disagree with it.
+function MentionQuote({ mention }) {
+  const { quote, start, end, source } = mention;
+  const before = quote.slice(0, start);
+  const hit = quote.slice(start, end);
+  const after = quote.slice(end);
+  const KIND = { review: 'Review', comment: 'Comment', dm: 'Direct message' };
   return (
-    <span className={`inline-flex items-center gap-0.5 justify-end tabular-nums text-[12.5px] font-medium ${tone}`}>
-      {!flat && <Icon name={v > 0 ? 'ArrowUp' : 'ArrowDown'} size={12} />}
-      {v > 0 ? '+' : ''}{v.toFixed(decimals)}{suffix}
-    </span>
+    <li className="ps-3 border-s-2 border-saf-primary/40">
+      <p className="text-[12.5px] text-saf-text leading-relaxed">
+        “{before}<mark className="bg-saf-light text-saf-text font-semibold rounded px-0.5">{hit}</mark>{after}”
+      </p>
+      <div className="text-[11px] text-saf-muted mt-1 flex items-center gap-1.5 flex-wrap">
+        <span className="font-medium text-saf-text">{source.author || 'A guest'}</span>
+        <span aria-hidden="true">·</span>
+        <span>{KIND[source.kind] || source.kind}</span>
+        {source.channel && PLATFORM_BY_ID[source.channel] && (
+          <>
+            <span aria-hidden="true">·</span>
+            <span>{PLATFORM_BY_ID[source.channel].name}</span>
+          </>
+        )}
+        {source.saidAt && (
+          <>
+            <span aria-hidden="true">·</span>
+            <span>{fmtTime(source.saidAt, { withDate: true })}</span>
+          </>
+        )}
+        {/* Where it came from, so the quote is traceable rather than floating. */}
+        <span aria-hidden="true">·</span>
+        <span className="font-mono text-[10.5px]">{source.sourceId}</span>
+      </div>
+    </li>
   );
 }
 

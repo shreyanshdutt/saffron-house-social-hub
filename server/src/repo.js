@@ -8,7 +8,7 @@ import { velocityFromSeries, changeFromSeries, newestWith } from './derive.js';
 import { nowIso } from './db.js';
 import { summarisePost, normaliseChannel, PUBLISHABLE_CHANNELS, CLIENT_ID_BY_CHANNEL } from './posts.js';
 import { publishPlan, callAdapter } from './publish-adapters.js';
-import { buildDishIndex } from './dish-matcher.js';
+import { buildDishIndex, findDishMentions } from './dish-matcher.js';
 
 // "Do we hold Business Discovery content for this establishment." Keyed on the
 // DATA being present, not on the `source` label: the seed writes its
@@ -645,4 +645,69 @@ export function listMenuItems(db) {
 export function dishIndex(db) {
   const rows = db.prepare(`SELECT alias, menu_item_id FROM menu_item_aliases`).all();
   return buildDishIndex(rows.map(r => ({ alias: r.alias, menuItemId: r.menu_item_id })));
+}
+
+// Every guest fragment, as evidence-bearing source text.
+export function listGuestTexts(db) {
+  return db.prepare(
+    `SELECT id, kind, body, author, channel, said_at, source_kind, source_id
+       FROM guest_texts ORDER BY said_at DESC, id`
+  ).all().map(r => ({
+    id: r.id, kind: r.kind, body: r.body, author: r.author, channel: r.channel,
+    saidAt: r.said_at, sourceKind: r.source_kind, sourceId: r.source_id,
+  }));
+}
+
+// THE ANSWER THE MENU SCREEN ASKS FOR: every dish, how many times a guest
+// named it, and the sentences they named it in.
+//
+// The count is derived HERE, from the stored corpus, every time it is asked
+// for — it is not a column. A stored count would immediately begin disagreeing
+// with the text it came from, which is exactly the failure `mentions7d: 412`
+// represents: a number with no way back to its evidence.
+//
+// A dish with no mentions comes back with `count: 0` and an EMPTY evidence
+// array, and that is a real answer about the corpus, not a missing one. The
+// screen says so in words.
+export function menuWithMentions(db) {
+  const items = listMenuItems(db);
+  const index = dishIndex(db);
+  const corpus = listGuestTexts(db);
+
+  const byItem = new Map(items.map(i => [i.id, []]));
+  for (const frag of corpus) {
+    const source = {
+      id: frag.id, kind: frag.kind, author: frag.author,
+      channel: frag.channel, saidAt: frag.saidAt,
+      sourceKind: frag.sourceKind, sourceId: frag.sourceId,
+    };
+    for (const m of findDishMentions(frag.body, index, source)) {
+      if (byItem.has(m.menuItemId)) byItem.get(m.menuItemId).push(m);
+    }
+  }
+
+  return {
+    corpus: {
+      fragments: corpus.length,
+      characters: corpus.reduce((n, f) => n + f.body.length, 0),
+      // Stated so a screen can explain why the numbers are small without
+      // anyone having to guess at the denominator.
+      kinds: corpus.reduce((a, f) => ({ ...a, [f.kind]: (a[f.kind] || 0) + 1 }), {}),
+    },
+    items: items.map(item => {
+      const mentions = byItem.get(item.id) || [];
+      return {
+        ...item,
+        mentionCount: mentions.length,
+        mentions: mentions.map(m => ({
+          matchedText: m.matchedText,
+          alias: m.alias,
+          quote: m.quote,
+          start: m.start,
+          end: m.end,
+          source: m.source,
+        })),
+      };
+    }).sort((a, b) => b.mentionCount - a.mentionCount || a.name.localeCompare(b.name)),
+  };
 }

@@ -54,6 +54,12 @@ const SERVER = {
   // actually refreshes it. Part 3 moves History, Calendar and Approvals onto
   // this array; part 2 only writes to it.
   posts: [],
+  // The menu with REAL mention counts and the guest sentences behind them.
+  // `menuCorpus` travels with it so the screen can say how much text the
+  // counts were drawn from — a count of 2 means something different over 31
+  // fragments than over 31,000, and the screen must be able to say which.
+  menu: [],
+  menuCorpus: null,
   // The window below which a delta cannot be scaled. Served, not hardcoded:
   // the rule lives in server/src/derive.js and the copy on screen explains it,
   // so the two must not be able to disagree.
@@ -118,17 +124,20 @@ async function loadServerData({ force = false } = {}) {
   SERVER.error = null;
   notify();
   try {
-    const [ests, comps, conns, posts] = await Promise.all([
+    const [ests, comps, conns, posts, menu] = await Promise.all([
       getJson(`/establishments${filterQuery(SERVER.filters)}`),
       getJson('/competitors'),
       getJson('/connections'),
       getJson('/posts'),
+      getJson('/menu'),
     ]);
     SERVER.establishments = ests.establishments;
     SERVER.competitors = comps.competitors;
     SERVER.connections = conns.connections;
     SERVER.self = comps.self;
     SERVER.posts = posts.posts;
+    SERVER.menu = menu.items;
+    SERVER.menuCorpus = menu.corpus;
     if (Number.isFinite(comps.minWindowDays)) SERVER.minWindowDays = comps.minWindowDays;
     SERVER.lastSyncedAt = comps.lastSyncedAt || null;
     SERVER.status = 'ready';
@@ -142,6 +151,8 @@ async function loadServerData({ force = false } = {}) {
     SERVER.competitors = [];
     SERVER.connections = [];
     SERVER.posts = [];
+    SERVER.menu = [];
+    SERVER.menuCorpus = null;
     SERVER.self = null;
     SERVER.status = 'error';
     SERVER.error = err.message || String(err);

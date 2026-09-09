@@ -53,13 +53,14 @@ const REQUIRED_CHECK_VALUES = [
   { table: 'posts', column: 'state', values: ['draft', 'scheduled', 'sending', 'attempted'] },
   { table: 'post_targets', column: 'status', values: ['pending', 'published', 'failed', 'skipped'] },
   { table: 'post_targets', column: 'failure_kind', values: ['never_connected', 'expired', 'revoked', 'not_implemented'] },
+  { table: 'guest_texts', column: 'kind', values: ['review', 'comment', 'dm'] },
 ];
 
 // Tables added after a database may already have been created. CREATE TABLE IF
 // NOT EXISTS does create these, so this is belt-and-braces — but a table that
 // silently does not exist is the same failure mode as a stale CHECK, and the
 // endpoint reading it would return an empty list rather than an error.
-const REQUIRED_TABLES = ['establishments', 'establishment_social', 'tracked', 'observations', 'connections', 'scans', 'posts', 'post_targets', 'menu_items', 'menu_item_aliases'];
+const REQUIRED_TABLES = ['establishments', 'establishment_social', 'tracked', 'observations', 'connections', 'scans', 'posts', 'post_targets', 'menu_items', 'menu_item_aliases', 'guest_texts'];
 
 export function assertSchemaCurrent(db) {
   const stale = [];

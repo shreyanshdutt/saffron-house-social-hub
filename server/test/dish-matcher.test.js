@@ -210,3 +210,109 @@ test('re-seeding does not duplicate menu items or aliases', async () => {
   assert.equal(repo.listMenuItems(db).length, 8);
   assert.equal(repo.dishIndex(db).byAlias.size, 23);
 });
+
+// --- the corpus and the served menu -----------------------------------------
+
+test('the guest corpus seeds, and holds ONLY what a guest wrote', () => {
+  const db = seededDb();
+  const corpus = repo.listGuestTexts(db);
+  assert.equal(corpus.length, 31);
+  assert.deepEqual([...new Set(corpus.map(c => c.kind))].sort(), ['comment', 'dm', 'review']);
+
+  // Listening signals are absent by design: sig-022 is the product's own
+  // fabricated metric written as prose, and counting it would be the system
+  // citing its own invented number as evidence for itself.
+  assert.equal(corpus.some(c => /sentiment back above/i.test(c.body)), false);
+  assert.equal(corpus.some(c => c.id.includes('sig')), false);
+
+  // Our own replies are not guests mentioning our food.
+  assert.equal(corpus.some(c => /@Sneha Iyer seven of the twelve plates/.test(c.body)), false,
+    'the brand comment must be excluded');
+});
+
+test('every fragment can be traced back to the thing it came from', () => {
+  for (const c of repo.listGuestTexts(seededDb())) {
+    assert.ok(c.sourceKind, `${c.id} has no sourceKind`);
+    assert.ok(c.sourceId, `${c.id} has no sourceId`);
+    assert.ok(c.body && c.body.trim().length, `${c.id} is empty`);
+  }
+});
+
+test('THE REAL COUNTS: six mentions across eight dishes, four of them zero', () => {
+  const { items, corpus } = repo.menuWithMentions(seededDb());
+  assert.equal(items.length, 8);
+  assert.equal(items.reduce((n, i) => n + i.mentionCount, 0), 6);
+
+  const by = Object.fromEntries(items.map(i => [i.id, i.mentionCount]));
+  assert.deepEqual(by, {
+    'mi-1': 0,   // Galouti Kebab — claimed 412, named by no guest
+    'mi-2': 1,   // Awadhi Biryani — claimed 318
+    'mi-3': 1,   // Kathal Galouti — claimed 196
+    'mi-4': 2,   // Corn & Chilli Pakora — claimed 174
+    'mi-5': 0,   // Paneer Tikka Masala — claimed 148
+    'mi-6': 2,   // Ginger-Jaggery Kheer — claimed 132
+    'mi-7': 0,   // Kashmiri Morel Pulao — claimed 88
+    'mi-8': 0,   // Butter Chicken — claimed 84
+  });
+  assert.equal(corpus.fragments, 31);
+});
+
+test('a zero-mention dish returns count 0 with an EMPTY evidence list, not a missing one', () => {
+  const { items } = repo.menuWithMentions(seededDb());
+  const galouti = items.find(i => i.id === 'mi-1');
+  assert.equal(galouti.mentionCount, 0);
+  assert.deepEqual(galouti.mentions, [], 'an answer about the corpus, not an absent field');
+  assert.equal(galouti.name, 'Galouti Kebab');
+  assert.equal(galouti.price, 495, 'the dish is still a dish — name, category and price are real');
+});
+
+test('every mention carries a quotable sentence and a way back to its source', () => {
+  const { items } = repo.menuWithMentions(seededDb());
+  for (const item of items) {
+    for (const m of item.mentions) {
+      assert.ok(m.quote.length > 10, 'the sentence a screen shows');
+      assert.equal(m.quote.slice(m.start, m.end), m.matchedText, 'offsets index the quote');
+      assert.ok(m.source.sourceId, 'traceable back to the review or conversation');
+      assert.ok(['review', 'comment', 'dm'].includes(m.source.kind));
+    }
+  }
+  const kheer = items.find(i => i.id === 'mi-6');
+  assert.equal(kheer.mentionCount, 2);
+  assert.deepEqual(kheer.mentions.map(m => m.matchedText), ['kheer', 'kheer']);
+  assert.deepEqual([...new Set(kheer.mentions.map(m => m.source.kind))].sort(), ['comment', 'dm']);
+});
+
+test('NOTHING SERVED CARRIES A SENTIMENT FIELD', () => {
+  const { items } = repo.menuWithMentions(seededDb());
+  for (const item of items) {
+    for (const banned of ['sentiment', 'sentimentDelta', 'mentions7d', 'mentionsChange7dPct',
+                          'spark', 'isMoment', 'topPraise', 'topComplaint']) {
+      assert.equal(banned in item, false, `${item.id} must not carry '${banned}'`);
+    }
+  }
+});
+
+test('GET /menu serves the items, the evidence and the corpus size', async () => {
+  const { createServer } = await import('../src/http.js');
+  const server = createServer(seededDb());
+  await new Promise(r => server.listen(0, '127.0.0.1', r));
+  try {
+    const res = await fetch(`http://127.0.0.1:${server.address().port}/menu`);
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.items.length, 8);
+    assert.equal(body.corpus.fragments, 31);
+    assert.equal(body.items.reduce((n, i) => n + i.mentionCount, 0), 6);
+    const top = body.items[0];
+    assert.equal(top.mentionCount, 2, 'sorted by mention count, most first');
+    assert.ok(top.mentions[0].quote);
+  } finally {
+    server.close();
+  }
+});
+
+test('assertSchemaCurrent catches a database created before the corpus table', () => {
+  const db = migrate(openDb(':memory:'));
+  db.exec('DROP TABLE guest_texts');
+  assert.throws(() => assertSchemaCurrent(db), /table guest_texts does not exist/);
+});

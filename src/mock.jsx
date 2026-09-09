@@ -574,80 +574,35 @@ const REVIEW_STATS = {
   trend12w: [4.6, 4.6, 4.5, 4.6, 4.5, 4.5, 4.4, 4.5, 4.4, 4.3, 4.3, 4.3],
 };
 
-// --- Menu item sentiment -----------------------------------------------------
-// FULLY DERIVED — and the most defensible screen in the product precisely
-// because of that. No platform offers per-dish sentiment; you build it by
-// running entity extraction against YOUR menu over guest text the APIs do
-// return (Google review comments, Instagram comments and captions you are
-// mentioned in), then aggregating with your own sales data.
+// --- Menu ---------------------------------------------------------------------
+// Entity extraction against YOUR menu over the guest text the APIs do return
+// (Google review comments, Instagram comments, inbound DMs) is real and is now
+// built — server/src/dish-matcher.js. What was never real was the SENTIMENT
+// layer on top of it, and this block used to describe both as though they were
+// the same achievement.
 //
-// `name`, `category` and `price` come from your menu system. `mentions7d`,
-// `sentiment` and the theme strings are your classification output.
+// The menu. Name, category and price — the three facts about a dish that are
+// actually true and that the server's `menu_items` seed is generated from.
+//
+// WHAT WAS HERE AND IS NOT ANY MORE: mentions7d, mentionsChange7dPct,
+// sentiment, sentimentDelta, spark, isMoment, topPraise and topComplaint. All
+// invented. `mentions7d: 412` for the Galouti Kebab was counted from a guest
+// corpus of 3.5 KB, which cannot produce it; the real figure, matched over
+// that same text, is ZERO. "Repeatedly called the best in Delhi" was a
+// sentence no guest wrote.
+//
+// Mention counts and the quotes behind them are now served from the database
+// and derived per request — see server/src/repo.js menuWithMentions(). There
+// is no sentiment anywhere, by owner decision of 2026-09-09.
 const MENU_ITEMS = [
-  {
-    id: 'mi-1', name: 'Galouti Kebab', category: 'Small plates', price: 495,
-    mentions7d: 412, mentionsChange7dPct: 68, sentiment: 0.81, sentimentDelta: 0.06,
-    spark: [140, 165, 188, 210, 268, 344, 412],
-    topPraise: 'Texture and spice balance — repeatedly called the best in Delhi',
-    topComplaint: 'Portion size at ₹495 questioned by a minority',
-    isMoment: true,
-  },
-  {
-    id: 'mi-2', name: 'Awadhi Biryani', category: 'Mains', price: 645,
-    mentions7d: 318, mentionsChange7dPct: 22, sentiment: 0.74, sentimentDelta: 0.02,
-    spark: [240, 252, 261, 274, 288, 302, 318],
-    topPraise: 'The 40-a-day cap reads as a quality signal, not a limitation',
-    topComplaint: 'Sells out before 9pm on weekends',
-    isMoment: false,
-  },
-  {
-    id: 'mi-3', name: 'Kathal Galouti', category: 'Small plates', price: 395,
-    mentions7d: 196, mentionsChange7dPct: 118, sentiment: 0.86, sentimentDelta: 0.11,
-    spark: [42, 58, 71, 96, 128, 162, 196],
-    topPraise: 'Vegetarians reporting meat-eaters cannot tell the difference',
-    topComplaint: 'Not obvious on the menu — guests ask whether it exists',
-    isMoment: true,
-  },
-  {
-    id: 'mi-4', name: 'Corn & Chilli Pakora', category: 'Monsoon menu', price: 285,
-    mentions7d: 174, mentionsChange7dPct: 240, sentiment: 0.78, sentimentDelta: 0.14,
-    spark: [12, 18, 31, 58, 94, 138, 174],
-    topPraise: 'The saffron chutney is doing most of the work and people know it',
-    topComplaint: 'Only on the menu while the monsoon menu runs',
-    isMoment: true,
-  },
-  {
-    id: 'mi-5', name: 'Paneer Tikka Masala', category: 'Mains', price: 525,
-    mentions7d: 148, mentionsChange7dPct: -8, sentiment: 0.12, sentimentDelta: -0.19,
-    spark: [188, 181, 174, 170, 162, 154, 148],
-    topPraise: 'Consistent, safe order for mixed tables',
-    topComplaint: 'Repeatedly called "hotel standard" and over-priced for what it is',
-    isMoment: true,
-  },
-  {
-    id: 'mi-6', name: 'Ginger-Jaggery Kheer', category: 'Desserts', price: 245,
-    mentions7d: 132, mentionsChange7dPct: 84, sentiment: 0.83, sentimentDelta: 0.08,
-    spark: [38, 46, 58, 72, 94, 112, 132],
-    topPraise: 'Named unprompted in anniversary and celebration bookings',
-    topComplaint: 'Only available with the monsoon menu',
-    isMoment: false,
-  },
-  {
-    id: 'mi-7', name: 'Kashmiri Morel Pulao', category: 'Monsoon menu', price: 845,
-    mentions7d: 88, mentionsChange7dPct: 46, sentiment: 0.58, sentimentDelta: 0.03,
-    spark: [32, 38, 44, 51, 62, 74, 88],
-    topPraise: 'Treated as the "occasion" dish; strong photo performance',
-    topComplaint: 'Price resistance at ₹845 in comments',
-    isMoment: false,
-  },
-  {
-    id: 'mi-8', name: 'Butter Chicken', category: 'Mains', price: 565,
-    mentions7d: 84, mentionsChange7dPct: -22, sentiment: -0.14, sentimentDelta: -0.26,
-    spark: [142, 132, 124, 112, 102, 92, 84],
-    topPraise: 'Regulars defend it as deliberately less sweet than the Delhi norm',
-    topComplaint: 'New guests expecting the sweeter standard are disappointed',
-    isMoment: true,
-  },
+  { id: 'mi-1', name: 'Galouti Kebab', category: 'Small plates', price: 495 },
+  { id: 'mi-2', name: 'Awadhi Biryani', category: 'Mains', price: 645 },
+  { id: 'mi-3', name: 'Kathal Galouti', category: 'Small plates', price: 395 },
+  { id: 'mi-4', name: 'Corn & Chilli Pakora', category: 'Monsoon menu', price: 285 },
+  { id: 'mi-5', name: 'Paneer Tikka Masala', category: 'Mains', price: 525 },
+  { id: 'mi-6', name: 'Ginger-Jaggery Kheer', category: 'Desserts', price: 245 },
+  { id: 'mi-7', name: 'Kashmiri Morel Pulao', category: 'Monsoon menu', price: 845 },
+  { id: 'mi-8', name: 'Butter Chicken', category: 'Mains', price: 565 },
 ];
 
 // --- Analytics ---------------------------------------------------------------

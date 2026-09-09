@@ -382,3 +382,41 @@ CREATE TABLE IF NOT EXISTS menu_item_aliases (
 );
 
 CREATE INDEX IF NOT EXISTS menu_item_aliases_item ON menu_item_aliases (menu_item_id);
+
+-- ---------------------------------------------------------------------------
+-- guest_texts
+--
+-- Everything a GUEST wrote, frozen from src/mock.jsx the way posts were in
+-- 849c3b7. This is the corpus a dish mention is counted from, and the evidence
+-- a screen quotes back — so it has to live where the counting happens.
+--
+-- WHAT IS DELIBERATELY NOT HERE: LISTENING_SIGNALS. `sig-022` reads "Kathal
+-- galouti sentiment back above 0.8". That is the product's OWN fabricated
+-- metric written as prose, and counting it as a guest mentioning a dish would
+-- have the system quoting its own invented number back as evidence for itself.
+-- Guest text means reviews, guest comments and inbound DMs — things a person
+-- outside the restaurant actually typed. Our own replies are excluded for the
+-- same reason: us naming our dish is not a guest mentioning it.
+CREATE TABLE IF NOT EXISTS guest_texts (
+  id                  TEXT PRIMARY KEY,
+
+  --   review  — a public review left on a channel
+  --   comment — a comment under one of our posts
+  --   dm      — an inbound direct message
+  kind                TEXT NOT NULL CHECK (kind IN ('review', 'comment', 'dm')),
+
+  body                TEXT NOT NULL,
+  author              TEXT,
+  channel             TEXT,             -- 'gg' | 'ig' | 'wa', as the client names them
+  said_at             TEXT,
+
+  -- Which review or conversation this came from, so a screen showing the quote
+  -- can send someone back to the thing itself rather than to a floating
+  -- sentence. Evidence that cannot be traced is not much better than a number.
+  source_kind         TEXT,             -- 'review' | 'post_comment' | 'conversation'
+  source_id           TEXT,
+
+  is_sample           INTEGER NOT NULL DEFAULT 0 CHECK (is_sample IN (0, 1))
+);
+
+CREATE INDEX IF NOT EXISTS guest_texts_kind_time ON guest_texts (kind, said_at);
