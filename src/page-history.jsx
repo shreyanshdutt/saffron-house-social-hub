@@ -196,7 +196,6 @@ function PostDetailDrawer({ post, onClose }) {
               className="w-full min-h-[70px] resize-none text-[13px] bg-transparent text-saf-text"
             />
             <div className="flex items-center justify-end gap-2">
-              <Button variant="ghost" size="sm" leadingIcon="Sparkles">AI assist</Button>
               <Button variant="primary" size="sm" leadingIcon="Send" disabled={!reply.trim()} onClick={() => { toast.push({ title: 'Reply sent' }); setReply(''); setReplyTo(null); }}>{t.history.send}</Button>
             </div>
           </div>

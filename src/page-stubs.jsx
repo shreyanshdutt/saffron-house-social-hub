@@ -135,7 +135,7 @@ function BrandKitPage() {
       <div className="flex items-end justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-saf-text">Brand Kit</h1>
-          <p className="text-sm text-saf-muted mt-1">Logos, colours and approved copy passed to every composer + AI prompt.</p>
+          <p className="text-sm text-saf-muted mt-1">Logos, colours and approved copy for whoever writes a post.</p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="secondary" leadingIcon="Download">Export pack</Button>

@@ -132,7 +132,6 @@ page-listening-menu.jsx                                   ┘ TrendsScreen / Com
 page-establishments.jsx                                     by bare name
 page-recommendations.jsx
 page-listening.jsx        the shell                       — after its five sub-screens
-ai-assistant.jsx
 app.jsx           <App />, PageRouter, PAGE_PERMS         — LAST
 ```
 

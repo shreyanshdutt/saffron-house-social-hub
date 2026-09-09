@@ -10,7 +10,6 @@ function MessagesPage({ role }) {
   const [conversations, setConversations] = React.useState(CONVERSATIONS);
   const [reply, setReply] = React.useState('');
   const [templatesOpen, setTemplatesOpen] = React.useState(false);
-  const [aiBusy, setAiBusy] = React.useState(false);
   const [unmaskedFor, setUnmaskedFor] = React.useState({}); // { [convId]: true }
   const threadEndRef = React.useRef(null);
 
@@ -47,26 +46,6 @@ function MessagesPage({ role }) {
     }));
     setReply('');
     toast.push({ title: 'Reply sent' });
-  };
-
-  // AI assist (Claude)
-  const aiAssist = async () => {
-    if (!active) return;
-    setAiBusy(true);
-    const userMsgs = active.messages.filter(m => m.from === 'user').map(m => m.text).join('\n');
-    try {
-      const text = await window.claude.complete({
-        messages: [
-          { role: 'user', content:
-            `You write guest replies for Saffron House, a modern-Indian restaurant in Sector 10 Market, Dwarka. Write a warm, concise reply (2-3 sentences max) to the following guest message on ${PLATFORM_BY_ID[active.platform].name}.\n\nBe specific and human, never corporate. If the guest has a problem, acknowledge it plainly and give a concrete next step rather than an apology template. Never promise a refund or a comp — that is the Marketing Manager's call. Do not use quotation marks.\n\nGuest message:\n${userMsgs}` },
-        ],
-      });
-      setReply(prev => (prev ? prev + '\n\n' : '') + text.trim());
-    } catch (e) {
-      toast.push({ title: 'AI assist unavailable', kind: 'error' });
-    } finally {
-      setAiBusy(false);
-    }
   };
 
   return (
@@ -240,14 +219,6 @@ function MessagesPage({ role }) {
                   <Tooltip label={t.messages.attach} side="top"><button className="w-8 h-8 rounded-lg text-saf-muted hover:bg-saf-light hover:text-saf-text grid place-items-center"><Icon name="Paperclip" size={16} /></button></Tooltip>
                   <button onClick={() => setTemplatesOpen(o => !o)} className={`h-8 px-2 inline-flex items-center gap-1 rounded-lg text-[12px] transition ${templatesOpen ? 'bg-saf-light text-saf-primary' : 'text-saf-muted hover:bg-saf-light hover:text-saf-text'}`}>
                     <Icon name="ClipboardList" size={14} />{t.messages.templates}
-                  </button>
-                  <button
-                    onClick={aiAssist}
-                    disabled={aiBusy}
-                    className="h-8 px-2 inline-flex items-center gap-1 rounded-lg text-[12px] text-saf-primary hover:bg-saf-light transition"
-                  >
-                    <Icon name={aiBusy ? 'Loader2' : 'Sparkles'} size={14} className={aiBusy ? 'animate-spin' : ''} />
-                    {t.messages.ai}
                   </button>
                   <div className="ltr:ml-auto rtl:mr-auto flex items-center gap-2">
                     <span className="text-[11px] text-saf-muted tabular-nums">{reply.length}/{PLATFORM_BY_ID[active.platform].dmLimit}</span>

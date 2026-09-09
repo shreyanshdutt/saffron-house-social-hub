@@ -72,11 +72,6 @@ function App() {
     if (next !== 'compose') setComposerInitial(null);
   };
 
-  const handleCopyToComposer = (text) => {
-    setComposerInitial(text);
-    setPage('compose');
-  };
-
   const handleOpenPost = (post) => {
     setOpenedPost(post);
     setPage('approvals');
@@ -119,8 +114,6 @@ function App() {
             </main>
           </div>
 
-          {/* Floating AI assistant */}
-          <AIAssistant onCopyToComposer={handleCopyToComposer} />
         </div>
       </ToastProvider>
     </AppCtx.Provider>

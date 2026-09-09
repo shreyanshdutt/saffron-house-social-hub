@@ -199,7 +199,6 @@ src/             JSX modules, loaded in dependency order by index.html.
   recommend.jsx  Recommendation engine — rules, scoring, provenance
   page-*.jsx     One file per screen
   page-listening*.jsx  Listening shell + 5 sub-screens
-  ai-assistant.jsx     Floating AI assistant
   app.jsx        Root <App /> (mounted by the bootstrap block in index.html)
 ```
 

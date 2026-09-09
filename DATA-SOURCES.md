@@ -44,8 +44,8 @@ to `views` in recent versions). Pin an API version and budget for migration.
 | Google review text, rating, author, time | GBP Reviews API | API |
 | Replying to a Google review | GBP Reviews API | API |
 | Google Q&A | GBP `questions.answers` | API |
-| Sentiment score | Your own NLP/LLM | Derived |
-| Themes (`wait time`, `packaging`) | Your own NLP/LLM | Derived |
+| Sentiment score | Your own derivation — method not yet chosen | Derived |
+| Themes (`wait time`, `packaging`) | Your own derivation — method not yet chosen | Derived |
 | SLA clock, response rate | Your own system | Own |
 
 **There is no review webhook on Google.** You poll. Sub-hour freshness is
@@ -91,9 +91,18 @@ build:
 Price, category and the item list come from your own menu system. Mention
 counts and sentiment are derived. Nothing here is fetched.
 
-This is genuinely achievable with an LLM classification pass over text you
-already hold, and it is the part of the product a competitor cannot trivially
-copy — because it depends on your menu and your sales data, not on public APIs.
+This is genuinely achievable over text you already hold, and it is the part of
+the product a competitor cannot trivially copy — because it depends on your
+menu and your sales data, not on public APIs.
+
+**The method is deterministic, and it is NOT YET CHOSEN.** The owner ruled on
+2026-09-09 that these derivations run as algorithms over data we hold — string
+matching against the canonical dish list, a sentiment lexicon — rather than as
+model calls. What exactly that looks like is undecided, and this document does
+not name an approach it does not have: an invented algorithm name here would
+read as a decision to whoever builds it. What IS decided is the shape of the
+answer — every derived figure still has to be traceable to the text it came
+from, the same standard the rest of this document holds fetched data to.
 
 ### Listening (`LISTENING_SIGNALS`, `LISTENING_TRENDS`, `LISTENING_KPIS`)
 
