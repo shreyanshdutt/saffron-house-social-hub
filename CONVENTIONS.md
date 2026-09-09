@@ -492,27 +492,76 @@ closing an item, not follow-up work.**
     commit
 
 
+27. **Five of the six post read sites moved to the server; `SCHEDULED` is
+    gone.** `page-dashboard.jsx` (three sites), `page-analytics.jsx`,
+    `page-scheduled.jsx` and `recommend.jsx` now read `SERVER.posts` through an
+    adapter in `api.jsx`, and all four screens are gated behind
+    `<RequiresServerData>` so an unreachable service reads as unreachable
+    rather than as a restaurant that has published nothing.
+
+    **The shape change was the work, not the plumbing.** "Published posts" was
+    a filter on a post field and is now a question about targets, answered by
+    `summary.outcome` server-side — nothing client-side recomputes it. Metrics
+    were never the post's: every seeded post carried `metricsFrom: 'ig'` while
+    three went to two channels, so `postMetrics()` sums only targets that HAVE
+    figures, reports which channels they cover, and returns null rather than a
+    bag of zeroes when none does. A rate is not summed at all: with one
+    measured channel it is that channel's, and with more there is no honest
+    single number, so it is absent.
+
+    The Dashboard's reach KPI carried an invented `delta="+12%"`. It now says
+    what the figure covers — "from Instagram" — or, when a post published today
+    has no measured target, "N of M posts measured", because a partial total
+    presented as a complete one is the same lie in arithmetic.
+
+    `recommend.jsx` keeps running synchronously inside `RequiresServerData`
+    (`page-recommendations.jsx`:23), which was checked rather than assumed —
+    `generateRecommendations()` has exactly one caller and it is inside the
+    gate. Two rules that branched on the old `status` now read `outcome`, and a
+    third was corrected to ask what it actually needed: it wants a MEASURED
+    post, not a published one, and the status check was always a proxy for
+    that. A `mixed` post is deliberately not swept into "this channel is not
+    publishing" — that is a different claim from "one of two channels refused".
+
+    `SCHEDULED` is deleted from `mock.jsx` and from its window export; nothing
+    in `src/` references it. **`POSTS` survives for `page-approvals.jsx` alone**
+    — see the open entry below. — closed in this commit
+
+
 #### Open
 
-1. **`POSTS` and `SCHEDULED` now exist in two places, and will until part 3.**
-   This commit moved the post lifecycle to the server — `posts` and
-   `post_targets`, seeded from `src/mock.jsx` frozen at `03c0471` — but
-   deliberately did NOT touch `src/`, so the client constants are still there
-   and still what every screen reads. Nothing is broken and nothing disagrees
-   yet, because the server copy has no client reader.
+1. **`POSTS` survives in `mock.jsx` for `page-approvals.jsx` alone, and moving
+   it needs an owner decision first.** Part 3 stopped on that screen rather
+   than guessing, per its own instruction.
 
-   **It will disagree the moment either side is edited alone.** The same
-   duplication existed for establishments between the schema commit and
-   `432ebc0`, and it was closed by deleting the client copy rather than by
-   syncing the two. Part 3 does that here: `page-dashboard.jsx`,
-   `page-analytics.jsx`, `page-scheduled.jsx`, `page-approvals.jsx` and
-   `recommend.jsx` all read `POSTS` or `SCHEDULED` and move to `api.jsx`, after
-   which both constants come out of `mock.jsx`.
+   **What that screen actually takes from `POSTS` is one row.** Its six tabs
+   are `draft` / `in_review` / `approved` / `sent_back` / `rejected` /
+   `templates`, and the seeded posts carry `published` (5), `failed` (1) and
+   `draft` (1). Only `p7:draft` matches a tab; the other six have never been
+   visible on that screen at all. Everything the workflow tabs show comes from
+   the four rows `APPROVAL_POSTS` invents at `page-approvals.jsx`:58.
 
-   Until then: **edit the seed, not the client array**, and re-seed. A change
-   made only to `mock.jsx` is invisible to the server and will be overwritten
-   when part 3 lands.
+   **The server has no approval state and deliberately did not gain one.**
+   `posts.state` is `draft` / `scheduled` / `sending` / `attempted` — a
+   LIFECYCLE, which is what a post does on its way to a channel. `in_review`,
+   `approved`, `sent_back` and `rejected` are a WORKFLOW between people, and
+   `0d65504` established there is nowhere to record one; that is why all eight
+   controls on that screen are disabled with a panel saying so.
 
+   **The decision, which is the owner's and not an agent's:**
+   - *Build it* — an approval workflow server-side (a state column or a
+     decisions table, plus who decided and why), after which the screen moves
+     over whole and its eight controls can become real. This is the largest of
+     the three and is a product commitment, not a refactor.
+   - *Reduce it* — the screen shows only what exists: drafts and scheduled
+     posts from the server, with the workflow tabs and the four invented rows
+     removed. Honest immediately, and it deletes a demo narrative.
+   - *Leave it* — `POSTS` and the four invented rows stay as declared sample
+     data. Cheapest, and it keeps the duplication this entry exists to track.
+
+   **Until it is decided:** a draft written in the Composer is stored on the
+   server and does NOT appear in the Approvals Draft tab, which still shows the
+   seeded `p7`. That divergence is visible today and is the cost of leaving it.
 
 ## 4. Scope discipline
 

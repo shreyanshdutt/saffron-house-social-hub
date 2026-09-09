@@ -1,6 +1,17 @@
 // Dashboard (home view) — gives an overview before composer.
 
+// GATED, as of part 3. The three post-shaped panels below read the server, so
+// an unreachable service must show as unreachable rather than as a restaurant
+// that published nothing — the same rule Establishments and Competitors follow.
 function DashboardPage({ onNavigate, onOpenPost }) {
+  return (
+    <RequiresServerData what="posts and the schedule">
+      <DashboardPageInner onNavigate={onNavigate} onOpenPost={onOpenPost} />
+    </RequiresServerData>
+  );
+}
+
+function DashboardPageInner({ onNavigate, onOpenPost }) {
   const t = useT();
   const { lang } = React.useContext(AppCtx);
 
@@ -14,9 +25,22 @@ function DashboardPage({ onNavigate, onOpenPost }) {
   // Derived, not hand-written: this strip sits next to the Reviews screen and
   // the two must never disagree about how many reviews are past SLA.
   const pastSla = REVIEW_STATS.unansweredCritical;
-  const reachToday = POSTS
-    .filter(p => p.status === 'published' && p.date.startsWith(TODAY))
-    .reduce((s, p) => s + p.metrics.reach, 0);
+  // REACH TODAY, AND WHAT IT ACTUALLY SUMS.
+  //
+  // It was never "the reach of everything published today": every seeded post
+  // carries metricsFrom 'ig', so the figure has always been Instagram's alone,
+  // and three of those posts also went to Google. Now that metrics live per
+  // target, that is visible instead of implied — `postMetrics()` sums only the
+  // targets that HAVE figures and reports which channels they cover.
+  //
+  // A published post with no measured target contributes nothing rather than a
+  // zero, so `measuredOf` can be smaller than `publishedToday`. When it is, the
+  // strip says so rather than presenting a partial total as a complete one.
+  const publishedToday = publishedPosts().filter(p => p.date && p.date.startsWith(TODAY));
+  const measuredToday = publishedToday.filter(p => p.metrics);
+  const reachToday = measuredToday.reduce((s, p) => s + p.metrics.reach, 0);
+  const reachChannels = [...new Set(measuredToday.flatMap(p => p.metrics.measuredOn))];
+  const reachIsPartial = measuredToday.length < publishedToday.length;
 
   return (
     <div className="space-y-6">
@@ -35,7 +59,16 @@ function DashboardPage({ onNavigate, onOpenPost }) {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <DashKpi label={t.dashboard.todayPosts} value={rating}       icon="Star"           tone="bg-amber-50 text-amber-600"          delta={`${(REVIEW_STATS.avg - REVIEW_STATS.avgPrev).toFixed(1)} vs prev 90d`} format={(v) => v.toFixed(1)} />
         <DashKpi label={t.dashboard.pending}    value={unanswered}   icon="MessageSquare"  tone="bg-rose-50 text-rose-600"            delta={`${pastSla} critical past SLA`} format={(v) => Math.round(v).toString()} />
-        <DashKpi label={t.dashboard.reachToday} value={reachToday}   icon="Eye"            tone="bg-saf-primary/10 text-saf-primary"  delta="+12%" />
+        {/* The delta line says WHAT WAS SUMMED rather than an invented "+12%".
+            These figures cover only the channels that reported them, and when a
+            post published today has no measured target the total is a floor,
+            not a total — so it says that instead of quietly under-reporting. */}
+        <DashKpi label={t.dashboard.reachToday} value={reachToday}   icon="Eye"            tone="bg-saf-primary/10 text-saf-primary"
+          delta={publishedToday.length === 0
+            ? 'nothing published today'
+            : reachIsPartial
+              ? `${measuredToday.length} of ${publishedToday.length} posts measured`
+              : `from ${reachChannels.map(c => PLATFORM_BY_ID[c] ? PLATFORM_BY_ID[c].name : c).join(', ')}`} />
         <DashKpi label={t.dashboard.scheduledN} value={coversBooked} icon="CalendarClock"  tone="bg-emerald-50 text-emerald-600"      delta="of 140 seats" format={(v) => Math.round(v).toString()} />
       </div>
 
@@ -117,7 +150,7 @@ function DashboardPage({ onNavigate, onOpenPost }) {
             <Button variant="ghost" size="sm" trailingIcon="ChevronRight" onClick={() => onNavigate('scheduled')}>View all</Button>
           </div>
           <div className="space-y-2">
-            {SCHEDULED.slice(0, 3).map(s => {
+            {scheduledPosts().slice(0, 3).map(s => {
               const d = new Date(s.when);
               return (
                 <div key={s.id} className="flex items-start gap-3 p-3 rounded-lg border border-saf-border hover:border-saf-primary/30 hover:bg-saf-light/40 transition">
@@ -148,7 +181,11 @@ function DashboardPage({ onNavigate, onOpenPost }) {
             <Button variant="ghost" size="sm" trailingIcon="ChevronRight" onClick={() => onNavigate('history')}>See all</Button>
           </div>
           <div className="space-y-2">
-            {[...POSTS].filter(p => p.status === 'published').sort((a,b) => b.metrics.rate - a.metrics.rate).slice(0, 3).map(p => (
+            {/* Ranked on a rate that only a measured target has, so the list is
+                drawn from posts WITH figures — asking for numbers, not for a
+                status. `measuredPosts()` is that question; a post with no
+                metrics cannot be ranked and is absent rather than last. */}
+            {measuredPosts().filter(p => p.metrics && Number.isFinite(p.metrics.rate)).sort((a,b) => b.metrics.rate - a.metrics.rate).slice(0, 3).map(p => (
               <button
                 key={p.id}
                 onClick={() => onOpenPost(p)}

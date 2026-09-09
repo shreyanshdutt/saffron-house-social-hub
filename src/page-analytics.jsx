@@ -16,7 +16,17 @@
 // Instagram reach to Google impressions to WhatsApp conversations produces a
 // number with no meaning that an owner would nonetheless quote.
 
+// GATED. The Top Posts table reads server posts, so an unreachable service
+// must not render as a restaurant that has published nothing.
 function AnalyticsPage({ onOpenPost }) {
+  return (
+    <RequiresServerData what="post performance">
+      <AnalyticsPageInner onOpenPost={onOpenPost} />
+    </RequiresServerData>
+  );
+}
+
+function AnalyticsPageInner({ onOpenPost }) {
   const t = useT();
   const [range, setRange] = React.useState('7');
   const { theme } = React.useContext(AppCtx);
@@ -461,7 +471,10 @@ function BreakdownChart() {
 function TopPostsTable({ onOpen }) {
   const t = useT();
   const [sort, setSort] = React.useState('rate');
-  const posts = [...POSTS.filter(p => p.status === 'published')]
+  // Posts with measured figures. Sorting by reach or rate is meaningless for a
+  // post that has neither, and treating its absence as 0 would rank it last as
+  // though it had been measured and performed badly.
+  const posts = [...measuredPosts().filter(p => p.metrics)]
     .sort((a, b) => {
       if (sort === 'reach') return b.metrics.reach - a.metrics.reach;
       if (sort === 'date')  return new Date(b.date) - new Date(a.date);

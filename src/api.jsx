@@ -202,6 +202,98 @@ async function clearInstagramHandle(placeId) {
   await loadServerData({ force: true });
 }
 
+// --- reading posts ---------------------------------------------------------
+//
+// The server's shape and the screens' shape differ, and the difference is the
+// whole of 849c3b7's design: `state` on the post is INTENT, `status` on each
+// target is OUTCOME, and metrics live on the target because every seeded post
+// carried `metricsFrom: 'ig'` while three of them went to two channels.
+//
+// This adapter TRANSLATES; it does not DERIVE. Whether a post published is
+// answered by `summary.outcome`, computed once in server/src/posts.js where it
+// is tested — nothing here recomputes it. What is done here is presenting the
+// server's answer under the field names five screens already read.
+
+// Sums the metrics the post ACTUALLY HAS, and says what it summed.
+//
+// A target with no metrics contributes NOTHING and is not counted as a zero —
+// "not measured" and "measured at zero" are different facts, and collapsing
+// them is the trap CLAUDE.md §11 opens with. A post with no measured target at
+// all returns null, not a bag of zeroes.
+function postMetrics(post) {
+  const measured = (post.targets || []).filter(t => t.metrics);
+  if (!measured.length) return null;
+  const sum = (k) => measured.reduce((n, t) => n + (Number.isFinite(t.metrics[k]) ? t.metrics[k] : 0), 0);
+  return {
+    views: sum('views'), reach: sum('reach'), likes: sum('likes'),
+    comments: sum('comments'), shares: sum('shares'), saves: sum('saves'),
+    // A RATE CANNOT BE SUMMED, and averaging two rates over different
+    // denominators is not the rate either. With one measured channel it is
+    // that channel's rate; with more than one there is no honest single number
+    // without the formula, so it is absent and the UI says so.
+    rate: measured.length === 1 ? measured[0].metrics.rate : null,
+    // Which channels these figures actually cover. The drawer already had a
+    // `metricsFrom` field for exactly this, and it was right all along.
+    measuredOn: measured.map(t => t.clientId),
+    measuredCount: measured.length,
+    targetCount: (post.targets || []).length,
+  };
+}
+
+// A server post in the shape the screens read. `outcome` is the server's word
+// and is the field to branch on; `status` is a legacy alias for the drawer in
+// page-history.jsx, which predates all of this.
+function adaptPost(post) {
+  const metrics = postMetrics(post);
+  const failed = (post.targets || []).filter(t => t.status === 'failed');
+  return {
+    id: post.id,
+    content: post.content,
+    tags: post.tags || [],
+    format: post.format,
+    author: post.author,
+    media: post.media,
+    platforms: (post.targets || []).map(t => t.clientId).filter(Boolean),
+    date: post.scheduledAt || post.createdAt,
+    when: post.scheduledAt,
+    state: post.state,
+    outcome: post.summary.outcome,
+    summaryLabel: post.summary.label,
+    status: {
+      published: 'published',
+      failed: 'failed',
+      in_flight: 'sending',
+      not_attempted: post.state === 'scheduled' ? 'scheduled' : 'draft',
+    }[post.summary.outcome] || post.summary.outcome,   // 'mixed' stays 'mixed'
+    metrics,
+    metricsFrom: metrics ? metrics.measuredOn.join(', ') : null,
+    error: failed.length ? failed[0].reason : null,
+    targets: post.targets,
+    isSample: post.isSample,
+  };
+}
+
+// Everything that has been attempted and came back fully published. Screens
+// that show "what went out" want this. A `mixed` post is deliberately NOT here
+// — it did not fully publish, and a list that included it would be making the
+// claim the two-table design exists to prevent.
+function publishedPosts() {
+  return SERVER.posts.filter(p => p.summary.outcome === 'published').map(adaptPost);
+}
+
+// Posts with measured figures, whatever their outcome. This is the honest
+// question behind "top posts": it asks for numbers, not for a status.
+function measuredPosts() {
+  return SERVER.posts.filter(p => p.targets.some(t => t.metrics)).map(adaptPost);
+}
+
+function scheduledPosts() {
+  return SERVER.posts.filter(p => p.state === 'scheduled').map(adaptPost)
+    .sort((a, b) => new Date(a.when) - new Date(b.when));
+}
+
+function allPosts() { return SERVER.posts.map(adaptPost); }
+
 // --- posts -----------------------------------------------------------------
 //
 // The Composer speaks in two-letter channel ids and so does the server's
@@ -358,6 +450,12 @@ window.loadServerData = loadServerData;
 window.trackEstablishment = trackEstablishment;
 window.untrackEstablishment = untrackEstablishment;
 window.postObservations = postObservations;
+window.adaptPost = adaptPost;
+window.postMetrics = postMetrics;
+window.publishedPosts = publishedPosts;
+window.measuredPosts = measuredPosts;
+window.scheduledPosts = scheduledPosts;
+window.allPosts = allPosts;
 window.createPost = createPost;
 window.publishPost = publishPost;
 window.deletePost = deletePost;

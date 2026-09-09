@@ -368,18 +368,6 @@ const POSTS = [
   },
 ];
 
-// --- Scheduled queue ---------------------------------------------------------
-// Source: this hub. Instagram scheduling goes out via the Content Publishing
-// API; Google via localPosts. Both are real.
-const SCHEDULED = [
-  { id: 's1', platforms: ['ig'],      when: '2026-09-05T11:00:00+05:30', content: 'Weekend brunch is back. Unlimited chai, five small plates, and the terrace open from 11am. Carousel below →', tags: ['#SaffronHouse','#DelhiBrunch'] },
-  { id: 's2', platforms: ['gg'],      when: '2026-09-05T15:30:00+05:30', content: 'Updated hours for the festive season: we are open till 12:30am from 5 October through Diwali week.', tags: ['#Dwarka'] },
-  { id: 's3', platforms: ['ig','gg'], when: '2026-09-06T13:00:00+05:30', content: 'Saturday special — the Awadhi biryani is back, limited to 40 portions a day.', tags: ['#Biryani','#SaffronHouse'] },
-  { id: 's4', platforms: ['ig'],      when: '2026-09-07T19:00:00+05:30', content: 'Meet Ramesh, who has been rolling our rotis for eleven years. He does 600 on a Saturday and has never once dropped one.', tags: ['#SaffronHouse','#TeamStories'] },
-  { id: 's5', platforms: ['ig','gg'], when: '2026-09-09T11:00:00+05:30', content: 'Diwali menu, six courses, one seating a night from 18 October. Bookings open Monday 9am on WhatsApp.', tags: ['#Diwali','#SaffronHouse'] },
-  { id: 's6', platforms: ['ig','gg'], when: '2026-09-12T09:00:00+05:30', content: 'The terrace reopens for the season this weekend — 30 covers, first come, no bookings.', tags: ['#SaffronHouse','#Dwarka'] },
-];
-
 // --- Conversations / Inbox ---------------------------------------------------
 // Sources:
 //   wa → WhatsApp Cloud API (webhooks; real-time; gives you the phone number)
@@ -1671,7 +1659,11 @@ Object.assign(window, {
   SAF_HANDLE, SAF_SELF_STATS, COMPETITOR_CATCHMENT, COMPETITOR_POST_SEEDS,
   syncCompetitors, SYNC_VERSION,
   PlatformGlyph, Avatar,
-  POSTS, SCHEDULED, CONVERSATIONS, POST_COMMENTS,
+  // SCHEDULED was removed in part 3: the calendar, the dashboard strip and
+  // the recommendation engine all read the server now. POSTS SURVIVES for
+  // page-approvals.jsx alone — see the open register entry; moving that
+  // screen needs an owner decision about approval state, not a rewrite.
+  POSTS, CONVERSATIONS, POST_COMMENTS,
   REVIEWS, REVIEW_STATS, MENU_ITEMS,
   ANALYTICS_IG, ANALYTICS_GG, ANALYTICS_WA,
   ANALYTICS_BREAKDOWN, ANALYTICS_SENTIMENT,

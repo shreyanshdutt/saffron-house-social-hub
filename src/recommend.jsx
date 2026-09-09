@@ -88,14 +88,20 @@ function daysAgo(iso, now) {
 // Built once per generation so rules never re-derive the same aggregate.
 function buildRecommendationContext() {
   const now = Date.now();
-  const publishedReach = POSTS
-    .filter(p => p.status === 'published' && p.metrics.reach > 0)
-    .map(p => p.metrics.reach);
+  // Posts that HAVE a reach figure. Previously this filtered on the post's
+  // status and then read `p.metrics.reach` as though every published post had
+  // one; with metrics per target, having the number is the actual condition.
+  const withReach = measuredPosts().filter(p => p.metrics && p.metrics.reach > 0);
+  const publishedReach = withReach.map(p => p.metrics.reach);
 
   return {
     now,
-    posts: POSTS,
-    scheduled: SCHEDULED,
+    // Adapted server posts. The engine keeps its own vocabulary — `content`,
+    // `format`, `platforms`, `metrics` — and gains `outcome`, which is the
+    // server's word for what happened and replaces the old `status` on the
+    // three rules that branched on it.
+    posts: allPosts(),
+    scheduled: scheduledPosts(),
     reviews: REVIEWS,
     reviewStats: REVIEW_STATS,
     menu: MENU_ITEMS,
@@ -266,7 +272,10 @@ const REC_RULES = [
     id: 'format-saves',
     title: 'Which format earns intent',
     run(ctx) {
-      const published = ctx.posts.filter(p => p.status === 'published' && p.metrics.reach > 0 && p.format);
+      // What this rule needs is a MEASURED post, not a published one: it
+      // compares formats by reach, and reach is what it is missing without a
+      // measured target. The status check was always a proxy for that.
+      const published = ctx.posts.filter(p => p.metrics && p.metrics.reach > 0 && p.format);
       if (published.length < 3) return [];
       const byFormat = {};
       published.forEach(p => {
@@ -764,7 +773,11 @@ const REC_RULES = [
     id: 'broken-channel',
     title: 'Channels that are not publishing',
     run(ctx) {
-      const failed = ctx.posts.filter(p => p.status === 'failed');
+      // `outcome` is the server's answer, not a re-derivation. 'failed' means
+      // EVERY channel refused it; a partly-published post is 'mixed' and is
+      // deliberately not swept in here, because "this channel is not
+      // publishing" is a different claim from "one of two channels refused".
+      const failed = ctx.posts.filter(p => p.outcome === 'failed');
       if (!failed.length) return [];
       const channels = [...new Set(failed.flatMap(p => p.platforms))];
       return [{

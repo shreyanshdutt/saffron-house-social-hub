@@ -1,14 +1,25 @@
 // Scheduled posts page.
 
+// GATED. The calendar is now the server's `posts` in state 'scheduled', so an
+// unreachable service must not render as an empty queue.
 function ScheduledPage() {
+  return (
+    <RequiresServerData what="the scheduled queue">
+      <ScheduledPageInner />
+    </RequiresServerData>
+  );
+}
+
+function ScheduledPageInner() {
   const t = useT();
   const { lang } = React.useContext(AppCtx);
+  const scheduled = scheduledPosts();
 
   // Group by week relative to "now" = 2026-09-04
   const now = new Date('2026-09-04T12:00:00+05:30');
   const oneWeek = 7 * 86400000;
   const buckets = { this: [], next: [], later: [] };
-  SCHEDULED.forEach(s => {
+  scheduled.forEach(s => {
     const d = new Date(s.when);
     const diff = d - now;
     if (diff < oneWeek) buckets.this.push(s);
@@ -35,7 +46,7 @@ function ScheduledPage() {
             <button className="w-8 h-8 rounded-lg text-saf-muted hover:bg-saf-light grid place-items-center"><Icon name="ChevronRight" size={16} className="flip-x" /></button>
           </div>
         </div>
-        <CalendarStrip scheduled={SCHEDULED} />
+        <CalendarStrip scheduled={scheduled} />
       </Card>
 
       {[
