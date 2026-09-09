@@ -6,88 +6,178 @@
 // =============================================================================
 // CHANNEL HEALTH — Admin only
 // =============================================================================
-const CHANNEL_HEALTH = [
-  { id: 'ig', handle: '@saffronhouse',               followers: '218K',   state: 'down',     last: '48 min', incidents24h: 1 },
-  { id: 'gg', handle: 'Saffron House · Sector 10 Dwarka',  followers: '1.3K',   state: 'ok',       last: 'just now', incidents24h: 0 },
-  { id: 'wa', handle: '+91 11 4160 2200',             followers: '6.4K',   state: 'ok',       last: '1 min',  incidents24h: 0 },
-];
-const STATE_TONE = {
-  ok:       { tone: 'green',  label: 'Healthy',  dot: 'bg-emerald-500' },
-  degraded: { tone: 'amber',  label: 'Degraded', dot: 'bg-amber-500' },
-  down:     { tone: 'red',    label: 'Down',     dot: 'bg-rose-500' },
+// A channel's HEALTH is not the same vocabulary as its CONNECTION STATUS, and
+// forcing one into the other is what produced the screen this replaces.
+//
+// The old array hardcoded `state: 'down'` and `incidents24h: 1` for Instagram.
+// Nothing was down and no incident occurred — there is no incident history in
+// the database at all. The three tones it offered (ok / degraded / down)
+// cannot express the four states the data actually has, so the mapping below
+// is explicit rather than implied:
+//
+//   connected        -> Healthy.       Working.
+//   expired          -> Needs sign-in. NOT "down": nothing broke, our
+//                       credential lapsed, and we fix it by signing in again.
+//   revoked          -> Access removed. Also not "down", and NOT the same as
+//                       expired: the provider withdrew it, so reconnecting may
+//                       not be ours to do.
+//   never_connected  -> Not set up.    NOT A HEALTH STATE AT ALL. A channel
+//                       nobody connected cannot be unhealthy, and counting it
+//                       as "down" would invent an outage. It is excluded from
+//                       the health counts entirely.
+const CONNECTION_HEALTH = {
+  connected:       { label: 'Healthy',        tone: 'green', dot: 'bg-emerald-500', counts: 'healthy' },
+  expired:         { label: 'Needs sign-in',  tone: 'amber', dot: 'bg-amber-500',   counts: 'attention' },
+  revoked:         { label: 'Access removed', tone: 'red',   dot: 'bg-rose-500',    counts: 'attention' },
+  never_connected: { label: 'Not set up',     tone: 'grey',  dot: 'bg-saf-border',  counts: 'unset' },
 };
-const INCIDENTS = [
-  { id: 'i1', t: '48 min ago', channel: 'ig', text: 'Instagram access token expired — the lunch-deal post failed to publish.', state: 'down' },
-  { id: 'i2', t: '12 min ago', channel: 'gg', text: 'Business Profile review sync ran 40 minutes late — polling backlog cleared.', state: 'degraded' },
-  { id: 'i3', t: 'Yesterday',  channel: 'wa', text: 'WhatsApp webhook reconnected automatically after a 6-minute drop.', state: 'ok' },
-  { id: 'i4', t: '31 Aug',     channel: 'gg', text: 'Brief Google Business Profile outage (07:00–07:18 IST).', state: 'ok' },
-];
+
+// Owner decision carried over from c0e54f1: no connect/reconnect control is
+// clickable until real OAuth exists, and the reason is stated rather than left
+// as a greyed button the user has to guess about.
+const RECHECK_DISABLED_REASON =
+  'Re-checking a channel means signing in to it, and this app has not been registered ' +
+  'with the platforms yet. Your developer does that once, per channel.';
 
 function ChannelHealthPage() {
-  const ok = CHANNEL_HEALTH.filter(c => c.state === 'ok').length;
-  const degraded = CHANNEL_HEALTH.filter(c => c.state === 'degraded').length;
-  const down = CHANNEL_HEALTH.filter(c => c.state === 'down').length;
+  return (
+    <RequiresServerData what="channel health">
+      {(data) => <ChannelHealthInner connections={data.connections} />}
+    </RequiresServerData>
+  );
+}
+
+function ChannelHealthInner({ connections }) {
+  const bucket = (c) => (CONNECTION_HEALTH[c.status] || CONNECTION_HEALTH.never_connected).counts;
+  const healthy   = connections.filter(c => bucket(c) === 'healthy').length;
+  const attention = connections.filter(c => bucket(c) === 'attention').length;
+  const unset     = connections.filter(c => bucket(c) === 'unset').length;
+
+  // The only problem signal the database actually holds. `last_error` is a
+  // stored field on a connection — it is the CURRENT state, not a history of
+  // events, and the panel below says so rather than calling it an incident log.
+  const problems = connections.filter(c => c.lastError);
+  const anySample = connections.some(c => c.isSample);
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-saf-text">Channel Health</h1>
-        <p className="text-sm text-saf-muted mt-1">Connectivity, rate-limits and incidents across all linked accounts.</p>
+        <p className="text-sm text-saf-muted mt-1">Connection state across every channel this restaurant can link.</p>
       </div>
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <HealthKpi label="Healthy"   value={ok}       icon="CheckCircle2" tone="bg-emerald-50 text-emerald-700" />
-        <HealthKpi label="Degraded"  value={degraded} icon="AlertTriangle"tone="bg-amber-50 text-amber-700" />
-        <HealthKpi label="Down"      value={down}     icon="XCircle"      tone="bg-rose-50 text-rose-700" />
-        <HealthKpi label="Incidents (24h)" value={INCIDENTS.length} icon="Activity" tone="bg-saf-light text-saf-primary" />
+
+      {anySample && (
+        <div className="flex items-start gap-2 p-3 rounded-xl bg-amber-50 border border-amber-200">
+          <Icon name="AlertTriangle" size={15} className="text-amber-700 mt-px shrink-0" />
+          <p className="text-[12.5px] text-amber-700 leading-relaxed">
+            <span className="font-semibold">Sample data.</span> No channel is really connected — these
+            rows are seeded. Nothing here reflects a live account, and no sync time on this screen
+            came from a platform.
+          </p>
+        </div>
+      )}
+
+      {/* Three counts, each derived from a status the database holds. There is
+          no "Incidents (24h)" figure any more: nothing records incidents, so
+          the number had no source and was invented. */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <HealthKpi label="Healthy"        value={healthy}   icon="CheckCircle2"  tone="bg-emerald-50 text-emerald-700" />
+        <HealthKpi label="Needs attention" value={attention} icon="AlertTriangle" tone="bg-amber-50 text-amber-700" />
+        <HealthKpi label="Not set up"     value={unset}     icon="Circle"        tone="bg-saf-light text-saf-muted" />
       </div>
+
       <div className="grid grid-cols-12 gap-4">
         <Card padding="p-0" className="col-span-12 xl:col-span-7">
           <div className="px-5 h-12 border-b border-saf-border flex items-center justify-between">
             <div className="text-[14px] font-medium text-saf-text">Channels</div>
-            <Button size="sm" variant="ghost" leadingIcon="RefreshCw">Re-check all</Button>
+            <Tooltip label={RECHECK_DISABLED_REASON} side="left">
+              <span><Button size="sm" variant="ghost" leadingIcon="RefreshCw" disabled>Re-check all</Button></span>
+            </Tooltip>
           </div>
           <div className="divide-y divide-saf-border">
-            {CHANNEL_HEALTH.map(c => {
-              const p = PLATFORM_BY_ID[c.id];
-              const s = STATE_TONE[c.state];
+            {connections.map(c => {
+              const id = CONNECTION_PLATFORM_ID[c.platform];
+              const p = id ? PLATFORM_BY_ID[id] : null;
+              const h = CONNECTION_HEALTH[c.status] || CONNECTION_HEALTH.never_connected;
+              const never = c.status === 'never_connected';
               return (
-                <div key={c.id} className="flex items-center gap-3 px-5 py-3">
-                  <span className="w-10 h-10 rounded-xl grid place-items-center text-white shrink-0" style={{ background: p.color }}>
-                    <PlatformGlyph id={c.id} size={18} />
+                <div key={c.platform} className="flex items-center gap-3 px-5 py-3">
+                  <span className="w-10 h-10 rounded-xl grid place-items-center text-white shrink-0" style={{ background: p ? p.color : '#7A6A5F' }}>
+                    {id ? <PlatformGlyph id={id} size={18} /> : <Icon name="HelpCircle" size={18} />}
                   </span>
                   <div className="flex-1 min-w-0">
-                    <div className="text-[13px] font-medium text-saf-text">{p.name}</div>
-                    <div className="text-[12px] text-saf-muted">{c.handle} · {c.followers} followers · synced {c.last}</div>
+                    <div className="text-[13px] font-medium text-saf-text">{p ? p.name : c.platform}</div>
+                    {/* No follower count here. That was invented too, and a
+                        connection record does not carry one. */}
+                    <div className="text-[12px] text-saf-muted truncate">
+                      {never
+                        ? 'Never connected — nothing has been fetched from this channel'
+                        : <>{c.accountRef}{c.lastSyncedAt ? <> · synced {relTime(c.lastSyncedAt)}</> : <> · never synced</>}</>}
+                    </div>
                   </div>
                   <div className="hidden sm:block">
-                    <Pill tone={s.tone}><span aria-hidden="true" className={`w-1.5 h-1.5 rounded-full ${s.dot}`} />{s.label}</Pill>
+                    <span className={`inline-flex items-center gap-1.5 px-2 h-6 rounded-full text-[11px] font-medium border ${
+                      h.tone === 'green' ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                      : h.tone === 'amber' ? 'bg-amber-50 text-amber-700 border-amber-200'
+                      : h.tone === 'red' ? 'bg-rose-50 text-rose-700 border-rose-200'
+                      : 'bg-saf-surface text-saf-muted border-saf-border'}`}>
+                      <span aria-hidden="true" className={`w-1.5 h-1.5 rounded-full ${h.dot}`} />
+                      {h.label}
+                    </span>
                   </div>
-                  <Button variant="ghost" size="sm" leadingIcon={c.state === 'ok' ? 'RefreshCw' : 'Wrench'}>
-                    {c.state === 'ok' ? 'Re-check' : 'Reconnect'}
-                  </Button>
+                  <Tooltip label={RECHECK_DISABLED_REASON} side="left">
+                    <span><Button variant="ghost" size="sm" leadingIcon={never ? 'Plus' : 'RefreshCw'} disabled>
+                      {never ? 'Set up' : 'Re-check'}
+                    </Button></span>
+                  </Tooltip>
                 </div>
               );
             })}
           </div>
         </Card>
+
         <Card padding="p-0" className="col-span-12 xl:col-span-5">
           <div className="px-5 h-12 border-b border-saf-border flex items-center justify-between">
-            <div className="text-[14px] font-medium text-saf-text">Recent incidents</div>
-            <span className="text-[11px] text-saf-muted">Last 7 days</span>
+            <div className="text-[14px] font-medium text-saf-text">Current problems</div>
+            <span className="text-[11px] text-saf-muted">Now, not a history</span>
           </div>
-          <div className="divide-y divide-saf-border">
-            {INCIDENTS.map(i => {
-              const s = STATE_TONE[i.state];
-              return (
-                <div key={i.id} className="flex items-start gap-3 px-5 py-3">
-                  <span className={`w-2 h-2 rounded-full mt-2 shrink-0 ${s.dot}`} aria-hidden="true" />
-                  <div className="flex-1 min-w-0">
-                    <div className="text-[13px] text-saf-text">{i.text}</div>
-                    <div className="text-[11px] text-saf-muted mt-0.5">{i.t} · {PLATFORM_BY_ID[i.channel].name}</div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+          {/* This panel used to list four incidents with timestamps — an
+              expired token that failed a post, a late sync, a webhook drop, an
+              outage. None of them happened. There is no incident table and this
+              commit does not add one, so the panel shows the one problem signal
+              the database DOES hold: the current `last_error` on a connection. */}
+          {problems.length === 0 ? (
+            <div className="px-5 py-8 text-center">
+              <div className="text-[13px] text-saf-text">No channel is reporting a problem</div>
+              <p className="text-[12px] text-saf-muted mt-1.5 max-w-sm mx-auto leading-relaxed">
+                This is the current state of each connection, not a log. Incident history is not
+                recorded yet, so nothing here can tell you what happened last week.
+              </p>
+            </div>
+          ) : (
+            <>
+              <div className="divide-y divide-saf-border">
+                {problems.map(c => {
+                  const id = CONNECTION_PLATFORM_ID[c.platform];
+                  const p = id ? PLATFORM_BY_ID[id] : null;
+                  const h = CONNECTION_HEALTH[c.status] || CONNECTION_HEALTH.never_connected;
+                  return (
+                    <div key={c.platform} className="flex items-start gap-3 px-5 py-3">
+                      <span className={`w-2 h-2 rounded-full mt-2 shrink-0 ${h.dot}`} aria-hidden="true" />
+                      <div className="flex-1 min-w-0">
+                        <div className="text-[13px] text-saf-text">{c.lastError}</div>
+                        <div className="text-[11px] text-saf-muted mt-0.5">{p ? p.name : c.platform} · {h.label}</div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <p className="px-5 py-3 text-[11.5px] text-saf-muted border-t border-saf-border leading-relaxed">
+                Current state only. Incident history is not recorded, so this cannot tell you how
+                long a problem has been running or whether it has happened before.
+              </p>
+            </>
+          )}
         </Card>
       </div>
     </div>
