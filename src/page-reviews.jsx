@@ -447,7 +447,14 @@ function ReviewCard({ review, theme, canReply, canEscalate, onReply }) {
             </div>
           )}
 
-          {shown ? (
+          {/* NOT a ternary any more. A SENT reply replaces the actions — there is
+              nothing left to do to it. A DRAFT is unfinished work on a review
+              that is still, correctly, unanswered, so it renders ABOVE the
+              actions rather than instead of them. `6a7a75c` kept a drafted 1★
+              in Needs reply and at the top of the urgency sort, which turned
+              this into a breached complaint at the head of the queue with
+              nothing you could press. */}
+          {shown && (
             /* A REPLY WRITTEN HERE IS A DRAFT AND HAS TO LOOK LIKE ONE. The
                solid terracotta rule and the word "replied" made it read as the
                published reply a guest would see; it is neither published nor
@@ -483,7 +490,9 @@ function ReviewCard({ review, theme, canReply, canEscalate, onReply }) {
                 </p>
               )}
             </div>
-          ) : (
+          )}
+
+          {(!shown || isDraft) && (
             <div className="mt-3 flex items-center gap-2">
               <Button
                 size="sm"
@@ -493,7 +502,10 @@ function ReviewCard({ review, theme, canReply, canEscalate, onReply }) {
                 disabled={!canReply}
                 title={canReply ? undefined : 'Requires Guest Relations Lead or Marketing Manager'}
               >
-                Reply publicly
+                {/* Says which one it is. "Reply publicly" sitting beside your own
+                    draft makes you guess whether pressing it throws the text
+                    away; the drawer opens with the draft loaded, so say so. */}
+                {isDraft ? 'Edit draft reply' : 'Reply publicly'}
               </Button>
               {/* DISABLED FOR EVERY ROLE, WITH THE REASON ON HOVER AND BESIDE IT.
                   This was a toast and nothing else — no state write, no side
@@ -574,8 +586,13 @@ function ReplyModal({ review, role, canComp, onClose, onSubmit }) {
         { id: 'specific',label: 'Name the dish',   text: `Delighted this landed well — I will tell Chef Meera you said so. ` },
       ];
 
-  const [text, setText] = React.useState('');
-  const [comp, setComp] = React.useState(false);
+  // SEEDED FROM THE EXISTING DRAFT, not empty. The modal is mounted only while
+  // `open` is set and unmounts on close, so this initialiser runs once per
+  // opening and needs no effect to stay in step. Starting empty was a second
+  // way to lose the text: reopening showed a blank box and submitting it
+  // replaced the draft with whatever was typed instead.
+  const [text, setText] = React.useState(review.draftReply ? review.draftReply.text : '');
+  const [comp, setComp] = React.useState(review.draftReply ? !!review.draftReply.comp : false);
   const over = text.length > limit;
 
   return (
