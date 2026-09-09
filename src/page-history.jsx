@@ -5,6 +5,19 @@
 // page-dashboard.jsx + page-analytics.jsx (Stat). Keep them in one
 // module so the bundle still resolves them.
 
+// Why the drawer's reply control is off. Same ruling and same voice as
+// c0e54f1 / 760ec7b / 8ce1c20 / 0d65504, but NOT 0d65504's sentence verbatim:
+// that one names an "approval decision", and this control is a public reply to
+// a comment, so reusing it word for word would have described the wrong thing.
+// The shared half — there is nowhere to record it — is what carries over.
+const NO_COMMENT_REPLY_REASON =
+  'Replying is switched off. There is nowhere to record a reply — nothing stores one, ' +
+  'and nothing sends it — so this would not reach the person who commented. What you ' +
+  'type here is not kept either. It is still being built.';
+
+const NO_COMMENT_REPLY_TIP =
+  'Off: there is nowhere to record a reply yet.';
+
 function statusTone(status) {
   return {
     published: { tone: 'green', label: 'Published' },
@@ -96,7 +109,6 @@ function PostDetailDrawer({ post, onClose }) {
   const { lang } = React.useContext(AppCtx);
   const [reply, setReply] = React.useState('');
   const [replyTo, setReplyTo] = React.useState(null);
-  const toast = useToast();
   if (!post) return null;
   const st = statusTone(post.status);
   return (
@@ -195,8 +207,22 @@ function PostDetailDrawer({ post, onClose }) {
               placeholder={replyTo ? t.history.replyPh.replace('{name}', replyTo.user) : 'Add a public reply…'}
               className="w-full min-h-[70px] resize-none text-[13px] bg-transparent text-saf-text"
             />
-            <div className="flex items-center justify-end gap-2">
-              <Button variant="primary" size="sm" leadingIcon="Send" disabled={!reply.trim()} onClick={() => { toast.push({ title: 'Reply sent' }); setReply(''); setReplyTo(null); }}>{t.history.send}</Button>
+            {/* DISABLED, AND THE TEXTAREA IS LEFT ALONE. This was the worst of
+                the three: a pure no-op that ALSO destroyed the user's work — it
+                claimed the reply had gone out, cleared the textarea and kept nothing
+                anywhere, so the text was gone and the person had been told it
+                had gone out. Nothing local was worth keeping enabled, so it
+                follows c0e54f1 rather than the Reviews shape. */}
+            <div className="flex items-start gap-2 mt-2 p-2.5 rounded-lg bg-saf-surface border border-saf-border">
+              <Icon name="Info" size={13} className="text-saf-muted mt-0.5 shrink-0" />
+              <p className="text-[11.5px] text-saf-muted leading-relaxed">{NO_COMMENT_REPLY_REASON}</p>
+            </div>
+            <div className="flex items-center justify-end gap-2 mt-2">
+              <Tooltip label={NO_COMMENT_REPLY_TIP} side="top">
+                <span>
+                  <Button variant="primary" size="sm" leadingIcon="Send" disabled>{t.history.send}</Button>
+                </span>
+              </Tooltip>
             </div>
           </div>
         </section>

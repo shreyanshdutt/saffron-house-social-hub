@@ -133,7 +133,17 @@ function ApprovalsPage({ role, openedPost, onCloseDrawer }) {
           <p className="text-sm text-saf-muted mt-1">Workflow queue for every post moving through review.</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="secondary" leadingIcon="Filter">Filters</Button>
+          {/* DISABLED RATHER THAN REMOVED, and it is the one judgement call on
+              this screen. It has never had an `onClick`, so it is not blocked
+              on a backend the way the eight actions are — there is simply no
+              filter panel. Removing it would also be defensible, but that is a
+              product decision about a feature someone may still want, whereas
+              disabling states the truth without deciding anything. Its reason
+              therefore points at what DOES work rather than reusing the
+              approval-state sentence, which would not be true of it. */}
+          <Tooltip label="No extra filters yet — the tabs above and the search box beside this both work." side="top">
+            <span><Button variant="secondary" leadingIcon="Filter" disabled>Filters</Button></span>
+          </Tooltip>
           <ActionBtn
             enabled={canSubmit}
             label="Submit new for approval"
@@ -303,7 +313,15 @@ function ApprovalsPage({ role, openedPost, onCloseDrawer }) {
                     />
                   )}
                   {p.status === 'sent_back' && (
-                    <Button variant="secondary" size="sm" leadingIcon="PenSquare">Edit & resubmit</Button>
+                    /* Same reason as the eight — resubmitting is an approval
+                       action and there is nowhere to record one. It never had
+                       an `onClick`, so it made no false CLAIM and was rightly
+                       out of 0d65504's scope; but leaving it enabled beside
+                       eight disabled siblings read as the one thing that
+                       works, which is its own way of misleading. */
+                    <Tooltip label={NO_APPROVAL_STATE_TIP} side="top">
+                      <span><Button variant="secondary" size="sm" leadingIcon="PenSquare" disabled>Edit & resubmit</Button></span>
+                    </Tooltip>
                   )}
                   {p.status === 'draft' && (
                     <ActionBtn
@@ -327,6 +345,3 @@ function ApprovalsPage({ role, openedPost, onCloseDrawer }) {
 }
 
 window.ApprovalsPage = ApprovalsPage;
-// Backwards alias — anything still referencing HistoryPage gets the new
-// screen.
-window.HistoryPage = ApprovalsPage;

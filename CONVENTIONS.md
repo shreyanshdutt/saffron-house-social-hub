@@ -392,17 +392,66 @@ closing an item, not follow-up work.**
     series exists to remove. — closed in this commit
 
 
+25. **The last two "Reply sent" claims, and two dead controls.** Three surfaces
+    that needed three different fixes, because the actions genuinely differed.
+
+    *`page-messages.jsx`:48 — the Reviews shape.* `sendReply` really does
+    append the message to `setConversations`, so it renders in the thread;
+    writing a reply works and is useful and stays enabled. What was false was
+    the toast and, more sharply, **the `status: 'sent'` literal — the same
+    claim in DATA rather than in a toast.** That field is read at :311 to pick
+    a delivery tick, so `'sent'` drew the single check every messaging app uses
+    to mean the platform has it. It now carries `'unsent'`, with its own branch
+    that renders the words "Not sent · this screen only" and no tick at all —
+    there is no tick that honestly means "still on your screen". **The `else`
+    fallback there used to draw a tick for any unrecognised status**, so a new
+    status value alone would not have been enough; the fallback is now explicit
+    and returns nothing. The bubble loses the solid outbound treatment for the
+    dashed muted one `8ce1c20` established. Seeded `'read'` and `'delivered'`
+    messages are untouched.
+
+    *`page-history.jsx`:199 — the c0e54f1 shape, and the worst of the three.*
+    A pure no-op that ALSO destroyed the user's work: it claimed the reply had
+    gone out, cleared the textarea and kept nothing anywhere. Nothing local was
+    worth preserving, so it is disabled with the reason, and the textarea is
+    left alone. **The reason is deliberately NOT `0d65504`'s sentence
+    verbatim** — that one names an "approval decision" and this control is a
+    public reply to a comment, so reusing it word for word would have described
+    the wrong thing. The shared half, that there is nowhere to record it, is
+    what carries over.
+
+    **This file is the Approvals drawer, not a screen.** It defines no
+    `HistoryPage` — `PostDetailDrawer` and six helpers, consumed by
+    `page-approvals.jsx` (and `Stat` by dashboard and analytics) through global
+    scope, which is why `index.html` loads it at :311 immediately before
+    approvals at :312. Anyone editing it is editing the Approvals drawer.
+
+    *Two dead controls in `page-approvals.jsx`.* Neither made a false claim, so
+    both were correctly outside `0d65504`'s scope; but `Edit & resubmit` was
+    left ENABLED beside eight disabled siblings, which read as the one thing
+    that works — its own way of misleading. It is an approval action, so it
+    takes the approval reason. **`Filters` was the judgement call**: it has
+    never had an `onClick`, so unlike the eight it is not blocked on a backend
+    — there is simply no filter panel. Removing it would also be defensible;
+    disabling states the truth without deciding the future of a feature someone
+    may still want, so its hover points at what DOES work (the tabs and the
+    search box) rather than borrowing the approval-state sentence, which would
+    not be true of it. The search box itself is untouched and still filters.
+
+    *The dead alias* `window.HistoryPage = ApprovalsPage` is removed. Nothing
+    referenced `HistoryPage` and no `history` route exists — same dead-export
+    class as entries 12, 13 and 18. — closed in this commit
+
+
 #### Open
 
-1. **Ten false success claims remain, in three files** — eight in
-   `page-stubs.jsx` plus one each in `page-messages.jsx` and
-   `page-history.jsx`, counted by grep rather than carried over. **The
-   headline on this entry said "Eleven" from `8ce1c20` until `24` corrected
-   it, and that number was never right**: it was written against a list of
-   8 + 8 + 1 + 1 = 18 claims. The individual file counts underneath were
-   accurate throughout; only the total was wrong, which is the failure mode a
-   register is supposed to prevent rather than cause. Found by the sweep
-   `760ec7b` was required to run, confirmed by reading each site, and NOT
+1. **Eight false success claims remain, all in `page-stubs.jsx`** — counted by
+   grep, not carried over. **This headline said "Eleven" from `8ce1c20` until
+   `24` corrected it to ten, and the original number was never right**: it was
+   written against a list of 8 + 8 + 1 + 1 = 18 claims. The per-file counts
+   underneath were accurate throughout; only the total was wrong, which is the
+   failure mode a register is meant to prevent rather than cause. Found by the
+   sweep `760ec7b` was required to run, confirmed by reading each site, and NOT
    fixed there or in `22` above because each is a separate screen with its own
    decision about what — if anything — is honest to leave enabled (§ 4).
    Recorded here rather than left in a chat log, because a known defect nobody
@@ -415,24 +464,9 @@ closing an item, not follow-up work.**
      the file. **The two downloads are the sharpest**: `page-reviews.jsx`:162
      and the Listening exports really do build and download a CSV, so a user
      has grounds to believe these do too, and no file ever arrives.
-   - **`page-messages.jsx`:48 and `page-history.jsx`:199 — `'Reply sent'`.**
-     Messages appends to local component state; History only clears the
-     textarea. Neither sends anything.
 
-   The `page-approvals.jsx` eight were closed in `24` above.
-
-   **`page-history.jsx` is not a screen and its `'Reply sent'` is NOT dead
-   code.** The file defines no `HistoryPage` at all — it defines
-   `PostDetailDrawer`, `Stat`, `Dropdown`, `EmptyState`, `SentimentPill`,
-   `Metric` and `statusTone`, and `page-approvals.jsx` (which defines only
-   `ApprovalsPage`) consumes them by global scope, which is why `index.html`
-   loads history at :311 immediately before approvals at :312. So the drawer
-   the Approvals screen opens IS that file, and its `'Reply sent'` is reachable
-   from it. Whoever fixes :199 is editing the Approvals drawer.
-
-   Priority order for the commits that fix these: `page-messages.jsx` /
-   `page-history.jsx` first (a guest reply is believed to have gone out), then
-   `page-stubs.jsx` (admin surfaces, lowest traffic).
+   The `page-approvals.jsx` eight were closed in `24`; `page-messages.jsx`:48
+   and `page-history.jsx`:199 in `25`. This is the last of the sweep.
 
 ## 4. Scope discipline
 

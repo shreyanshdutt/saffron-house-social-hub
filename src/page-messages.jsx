@@ -42,10 +42,23 @@ function MessagesPage({ role }) {
     if (!reply.trim() || !active) return;
     setConversations(prev => prev.map(c => c.id !== active.id ? c : {
       ...c,
-      messages: [...c.messages, { from: 'saf', text: reply.trim(), t: new Date().toISOString(), status: 'sent' }],
+      // NOT 'sent'. That literal is the same false claim as the toast was, but
+      // in DATA, and it is read at :311 to pick a delivery tick — 'sent' drew
+      // the single check that every messaging app uses to mean "it reached the
+      // platform". Nothing here reaches WhatsApp or Instagram. 'unsent' is a
+      // new value with its own branch there; the `else` fallback used to draw a
+      // tick for anything unrecognised, so a new status alone was not enough.
+      // The seeded 'read' and 'delivered' messages are untouched — the demo's
+      // narrative is that those went out.
+      messages: [...c.messages, { from: 'saf', text: reply.trim(), t: new Date().toISOString(), status: 'unsent' }],
     }));
     setReply('');
-    toast.push({ title: 'Reply sent' });
+    toast.push({
+      title: 'Reply drafted — nothing sent',
+      desc: `It is on this screen only. ${active.user} cannot see it, nothing has gone to `
+        + `${PLATFORM_BY_ID[active.platform].name}, and it will be gone if you reload the page.`,
+      kind: 'info',
+    });
   };
 
   return (
@@ -292,9 +305,15 @@ function MessageList({ messages, lang }) {
           <div className="max-w-[70%]">
             <div className="space-y-1">
               {cl.messages.map((m, j) => (
+                /* An unsent draft must not wear the solid outbound bubble — that
+                   is the "we said this to the guest" look. Dashed rule and muted
+                   ground, the same register 8ce1c20 used for a drafted review
+                   reply, so the two screens read as one product. */
                 <div
                   key={j}
-                  className={`px-4 py-2.5 text-[14px] leading-relaxed ${cl.from === 'saf'
+                  className={`px-4 py-2.5 text-[14px] leading-relaxed ${m.status === 'unsent'
+                    ? 'bg-saf-surface border border-dashed border-saf-border text-saf-text rounded-2xl ltr:rounded-br-md rtl:rounded-bl-md'
+                    : cl.from === 'saf'
                     ? 'bg-saf-primary text-white rounded-2xl ltr:rounded-br-md rtl:rounded-bl-md'
                     : 'bg-white border border-saf-border text-saf-text rounded-2xl ltr:rounded-bl-md rtl:rounded-br-md'
                   }`}
@@ -309,9 +328,17 @@ function MessageList({ messages, lang }) {
                 <span className="inline-flex items-center">
                   {(() => {
                     const s = cl.messages[cl.messages.length-1].status;
+                    // 'unsent' FIRST, and it draws no tick at all. A tick in a
+                    // messaging UI means the platform has it; there is no tick
+                    // that honestly means "still on your screen", so this says
+                    // it in words instead.
+                    if (s === 'unsent')    return <span className="font-medium">Not sent · this screen only</span>;
                     if (s === 'read')      return <Icon name="CheckCheck" size={12} className="text-saf-accent" />;
                     if (s === 'delivered') return <Icon name="CheckCheck" size={12} />;
-                    return <Icon name="Check" size={12} />;
+                    if (s === 'sent')      return <Icon name="Check" size={12} />;
+                    // No catch-all tick: an unrecognised status is not evidence
+                    // of delivery, which is exactly what the old `else` implied.
+                    return null;
                   })()}
                 </span>
               )}
