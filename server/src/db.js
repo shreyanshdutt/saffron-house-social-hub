@@ -59,7 +59,7 @@ const REQUIRED_CHECK_VALUES = [
 // NOT EXISTS does create these, so this is belt-and-braces — but a table that
 // silently does not exist is the same failure mode as a stale CHECK, and the
 // endpoint reading it would return an empty list rather than an error.
-const REQUIRED_TABLES = ['establishments', 'establishment_social', 'tracked', 'observations', 'connections', 'scans', 'posts', 'post_targets'];
+const REQUIRED_TABLES = ['establishments', 'establishment_social', 'tracked', 'observations', 'connections', 'scans', 'posts', 'post_targets', 'menu_items', 'menu_item_aliases'];
 
 export function assertSchemaCurrent(db) {
   const stale = [];

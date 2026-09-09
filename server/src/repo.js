@@ -8,6 +8,7 @@ import { velocityFromSeries, changeFromSeries, newestWith } from './derive.js';
 import { nowIso } from './db.js';
 import { summarisePost, normaliseChannel, PUBLISHABLE_CHANNELS, CLIENT_ID_BY_CHANNEL } from './posts.js';
 import { publishPlan, callAdapter } from './publish-adapters.js';
+import { buildDishIndex } from './dish-matcher.js';
 
 // "Do we hold Business Discovery content for this establishment." Keyed on the
 // DATA being present, not on the `source` label: the seed writes its
@@ -609,4 +610,39 @@ export async function publishPost(db, id, now = new Date().toISOString()) {
   db.prepare(`UPDATE posts SET state = 'attempted', updated_at = ? WHERE id = ?`).run(now, id);
 
   return { post: getPost(db, id), plan };
+}
+
+// ---------------------------------------------------------------------------
+// menu
+//
+// No HTTP route this commit: nothing renders the menu yet, and part 2 owns
+// both the corpus move and the screen. An endpoint with no caller is the
+// dead-export class the drift register has three entries about.
+
+export function listMenuItems(db) {
+  const items = db.prepare(
+    `SELECT id, name, category, price, is_sample FROM menu_items ORDER BY name`
+  ).all();
+  const aliases = db.prepare(
+    `SELECT alias, menu_item_id, word_count FROM menu_item_aliases ORDER BY alias`
+  ).all();
+  const byItem = new Map();
+  for (const a of aliases) {
+    if (!byItem.has(a.menu_item_id)) byItem.set(a.menu_item_id, []);
+    byItem.get(a.menu_item_id).push(a.alias);
+  }
+  return items.map(r => ({
+    id: r.id, name: r.name, category: r.category, price: r.price,
+    aliases: byItem.get(r.id) || [],
+    isSample: !!r.is_sample,
+  }));
+}
+
+// The matcher's index, built from what is actually stored. Going through
+// buildDishIndex() rather than trusting the table means the ambiguity check
+// runs on every load, so a row inserted by some future path that bypassed the
+// PRIMARY KEY still cannot produce a silently wrong attribution.
+export function dishIndex(db) {
+  const rows = db.prepare(`SELECT alias, menu_item_id FROM menu_item_aliases`).all();
+  return buildDishIndex(rows.map(r => ({ alias: r.alias, menuItemId: r.menu_item_id })));
 }

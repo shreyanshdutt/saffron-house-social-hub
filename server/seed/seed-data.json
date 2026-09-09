@@ -1,5 +1,5 @@
 {
-  "_generated": "Extracted once from src/mock.jsx at commit 40c9100, immediately before that data was deleted from the client. Regenerate with: git show 40c9100:src/mock.jsx | posts+scheduled frozen from src/mock.jsx at 03c0471",
+  "_generated": "Extracted once from src/mock.jsx at commit 40c9100, immediately before that data was deleted from the client. Regenerate with: git show 40c9100:src/mock.jsx | posts+scheduled frozen from src/mock.jsx at 03c0471 | menuItems frozen from src/mock.jsx at 04f442b",
   "establishments": [
     {
       "id": "est-1",
@@ -729,6 +729,95 @@
       "tags": [
         "#SaffronHouse",
         "#Dwarka"
+      ]
+    }
+  ],
+  "menuItems": [
+    {
+      "id": "mi-1",
+      "name": "Galouti Kebab",
+      "category": "Small plates",
+      "price": 495,
+      "aliases": [
+        "galouti kebab",
+        "mutton galouti",
+        "galouti ke kebab"
+      ]
+    },
+    {
+      "id": "mi-2",
+      "name": "Awadhi Biryani",
+      "category": "Mains",
+      "price": 645,
+      "aliases": [
+        "awadhi biryani",
+        "biryani"
+      ]
+    },
+    {
+      "id": "mi-3",
+      "name": "Kathal Galouti",
+      "category": "Small plates",
+      "price": 395,
+      "aliases": [
+        "kathal galouti",
+        "jackfruit galouti",
+        "veg galouti",
+        "vegetarian galouti"
+      ]
+    },
+    {
+      "id": "mi-4",
+      "name": "Corn & Chilli Pakora",
+      "category": "Monsoon menu",
+      "price": 285,
+      "aliases": [
+        "corn and chilli pakora",
+        "corn chilli pakora",
+        "corn pakora",
+        "chilli pakora"
+      ]
+    },
+    {
+      "id": "mi-5",
+      "name": "Paneer Tikka Masala",
+      "category": "Mains",
+      "price": 525,
+      "aliases": [
+        "paneer tikka masala",
+        "paneer tikka",
+        "paneer"
+      ]
+    },
+    {
+      "id": "mi-6",
+      "name": "Ginger-Jaggery Kheer",
+      "category": "Desserts",
+      "price": 245,
+      "aliases": [
+        "ginger jaggery kheer",
+        "jaggery kheer",
+        "kheer"
+      ]
+    },
+    {
+      "id": "mi-7",
+      "name": "Kashmiri Morel Pulao",
+      "category": "Monsoon menu",
+      "price": 845,
+      "aliases": [
+        "kashmiri morel pulao",
+        "morel pulao",
+        "morel"
+      ]
+    },
+    {
+      "id": "mi-8",
+      "name": "Butter Chicken",
+      "category": "Mains",
+      "price": 565,
+      "aliases": [
+        "butter chicken"
       ]
     }
   ]

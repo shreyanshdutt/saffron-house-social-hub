@@ -341,3 +341,44 @@ CREATE INDEX IF NOT EXISTS posts_state_time
   ON posts (state, COALESCE(scheduled_at, created_at));
 CREATE INDEX IF NOT EXISTS post_targets_platform
   ON post_targets (platform, status);
+
+-- ---------------------------------------------------------------------------
+-- menu_items  +  menu_item_aliases
+--
+-- The Menu screen currently claims `mentions7d: 412` for the Galouti Kebab.
+-- The ENTIRE seeded guest corpus — every review, comment, DM and signal — is
+-- under 9 KB. That number cannot come from that text, and no arithmetic over
+-- it produces 412. These two tables exist so the figure can be replaced by one
+-- a restaurant owner can check by reading the sentences it came from.
+--
+-- ALIASES ARE A TABLE, NOT A JSON COLUMN, for two reasons that are not style:
+--   1. UNIQUE(alias) below is what makes an ambiguous alias IMPOSSIBLE rather
+--      than merely discouraged. "Galouti Kebab" and "Kathal Galouti" share the
+--      token `galouti`, and a bare `galouti` alias on both would silently
+--      attribute half the mentions to the wrong dish. The database refuses it.
+--   2. An alias earns its place from real guest text, so it will want
+--      provenance later — when it was added and what sentence justified it.
+--      A row can grow those columns; a JSON array cannot without a migration.
+CREATE TABLE IF NOT EXISTS menu_items (
+  id                  TEXT PRIMARY KEY,
+  name                TEXT NOT NULL,
+  category            TEXT,
+  price               INTEGER,
+  is_sample           INTEGER NOT NULL DEFAULT 0 CHECK (is_sample IN (0, 1))
+);
+
+CREATE TABLE IF NOT EXISTS menu_item_aliases (
+  -- Stored ALREADY NORMALIZED (lowercased, punctuation stripped, spelling
+  -- variants folded) by normalizeAlias() in src/text-normalize.js. Storing the
+  -- raw form and normalizing on read would mean the UNIQUE constraint guarded
+  -- the wrong strings: 'Galouti' and 'galouti' would both be accepted and the
+  -- collision this table exists to prevent would come back.
+  alias               TEXT PRIMARY KEY,
+  menu_item_id        TEXT NOT NULL REFERENCES menu_items(id) ON DELETE CASCADE,
+  -- How many words it is. The matcher prefers the longest match at a position,
+  -- and keeping the count here means it is not recomputed per candidate.
+  word_count          INTEGER NOT NULL,
+  is_sample           INTEGER NOT NULL DEFAULT 0 CHECK (is_sample IN (0, 1))
+);
+
+CREATE INDEX IF NOT EXISTS menu_item_aliases_item ON menu_item_aliases (menu_item_id);

@@ -7,6 +7,7 @@
 
 import { openAndMigrate, nowIso } from '../src/db.js';
 import { CHANNEL_BY_CLIENT_ID } from '../src/posts.js';
+import { normalizeAlias } from '../src/text-normalize.js';
 import { insertObservation } from '../src/observations.js';
 import { config, loadDotEnv } from '../src/config.js';
 import { pathToFileURL } from 'node:url';
@@ -72,10 +73,11 @@ export function seed(db, _repoRoot, { trackedBy = 'admin', now = Date.now() } = 
   const isSample = SEED_DATA.isSampleData ? 1 : 0;
   const stamp = new Date(now).toISOString();
 
+  const SEED_MENU = SEED_DATA.menuItems || [];
   const SEED_POSTS = SEED_DATA.posts || [];
   const SEED_SCHEDULED = SEED_DATA.scheduled || [];
 
-  const counts = { establishments: 0, social: 0, connections: 0, tracked: 0, observations: 0, posts: 0, postTargets: 0 };
+  const counts = { establishments: 0, social: 0, connections: 0, tracked: 0, observations: 0, posts: 0, postTargets: 0, menuItems: 0, menuAliases: 0 };
 
   db.exec('BEGIN');
   try {
@@ -238,6 +240,45 @@ export function seed(db, _repoRoot, { trackedBy = 'admin', now = Date.now() } = 
         counts.postTargets = (counts.postTargets || 0) + 1;
       }
       counts.posts = (counts.posts || 0) + 1;
+    }
+
+    // THE MENU, AND THE ALIASES THAT MAKE IT FINDABLE IN GUEST TEXT.
+    //
+    // Aliases are stored ALREADY NORMALIZED, so the PRIMARY KEY on
+    // menu_item_aliases.alias guards exactly the strings the matcher compares.
+    // That key is what makes an ambiguous alias impossible: `galouti` is
+    // deliberately NOT an alias of either galouti dish, because "Galouti
+    // Kebab" and "Kathal Galouti" would both claim it and every unqualified
+    // mention would be credited to whichever was inserted first. A missed
+    // mention is recoverable; a wrongly attributed one is invisible.
+    //
+    // The seeded mentions7d / sentiment / topPraise / topComplaint values in
+    // mock.jsx are deliberately NOT carried over. They are the invented
+    // figures this feature replaces — "repeatedly called the best in Delhi" is
+    // a sentence no guest wrote — and copying them here would give them a
+    // second home to be trusted from. Part 2 removes them from the client.
+    db.prepare(`DELETE FROM menu_items WHERE is_sample = 1`).run();   // aliases cascade
+    const insMenu = db.prepare(
+      `INSERT INTO menu_items (id, name, category, price, is_sample) VALUES (?, ?, ?, ?, 1)`
+    );
+    const insAlias = db.prepare(
+      `INSERT INTO menu_item_aliases (alias, menu_item_id, word_count, is_sample) VALUES (?, ?, ?, 1)`
+    );
+    for (const item of SEED_MENU) {
+      insMenu.run(item.id, item.name, item.category ?? null, item.price ?? null);
+      counts.menuItems++;
+      for (const raw of item.aliases || []) {
+        const alias = normalizeAlias(raw);
+        if (!alias) throw new Error(`menu item ${item.id}: alias '${raw}' normalizes to nothing`);
+        try {
+          insAlias.run(alias, item.id, alias.split(' ').length);
+        } catch (err) {
+          // The PRIMARY KEY did its job. Name both claimants rather than
+          // letting a constraint message stand on its own.
+          throw new Error(`alias '${alias}' (from '${raw}' on ${item.id}) is already claimed by another dish: ${err.message}`);
+        }
+        counts.menuAliases++;
+      }
     }
 
     for (const id of TRACKED_DEFAULT) {

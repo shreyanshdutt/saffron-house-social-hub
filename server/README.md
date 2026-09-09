@@ -17,7 +17,7 @@ renders those values and computes none of them itself.
 ```
 cd server
 cp .env.example .env      # fill in nothing yet — no key is used by this build
-npm test                  # 114 tests, no network
+npm test                  # 137 tests, no network
 npm run seed              # loads the 15 establishments from seed/seed-data.json
 npm start                 # http://127.0.0.1:8787
 ```
@@ -131,6 +131,36 @@ people's listings and is never on a publish path.
 changes — the target rows, the failure vocabulary, the cost report and the
 tests are already real.
 
+## Dish mentions
+
+`MENU_ITEMS` in the client claims `mentions7d: 412` for the Galouti Kebab and
+`sentiment: 0.81`. The entire seeded guest corpus is **7.3 KB across 57
+fragments**, of which 31 are actually guest-written. 412 cannot come from that.
+`menu_items` + `menu_item_aliases` exist so the figure can be replaced by one an
+owner can check by reading the sentences it came from.
+
+**Aliases, because guests write "biryani", not "Awadhi Biryani".** They are a
+table rather than a JSON column so that `alias` can be the PRIMARY KEY, which is
+what makes an ambiguous alias impossible rather than merely discouraged:
+"Galouti Kebab" and "Kathal Galouti" share the token `galouti`, and a bare
+`galouti` alias on both would credit every unqualified mention to whichever was
+inserted first. **A missed mention is recoverable; a wrongly attributed one is
+invisible**, so neither dish claims it and an unqualified "the galouti was
+excellent" is deliberately counted for nobody.
+
+**Evidence is the feature; the count is a by-product.** Every mention carries
+the guest's words as written, offsets into the original, the whole quote, and
+the source. A count without evidence would be another unverifiable number.
+
+**There is no sentiment**, by owner decision (2026-09-09) — not a column, not a
+field, not a placeholder. `src/text-normalize.js` records why the honest version
+is not available offline, along with four other negative results tested the same
+day, so nobody re-runs that afternoon.
+
+**Why it is tractable with no dependency:** dish names survive Hinglish intact.
+Nobody translates "biryani". The dish name is the anchor and the language around
+it is irrelevant to a mention count.
+
 ## Known gaps
 
 Stated rather than hidden — none of these is finished:
@@ -147,6 +177,11 @@ Stated rather than hidden — none of these is finished:
   still fails — with a reason that says the channel is fine and the code is
   not. No `fetch` may be added there until the owner records a decision the way
   §10 requires for Places.
+- **Nothing counts mentions yet.** The matcher and the menu are here; the guest
+  corpus is still in `src/mock.jsx` and the Menu screen still renders the
+  invented `mentions7d` / `sentiment` / `topPraise` / `topComplaint`. Part 2
+  moves the corpus and wires the screen. There is deliberately no HTTP route
+  for the menu until something renders it.
 - **Nothing runs a scheduled post.** There is no scheduler: a post in state
   `scheduled` stays there until something calls `/posts/:id/publish`. The state
   records an intention, and no part of this build acts on it.
@@ -185,5 +220,7 @@ seed/seed.js         one-shot seeding
 src/derive.js        review velocity, follower change, engagement change
 src/posts.js         post lifecycle, channel-id translation, the derived summary
 src/publish-adapters.js  THE STUBBED SEAM — the only place a platform call would live
-test/                114 tests, node:test, no network
+src/text-normalize.js    guest-text normalizing + the negative results, recorded
+src/dish-matcher.js      dish-name matching with the evidence attached
+test/                137 tests, node:test, no network
 ```

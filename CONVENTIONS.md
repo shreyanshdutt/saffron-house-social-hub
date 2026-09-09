@@ -528,6 +528,39 @@ closing an item, not follow-up work.**
     — see the open entry below. — closed in this commit
 
 
+28. **Dish-mention matching, and five negative results recorded so they are not
+    re-run.** `MENU_ITEMS` claims `mentions7d: 412` for the Galouti Kebab over a
+    guest corpus of 7.3 KB. The real figure, measured against the seeded text
+    with the matcher this commit adds, is **0** — and 6 across all eight dishes.
+    `menu_items` + `menu_item_aliases` and the matcher are the replacement; part
+    2 moves the corpus and the screen.
+
+    **The collision is at the alias level, not the name level.** No two of the
+    eight full names overlap, but `galouti` is shared by "Galouti Kebab" and
+    "Kathal Galouti". The resolution is to REFUSE the ambiguous alias rather
+    than pick a winner — enforced twice, by the PRIMARY KEY on
+    `menu_item_aliases.alias` and by `buildDishIndex()`, because an index built
+    in memory would otherwise bypass the table. The cost is stated rather than
+    hidden: `rv-3` says "The galouti is as good as everyone says" and is counted
+    for nobody. A missed mention is recoverable; a wrong attribution is not,
+    because nothing about it looks wrong.
+
+    **No sentiment**, by owner decision — and the resource does not exist
+    anyway. `src/text-normalize.js` records what was tested on 2026-09-09:
+    franc 6.2.0 calls Romanized Hindi "Ayacucho Quechua" at confidence 1.00;
+    `transliteration` runs Devanagari→Latin, the wrong way; sanscript needs
+    scheme-conformant input and "bohut" is not ITRANS; no Romanized-Hindi
+    sentiment lexicon is publicly available; and a Levenshtein-against-a-
+    wordlist detector works but answers a question this feature does not ask.
+    **The reframing that makes the whole problem small is recorded there too:**
+    dish names survive Hinglish intact, so the dish name is the anchor and the
+    surrounding language is irrelevant to a count.
+
+    One bug worth keeping: an early plural rule stripped any trailing 's' and
+    turned every "this" in the corpus into "thi". Folding now happens only when
+    the singular is a word the variant map already knows. — closed in this commit
+
+
 #### Open
 
 1. **`POSTS` survives in `mock.jsx` for `page-approvals.jsx` alone, and moving
