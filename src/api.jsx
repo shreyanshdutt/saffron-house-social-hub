@@ -60,6 +60,19 @@ const SERVER = {
   // fragments than over 31,000, and the screen must be able to say which.
   menu: [],
   menuCorpus: null,
+  // Customers, and the SEGMENT NUMBERS THE SERVER COMPUTED. Three fields per
+  // segment arrive ready to render; nothing here counts a list. A client that
+  // counted would be a second implementation of CONVENTIONS.md §11 decision 3
+  // and would drift from the server's the first time either was edited.
+  customers: [],
+  segments: [],
+  // The WhatsApp marketing rate, from server/src/config.js. Never hardcoded on
+  // this side — a price inlined in a screen is a second source for a number
+  // that governs money.
+  marketingRate: null,
+  // Why contact import is blocked, in the server's words. The screen renders
+  // this rather than carrying the sentence in JSX.
+  importStatus: null,
   // The window below which a delta cannot be scaled. Served, not hardcoded:
   // the rule lives in server/src/derive.js and the copy on screen explains it,
   // so the two must not be able to disagree.
@@ -124,12 +137,14 @@ async function loadServerData({ force = false } = {}) {
   SERVER.error = null;
   notify();
   try {
-    const [ests, comps, conns, posts, menu] = await Promise.all([
+    const [ests, comps, conns, posts, menu, custs, importStatus] = await Promise.all([
       getJson(`/establishments${filterQuery(SERVER.filters)}`),
       getJson('/competitors'),
       getJson('/connections'),
       getJson('/posts'),
       getJson('/menu'),
+      getJson('/customers'),
+      getJson('/customers/import-status'),
     ]);
     SERVER.establishments = ests.establishments;
     SERVER.competitors = comps.competitors;
@@ -138,6 +153,10 @@ async function loadServerData({ force = false } = {}) {
     SERVER.posts = posts.posts;
     SERVER.menu = menu.items;
     SERVER.menuCorpus = menu.corpus;
+    SERVER.customers = custs.customers;
+    SERVER.segments = custs.segments;
+    SERVER.marketingRate = custs.marketingRateInr;
+    SERVER.importStatus = importStatus;
     if (Number.isFinite(comps.minWindowDays)) SERVER.minWindowDays = comps.minWindowDays;
     SERVER.lastSyncedAt = comps.lastSyncedAt || null;
     SERVER.status = 'ready';
@@ -153,6 +172,10 @@ async function loadServerData({ force = false } = {}) {
     SERVER.posts = [];
     SERVER.menu = [];
     SERVER.menuCorpus = null;
+    SERVER.customers = [];
+    SERVER.segments = [];
+    SERVER.marketingRate = null;
+    SERVER.importStatus = null;
     SERVER.self = null;
     SERVER.status = 'error';
     SERVER.error = err.message || String(err);
@@ -356,6 +379,40 @@ async function deletePost(id) {
   return out;
 }
 
+// --- customers -------------------------------------------------------------
+//
+// Three writes, and deliberately no fourth: there is no deleteCustomer here
+// because there is no route for it. Import is not here either — it is blocked
+// on a decision (§11), and a helper for it would imply otherwise.
+
+// Staff rows only. `display_label` is the whole body, and the server refuses
+// anything else — including `source` — so this cannot grow a phone number by
+// someone adding a field at this end.
+async function addStaffCustomer(displayLabel) {
+  const created = await postJson('/customers', { display_label: displayLabel });
+  await loadServerData({ force: true });
+  return created;
+}
+
+// `taggedBy` has no default here either. Passing one would put an author on a
+// judgement that nobody made.
+async function tagCustomer(customerId, menuItemId, taggedBy) {
+  const updated = await postJson(`/customers/${encodeURIComponent(customerId)}/tags`, {
+    menu_item_id: menuItemId, tagged_by: taggedBy,
+  });
+  await loadServerData({ force: true });
+  return updated;
+}
+
+async function untagCustomer(customerId, menuItemId) {
+  const updated = await postJson(
+    `/customers/${encodeURIComponent(customerId)}/tags/${encodeURIComponent(menuItemId)}`,
+    undefined, 'DELETE',
+  );
+  await loadServerData({ force: true });
+  return updated;
+}
+
 async function postObservations(observations) {
   const res = await fetch(`${apiBase()}/observations`, {
     method: 'POST',
@@ -467,6 +524,9 @@ window.publishedPosts = publishedPosts;
 window.measuredPosts = measuredPosts;
 window.scheduledPosts = scheduledPosts;
 window.allPosts = allPosts;
+window.addStaffCustomer = addStaffCustomer;
+window.tagCustomer = tagCustomer;
+window.untagCustomer = untagCustomer;
 window.createPost = createPost;
 window.publishPost = publishPost;
 window.deletePost = deletePost;

@@ -13,6 +13,8 @@ import http from 'node:http';
 import * as repo from './repo.js';
 import { MIN_WINDOW_DAYS } from './derive.js';
 import { POST_STATES } from './posts.js';
+import { WHATSAPP_MARKETING_RATE_INR } from './config.js';
+import { importContacts } from './contact-import.js';
 
 const ROLES = new Set(['admin', 'executive', 'srexec', 'manager']);
 
@@ -166,6 +168,84 @@ export function createServer(db) {
       // from the stored corpus rather than being a column that could drift.
       if (req.method === 'GET' && path === '/menu') {
         return send(res, 200, repo.menuWithMentions(db));
+      }
+      // --- customers ----------------------------------------------------
+      //
+      // There is NO route that deletes a customer and NO route that imports
+      // one. Import stays behind contact-import.js, gated on the client's
+      // WhatsApp provider (CONVENTIONS.md §11).
+      if (req.method === 'GET' && path === '/customers') {
+        return send(res, 200, {
+          customers: repo.listCustomers(db),
+          // Three fields per segment, computed here. The client is never given
+          // a list to count — that would be a second implementation of §11
+          // decision 3, free to drift from this one.
+          segments: repo.customerSegments(db),
+          // The price comes from the server so no screen hardcodes it.
+          marketingRateInr: WHATSAPP_MARKETING_RATE_INR,
+        });
+      }
+      // The refusal, served rather than written into JSX, so the reason has one
+      // source. Calls nothing external — it reports a decision, not a network
+      // result.
+      if (req.method === 'GET' && path === '/customers/import-status') {
+        return send(res, 200, await importContacts());
+      }
+      // STAFF ROWS ONLY, AND THE BODY IS ALLOW-LISTED.
+      //
+      // `display_label` is the only key accepted. Anything else — `source`,
+      // `contact_ref`, `phone`, `wa_id` — is a 400, not an ignored extra. An
+      // ignored key is how a future client "temporarily" starts sending a phone
+      // number and nobody notices for a release; refusing it means that client
+      // fails loudly the first time it tries. Even `source: 'staff'` is
+      // refused, because accepting the field at all makes 'imported' look like
+      // a value somebody could pass.
+      if (req.method === 'POST' && path === '/customers') {
+        const body = await readJson(req);
+        const keys = Object.keys(body);
+        const unknown = keys.filter(k => k !== 'display_label');
+        if (unknown.length) {
+          return send(res, 400, {
+            error: 'only display_label is accepted here',
+            rejectedKeys: unknown,
+            reason: 'This route creates hand-entered customers only. It cannot set a source and it cannot store a contact reference, a phone number or an email — the product holds none of those (CONVENTIONS.md §11).',
+          });
+        }
+        try {
+          return send(res, 201, repo.createStaffCustomer(db, body.display_label));
+        } catch (err) {
+          return send(res, 400, { error: err.message });
+        }
+      }
+      if (req.method === 'POST' && /^\/customers\/[^/]+\/tags$/.test(path)) {
+        const id = decodeURIComponent(path.slice('/customers/'.length, path.length - '/tags'.length));
+        if (!repo.getCustomer(db, id)) return send(res, 404, { error: 'no such customer', id });
+        const body = await readJson(req);
+        if (!body.menu_item_id) return send(res, 400, { error: 'menu_item_id is required' });
+        // No default. §11: a judgement with no author recorded is
+        // indistinguishable from a derived fact, so an absent author is an
+        // error rather than something to fill in.
+        if (!body.tagged_by || !String(body.tagged_by).trim()) {
+          return send(res, 400, {
+            error: 'tagged_by is required',
+            reason: 'A tag is one person\'s judgement and is recorded as theirs. A tag with no author cannot be told apart from something the system worked out.',
+          });
+        }
+        try {
+          return send(res, 200, repo.tagCustomer(db, id, body.menu_item_id, body.tagged_by));
+        } catch (err) {
+          return send(res, 400, { error: err.message });
+        }
+      }
+      // Removes a TAG. Never a customer.
+      if (req.method === 'DELETE' && /^\/customers\/[^/]+\/tags\/[^/]+$/.test(path)) {
+        const rest = path.slice('/customers/'.length);
+        const cid = decodeURIComponent(rest.slice(0, rest.indexOf('/tags/')));
+        const mid = decodeURIComponent(rest.slice(rest.indexOf('/tags/') + '/tags/'.length));
+        const removed = repo.untagCustomer(db, cid, mid);
+        return removed
+          ? send(res, 200, repo.getCustomer(db, cid))
+          : send(res, 404, { error: 'no such tag', customerId: cid, menuItemId: mid });
       }
       if (req.method === 'GET' && path === '/tracked') {
         return send(res, 200, { tracked: repo.listTracked(db) });

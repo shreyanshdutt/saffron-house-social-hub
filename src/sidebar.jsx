@@ -36,6 +36,9 @@ const SIDEBAR_SECTIONS = [
       { route: 'dashboard',  icon: 'BarChart3',     perm: 'dashboard',      labelKey: 'dashboard' },
       { route: 'actions',    icon: 'Sparkles',      perm: 'dashboard',      labelKey: 'actions' },
       { route: 'messages',   icon: 'Inbox',         perm: 'inbox.read',     labelKey: 'messages', badged: true },
+      // Same gate as the Inbox: both screens concern named individuals, and
+      // `inbox.read` is already this product's PII boundary.
+      { route: 'customers',  icon: 'Users2',        perm: 'inbox.read',     labelKey: 'customers' },
       { route: 'reviews',    icon: 'Star',          perm: 'review.read',    labelKey: 'reviews', reviewBadged: true },
       { route: 'compose',    icon: 'PenSquare',     perm: 'draft.create',   labelKey: 'compose', primary: true },
       { route: 'approvals',  icon: 'ClipboardList', perm: 'draft.create',   labelKey: 'approvals' },

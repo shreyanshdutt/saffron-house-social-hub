@@ -70,6 +70,28 @@ export const PLACES_RETENTION_DAYS_DEFAULT = 30;
 // `test/retention.test.js` pins both halves of that claim.
 export const PURGE_PLACES_OBSERVATIONS = true;
 
+// ---------------------------------------------------------------------------
+// WHAT A WHATSAPP MARKETING MESSAGE COSTS. One constant, read by the client
+// over HTTP — never hardcoded in `src/`.
+//
+// Meta, "WhatsApp Business Platform Conversation-Based Pricing", India
+// marketing rate, effective 1 January 2026: ₹0.8631 per delivered marketing
+// message. Utility and service conversations are priced differently and are
+// NOT this number; anything reusing it for those is wrong.
+//
+// It lives here for the same reason PLACES_RETENTION_DAYS_MAX does: a figure
+// that governs money or policy has exactly one home, and a copy inlined at a
+// call site is a second source that will be updated late or not at all. When
+// Meta reprices, this line changes and every screen changes with it.
+//
+// Why the product cares (CONVENTIONS.md §11): marketing messages are roughly
+// 95% of the running bill. A broadcast to 6,400 contacts is about ₹5,500
+// before GST; the same offer to 40 tagged regulars is about ₹34. That
+// arithmetic is the justification for the customer tables existing at all,
+// which is why the Customers screen shows the multiplication rather than a
+// total — and why it multiplies by REACHABLE, never by tagged.
+export const WHATSAPP_MARKETING_RATE_INR = 0.8631;
+
 export function retentionDays(env = process.env) {
   const raw = env.PLACES_RETENTION_DAYS;
   if (raw === undefined || raw === '') return PLACES_RETENTION_DAYS_DEFAULT;

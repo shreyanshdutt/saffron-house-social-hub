@@ -148,6 +148,7 @@ const PAGE_PERMS = {
   messages:       'inbox.read',
   team:           'inbox.read',
   scheduled:      'draft.create',
+  customers:      'inbox.read',
   'channel-health': 'social.manage',
   brand:          'brand.manage',
   users:          'user.manage',
@@ -170,6 +171,7 @@ const PAGE_LABEL = {
   messages:       'Inbox',
   team:           'Messages',
   scheduled:      'Calendar',
+  customers:      'Customers',
   'channel-health': 'Channel Health',
   brand:          'Brand Kit',
   users:          'Users',
@@ -196,6 +198,7 @@ function PageRouter({ page, go, openedPost, onOpenPost, onCloseDrawer, role }) {
     case 'notifications':   return <NotificationsCenterPage />;
     case 'approvals':       return <ApprovalsPage role={role} openedPost={openedPost} onCloseDrawer={onCloseDrawer} />;
     case 'scheduled':       return <ScheduledPage />;
+    case 'customers':       return <CustomersPage />;
     case 'channel-health':  return <ChannelHealthPage />;
     case 'brand':           return <BrandKitPage />;
     case 'users':           return <UsersPage role={role} />;

@@ -240,3 +240,166 @@ test('re-seeding does not duplicate customers or tags', async () => {
   assert.equal(Number(db.prepare(`SELECT COUNT(*) n FROM customers`).get().n), 8);
   assert.equal(Number(db.prepare(`SELECT COUNT(*) n FROM customer_tags`).get().n), 8);
 });
+
+// --- routes ------------------------------------------------------------------
+
+const withServer = async (fn) => {
+  const { createServer } = await import('../src/http.js');
+  const server = createServer(seededDb());
+  await new Promise(r => server.listen(0, '127.0.0.1', r));
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const call = async (path, opts) => {
+    const res = await fetch(base + path, opts);
+    return { status: res.status, body: await res.json() };
+  };
+  const post = (path, payload) => call(path, {
+    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload),
+  });
+  try { await fn({ call, post, base }); } finally { server.close(); }
+};
+
+test('GET /customers sends three numbers per segment, and they reconcile', async () => {
+  await withServer(async ({ call }) => {
+    const { status, body } = await call('/customers');
+    assert.equal(status, 200);
+    assert.equal(body.customers.length, 8);
+    assert.ok(body.segments.length >= 1);
+    for (const s of body.segments) {
+      assert.equal(typeof s.tagged, 'number');
+      assert.equal(typeof s.reachable, 'number');
+      assert.equal(typeof s.unreachable, 'number');
+      assert.equal(s.tagged, s.reachable + s.unreachable, `${s.name} does not reconcile`);
+    }
+    const biryani = body.segments.find(s => s.menuItemId === 'mi-2');
+    assert.deepEqual(
+      { tagged: biryani.tagged, reachable: biryani.reachable, unreachable: biryani.unreachable },
+      { tagged: 5, reachable: 3, unreachable: 2 },
+    );
+    // A segment nobody can be messaged in exists in the seed on purpose.
+    const kheer = body.segments.find(s => s.menuItemId === 'mi-6');
+    assert.equal(kheer.reachable, 0);
+  });
+});
+
+test('GET /customers serves the marketing rate so no screen hardcodes a price', async () => {
+  await withServer(async ({ call }) => {
+    const { body } = await call('/customers');
+    assert.equal(body.marketingRateInr, 0.8631);
+  });
+});
+
+test('every customer served carries its tags WITH who tagged and when', async () => {
+  await withServer(async ({ call }) => {
+    const { body } = await call('/customers');
+    const tagged = body.customers.filter(c => c.tags.length);
+    assert.ok(tagged.length >= 5);
+    for (const c of tagged) {
+      assert.equal(typeof c.reachable, 'boolean');
+      for (const t of c.tags) {
+        assert.ok(t.taggedBy, `${c.id} tag lost its author`);
+        assert.ok(t.taggedAt && !Number.isNaN(Date.parse(t.taggedAt)));
+        assert.ok(t.name, 'the dish name travels so the client need not join');
+      }
+    }
+  });
+});
+
+test("POST /customers REFUSES source 'imported' — there is no route that imports", async () => {
+  await withServer(async ({ post, call }) => {
+    const before = (await call('/customers')).body.customers.length;
+    const { status, body } = await post('/customers', { display_label: 'X', source: 'imported' });
+    assert.equal(status, 400);
+    assert.deepEqual(body.rejectedKeys, ['source']);
+    assert.equal((await call('/customers')).body.customers.length, before, 'nothing was created');
+  });
+});
+
+test('POST /customers refuses ANY unknown key, so a phone cannot be smuggled through', async () => {
+  await withServer(async ({ post }) => {
+    for (const extra of [{ phone: '+91 98110 44213' }, { contact_ref: 'wa-1' }, { wa_id: '919811044213' }, { email: 'a@b.c' }]) {
+      const { status, body } = await post('/customers', { display_label: 'X', ...extra });
+      assert.equal(status, 400, `${Object.keys(extra)[0]} was not refused`);
+      assert.deepEqual(body.rejectedKeys, Object.keys(extra));
+    }
+    // Even the correct value is refused: accepting the field at all makes
+    // 'imported' look like something a caller may pass.
+    assert.equal((await post('/customers', { display_label: 'X', source: 'staff' })).status, 400);
+  });
+});
+
+test('POST /customers creates a staff row that is explicitly not reachable', async () => {
+  await withServer(async ({ post }) => {
+    const { status, body } = await post('/customers', { display_label: 'Thursday regular, table 12' });
+    assert.equal(status, 201);
+    assert.equal(body.source, 'staff');
+    assert.equal(body.contactRef, null);
+    assert.equal(body.reachable, false);
+    assert.deepEqual(body.tags, []);
+  });
+});
+
+test('POST /customers refuses an empty label rather than creating a nameless person', async () => {
+  await withServer(async ({ post }) => {
+    assert.equal((await post('/customers', { display_label: '   ' })).status, 400);
+    assert.equal((await post('/customers', {})).status, 400);
+  });
+});
+
+test('POST tags REFUSES a missing tagged_by — no default author', async () => {
+  await withServer(async ({ post }) => {
+    const { status, body } = await post('/customers/cu-1/tags', { menu_item_id: 'mi-1' });
+    assert.equal(status, 400);
+    assert.match(body.error, /tagged_by is required/);
+    assert.match(body.reason, /judgement/i);
+    assert.equal((await post('/customers/cu-1/tags', { menu_item_id: 'mi-1', tagged_by: '  ' })).status, 400,
+      'whitespace is not an author');
+  });
+});
+
+test('POST tags requires a dish and refuses one that is not on the menu', async () => {
+  await withServer(async ({ post }) => {
+    assert.equal((await post('/customers/cu-1/tags', { tagged_by: 'Priya Menon' })).status, 400);
+    assert.equal((await post('/customers/cu-1/tags', { menu_item_id: 'mi-nope', tagged_by: 'Priya Menon' })).status, 400);
+  });
+});
+
+test('POST tags on an unknown customer is a 404', async () => {
+  await withServer(async ({ post }) => {
+    assert.equal((await post('/customers/nobody/tags', { menu_item_id: 'mi-1', tagged_by: 'Priya Menon' })).status, 404);
+  });
+});
+
+test('a tag can be added and removed, and removing one never removes the person', async () => {
+  await withServer(async ({ post, call }) => {
+    const added = await post('/customers/cu-4/tags', { menu_item_id: 'mi-2', tagged_by: 'Ananya Rao' });
+    assert.equal(added.status, 200);
+    assert.ok(added.body.tags.some(t => t.menuItemId === 'mi-2'));
+
+    const removed = await call('/customers/cu-4/tags/mi-2', { method: 'DELETE' });
+    assert.equal(removed.status, 200);
+    assert.equal(removed.body.tags.some(t => t.menuItemId === 'mi-2'), false);
+    assert.equal(removed.body.id, 'cu-4', 'the customer is still here');
+
+    assert.equal((await call('/customers/cu-4/tags/mi-2', { method: 'DELETE' })).status, 404);
+    assert.equal((await call('/customers')).body.customers.length, 8, 'nobody was deleted');
+  });
+});
+
+test('there is NO route that deletes a customer', async () => {
+  await withServer(async ({ call }) => {
+    const res = await call('/customers/cu-1', { method: 'DELETE' });
+    assert.equal(res.status, 404, 'deleting a person is not an operation this API offers');
+    assert.equal((await call('/customers')).body.customers.length, 8);
+  });
+});
+
+test('GET /customers/import-status serves the refusal, so the screen never writes it', async () => {
+  await withServer(async ({ call }) => {
+    const { status, body } = await call('/customers/import-status');
+    assert.equal(status, 200);
+    assert.equal(body.ok, false);
+    assert.equal(body.blockedBy, 'provider_unknown');
+    assert.equal(body.imported, 0);
+    assert.equal(body.reason, IMPORT_BLOCKED_REASON, 'one source for the sentence');
+  });
+});

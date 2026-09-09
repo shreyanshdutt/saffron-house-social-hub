@@ -9,6 +9,7 @@ import { nowIso } from './db.js';
 import { summarisePost, normaliseChannel, PUBLISHABLE_CHANNELS, CLIENT_ID_BY_CHANNEL } from './posts.js';
 import { publishPlan, callAdapter } from './publish-adapters.js';
 import { buildDishIndex, findDishMentions } from './dish-matcher.js';
+import { summariseSegment, customersForDish, toCustomer } from './customers.js';
 
 // "Do we hold Business Discovery content for this establishment." Keyed on the
 // DATA being present, not on the `source` label: the seed writes its
@@ -710,4 +711,119 @@ export function menuWithMentions(db) {
       };
     }).sort((a, b) => b.mentionCount - a.mentionCount || a.name.localeCompare(b.name)),
   };
+}
+
+// ---------------------------------------------------------------------------
+// customers
+//
+// SEGMENT NUMBERS ARE COMPUTED HERE AND SENT AS THREE FIELDS. The client is
+// never handed a list to count: a client that counts is a second
+// implementation of CONVENTIONS.md §11 decision 3, and the two will drift the
+// first time one of them is edited alone. `summariseSegment()` is the only
+// thing that produces these numbers, and it cannot produce a lone total.
+
+export function listCustomers(db) {
+  const rows = db.prepare(
+    `SELECT id, source, contact_ref, display_label, created_at, is_sample
+       FROM customers ORDER BY display_label`
+  ).all().map(toCustomer);
+
+  const tags = db.prepare(
+    `SELECT t.customer_id, t.menu_item_id, t.tagged_by, t.tagged_at, m.name
+       FROM customer_tags t
+       JOIN menu_items m ON m.id = t.menu_item_id
+      ORDER BY t.tagged_at DESC`
+  ).all();
+
+  const byCustomer = new Map();
+  for (const t of tags) {
+    if (!byCustomer.has(t.customer_id)) byCustomer.set(t.customer_id, []);
+    byCustomer.get(t.customer_id).push({
+      menuItemId: t.menu_item_id,
+      name: t.name,
+      // The provenance travels all the way out. A tag without its author is
+      // indistinguishable from something the system derived (§11).
+      taggedBy: t.tagged_by,
+      taggedAt: t.tagged_at,
+    });
+  }
+  return rows.map(c => ({ ...c, tags: byCustomer.get(c.id) || [] }));
+}
+
+// One entry per dish that has at least one tag. A dish nobody is tagged with
+// is not a segment of zero — it is not a segment, and offering it as one would
+// invite a cost line for an audience that does not exist.
+export function customerSegments(db) {
+  const dishes = db.prepare(
+    `SELECT DISTINCT t.menu_item_id, m.name
+       FROM customer_tags t
+       JOIN menu_items m ON m.id = t.menu_item_id
+      ORDER BY m.name`
+  ).all();
+
+  return dishes.map(d => ({
+    menuItemId: d.menu_item_id,
+    name: d.name,
+    ...summariseSegment(customersForDish(db, d.menu_item_id)),
+  }));
+}
+
+// A hand-entered customer. STAFF ONLY — there is no path here that creates an
+// imported row, because creating one means holding a provider-issued reference
+// and that is gated (§11) behind knowing the provider.
+export function createStaffCustomer(db, displayLabel, now = new Date().toISOString()) {
+  const label = typeof displayLabel === 'string' ? displayLabel.trim() : '';
+  if (!label) throw new Error('display_label is required');
+  if (label.length > 120) throw new Error('display_label is too long (120 characters maximum)');
+  const id = `cu-staff-${Date.parse(now) || Date.now()}-${Math.abs(hashLabel(label)).toString(36)}`;
+  db.prepare(
+    `INSERT INTO customers (id, source, contact_ref, display_label, created_at, is_sample)
+     VALUES (?, 'staff', NULL, ?, ?, 0)`
+  ).run(id, label, now);
+  return getCustomer(db, id);
+}
+
+// Deterministic, tiny, and only used to keep generated ids apart. Not a
+// security primitive and not applied to anything personal.
+function hashLabel(s) {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+  return h;
+}
+
+export function getCustomer(db, id) {
+  const row = db.prepare(
+    `SELECT id, source, contact_ref, display_label, created_at, is_sample FROM customers WHERE id = ?`
+  ).get(id);
+  if (!row) return null;
+  const c = toCustomer(row);
+  c.tags = db.prepare(
+    `SELECT t.menu_item_id, t.tagged_by, t.tagged_at, m.name
+       FROM customer_tags t JOIN menu_items m ON m.id = t.menu_item_id
+      WHERE t.customer_id = ? ORDER BY t.tagged_at DESC`
+  ).all(id).map(t => ({ menuItemId: t.menu_item_id, name: t.name, taggedBy: t.tagged_by, taggedAt: t.tagged_at }));
+  return c;
+}
+
+// `taggedBy` is REQUIRED and has no default. A judgement with no author
+// recorded is indistinguishable from a derived fact, so the absence is an
+// error rather than something to fill in with 'system' or the empty string.
+export function tagCustomer(db, customerId, menuItemId, taggedBy, now = new Date().toISOString()) {
+  const by = typeof taggedBy === 'string' ? taggedBy.trim() : '';
+  if (!by) throw new Error('tagged_by is required — a tag is somebody\'s judgement and is recorded as theirs');
+  db.prepare(
+    `INSERT INTO customer_tags (customer_id, menu_item_id, tagged_by, tagged_at, is_sample)
+     VALUES (?, ?, ?, ?, 0)
+     ON CONFLICT (customer_id, menu_item_id) DO UPDATE SET tagged_by = excluded.tagged_by, tagged_at = excluded.tagged_at`
+  ).run(customerId, menuItemId, by, now);
+  return getCustomer(db, customerId);
+}
+
+// A mis-tag has to be removable. This removes a TAG and never a customer —
+// there is deliberately no route that deletes a person.
+export function untagCustomer(db, customerId, menuItemId) {
+  const out = db.prepare(
+    `DELETE FROM customer_tags WHERE customer_id = ? AND menu_item_id = ?`
+  ).run(customerId, menuItemId);
+  return Number(out.changes) > 0;
 }
