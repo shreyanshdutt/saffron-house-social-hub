@@ -158,7 +158,6 @@ const I18N = {
       subtitle: 'Connected accounts, team and brand preferences.',
       accounts: 'Connected accounts',
       team: 'Team',
-      brand: 'Brand voice',
       notifs: 'Notifications',
       connected: 'Connected',
       reconnect: 'Reconnect',

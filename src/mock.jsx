@@ -191,10 +191,8 @@ function hasCap(id, cap) {
 const POSTABLE = PLATFORMS.filter(p => p.caps.includes('publish')).map(p => p.id);
 
 // Channels carrying public star ratings. Google only.
-const REVIEW_CHANNELS = PLATFORMS.filter(p => p.caps.includes('reviews')).map(p => p.id);
 
 // Channels that can appear in the Inbox.
-const INBOX_CHANNELS = PLATFORMS.filter(p => p.caps.includes('dm') || p.caps.includes('qanda')).map(p => p.id);
 
 function platformColor(idOrPlatform, theme = 'light') {
   const p = typeof idOrPlatform === 'string' ? PLATFORM_BY_ID[idOrPlatform] : idOrPlatform;
@@ -1667,7 +1665,7 @@ function listeningSave(state) {
 
 Object.assign(window, {
   PLATFORMS, PLATFORM_BY_ID, PLATFORM_ID_BY_NAME, hasCap,
-  POSTABLE, REVIEW_CHANNELS, INBOX_CHANNELS, platformColor,
+  POSTABLE, platformColor,
   LISTENING_SIGNALS, LISTENING_COMPETITORS, LISTENING_TRENDS, LISTENING_KPIS,
   LISTENING_KINDS, LISTENING_SEVERITIES, listeningLoad, listeningSave,
   SAF_HANDLE, SAF_SELF_STATS, COMPETITOR_CATCHMENT, COMPETITOR_POST_SEEDS,

@@ -1,6 +1,6 @@
 // Compose Post page.
 
-function ComposePage({ initialContent, onPublished }) {
+function ComposePage({ onPublished }) {
   const t = useT();
   const toast = useToast();
   const { lang } = React.useContext(AppCtx);
@@ -11,14 +11,7 @@ function ComposePage({ initialContent, onPublished }) {
     setSelected(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
 
   // Content
-  const [content, setContent] = React.useState(initialContent ||
-    'Tonight at Saffron House 🔥 — ');
-
-  React.useEffect(() => {
-    if (initialContent !== undefined && initialContent !== null) {
-      setContent(initialContent);
-    }
-  }, [initialContent]);
+  const [content, setContent] = React.useState('Tonight at Saffron House 🔥 — ');
 
   // Hashtags
   const [tags, setTags] = React.useState(['#SaffronHouse', '#Dwarka']);

@@ -16,14 +16,12 @@ function SettingsPage() {
         tabs={[
           { id: 'accounts', label: t.settings.accounts },
           { id: 'team',     label: t.settings.team },
-          { id: 'brand',    label: t.settings.brand },
           { id: 'notifs',   label: t.settings.notifs },
         ]}
       />
 
       {tab === 'accounts' && <AccountsTab />}
       {tab === 'team'     && <TeamTab />}
-      {tab === 'brand'    && <BrandTab />}
       {tab === 'notifs'   && <NotifsTab />}
     </div>
   );
@@ -201,42 +199,6 @@ function TeamTab() {
         ))}
       </div>
     </Card>
-  );
-}
-
-function BrandTab() {
-  const [voice, setVoice] = React.useState(
-    'Write like a host, not a marketer. Name the dish, name the person, say what actually happens in the kitchen. '
-    + 'Never use empty superlatives ("best in Delhi", "culinary journey") and never claim an award we have not won. '
-    + 'Prices in rupees, always inclusive of taxes. For complaints: acknowledge plainly, give a concrete next step, '
-    + 'and never promise a refund or comp — that is the Marketing Manager\'s call. We are open 12pm–11:30pm, seven days, Sector 10 Market, Dwarka.'
-  );
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-      <Card padding="p-5" className="md:col-span-2">
-        <h3 className="text-[15px] font-semibold text-saf-text">Brand voice guidelines</h3>
-        <p className="text-[12px] text-saf-muted mt-1">A written reference for whoever drafts a post. Nothing reads it automatically.</p>
-        <textarea
-          value={voice}
-          onChange={(e) => setVoice(e.target.value)}
-          className="mt-3 w-full min-h-[140px] p-3 rounded-lg border border-saf-border text-[13px] focus:border-saf-primary focus:ring-4 focus:ring-saf-primary/10 transition"
-        />
-        <div className="flex justify-end mt-3">
-          <Button variant="primary" size="sm">Save changes</Button>
-        </div>
-      </Card>
-      <Card padding="p-5">
-        <h3 className="text-[15px] font-semibold text-saf-text">Brand palette</h3>
-        <div className="mt-3 grid grid-cols-3 gap-2">
-          {['#B4451F','#6E2412','#D99A16','#2E7D4F','#B7791F','#C0342B'].map(c => (
-            <div key={c} className="text-center">
-              <div className="aspect-square rounded-lg" style={{ background: c }} />
-              <div className="text-[10px] text-saf-muted mt-1 tabular-nums">{c}</div>
-            </div>
-          ))}
-        </div>
-      </Card>
-    </div>
   );
 }
 

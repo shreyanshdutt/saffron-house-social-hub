@@ -221,8 +221,6 @@ closing an item, not follow-up work.**
     follower and engagement change reported `none` with zero samples, and no
     seeded follower count was zeroed. — recorded in this commit
 
-#### Open
-
 18. **`REVIEW_CHANNELS` and `INBOX_CHANNELS` are dead exports.** Both are
     derived from `caps` in `mock.jsx` and assigned onto `window`, and neither
     has a single consumer anywhere in `src/` — the only occurrences are the
@@ -238,14 +236,48 @@ closing an item, not follow-up work.**
     lie. The next person will run this grep, so the trap is recorded with the
     finding rather than left to be rediscovered.
 
-    **Open, not closed, deliberately.** Deleting them is a change to the caps
-    model's public surface: they exist because `caps` is the enforcement
-    mechanism (`CLAUDE.md` § 3) and a future screen reading "which channels
-    take reviews" would reach for exactly these names. Whether the answer is
-    to delete them or to use them is a decision for whichever commit next
-    touches that model — not a drive-by tidy in a docs commit (§ 4). Recorded
-    here so the next such commit inherits the question instead of rediscovering
-    it.
+    **Held open until a commit could own the decision**, because deleting them
+    changes the caps model's public surface: they exist because `caps` is the
+    enforcement mechanism (`CLAUDE.md` § 3) and a future screen reading "which
+    channels take reviews" would reach for exactly these names. The answer, on
+    review, is DELETE — nothing reached for them across nineteen commits, and a
+    derived export with no consumer is a claim that something is wired up.
+    `POSTABLE` stays: one real consumer at `page-compose.jsx`. — closed in this
+    commit
+
+19. **The `composerInitial` chain was orphaned by its own fix.** `b884f71`
+    removed the AI assistant, whose "Copy to composer" was the only writer of
+    `composerInitial` via `handleCopyToComposer`. The state, its
+    clear-on-navigate, the prop threaded through `PageRouter`, and the sync
+    effect in `ComposePage` all survived — five lines and a prop that could
+    never be anything but `null`. It was reported in that commit's own report
+    rather than fixed there, because removing it meant changing `ComposePage`'s
+    signature and "the Composer is unaffected" was one of that commit's
+    verification conditions. Removed here. The seeded default it guarded
+    ('Tonight at Saffron House 🔥 — ') is untouched: the dead operand went, the value
+    that actually runs stayed. — closed in this commit
+
+20. **The Brand voice tab fed nothing, and its Save button never saved.** The
+    tab held a brand-voice textarea in component state and a "Save changes"
+    button that had no `onClick` at any point in its history — a control that
+    lies, flagged in `c0e54f1`'s report and left then because removing the tab
+    was a separate decision. Once `b884f71` removed the AI assistant the
+    textarea fed nothing at all, and `9831154` had already had to correct its
+    description from "passed to the AI assistant" to "nothing reads it
+    automatically". Owner ruled 2026-09-09 to remove it. Gone with its
+    component, its tab entry and its `t.settings.brand` key; Settings now shows
+    three tabs.
+
+    Its brand palette went with it, deliberately: six hardcoded hex values
+    (`#B4451F`, `#6E2412`, `#D99A16`, `#2E7D4F`, `#B7791F`, `#C0342B`)
+    duplicating the `tailwind.config` block in `index.html`, which `CLAUDE.md`
+    § 8 names as the single source for those tokens. It was also a PARTIAL
+    duplicate — six of the twelve — so it under-described the palette while
+    appearing to document it. — closed in this commit
+
+#### Open
+
+None.
 
 ## 4. Scope discipline
 

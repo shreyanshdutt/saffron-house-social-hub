@@ -21,7 +21,6 @@ function App() {
 
   const [page, setPage] = React.useState('dashboard');
   const [collapsed, setCollapsed] = React.useState(false);
-  const [composerInitial, setComposerInitial] = React.useState(null);
   const [openedPost, setOpenedPost] = React.useState(null);
 
   // Theme: 'light' | 'dark'.
@@ -69,7 +68,6 @@ function App() {
   // redirect-on-role-change effect (see <RoleRedirector />).
   const go = (next) => {
     setPage(next);
-    if (next !== 'compose') setComposerInitial(null);
   };
 
   const handleOpenPost = (post) => {
@@ -105,7 +103,6 @@ function App() {
               <PageRouter
                 page={page}
                 go={go}
-                composerInitial={composerInitial}
                 openedPost={openedPost}
                 onOpenPost={handleOpenPost}
                 onCloseDrawer={() => setOpenedPost(null)}
@@ -185,10 +182,10 @@ const PAGE_LABEL = {
 window.PAGE_PERMS = PAGE_PERMS;
 window.PAGE_LABEL = PAGE_LABEL;
 
-function PageRouter({ page, go, composerInitial, openedPost, onOpenPost, onCloseDrawer, role }) {
+function PageRouter({ page, go, openedPost, onOpenPost, onCloseDrawer, role }) {
   switch (page) {
     case 'dashboard':       return <DashboardPage onNavigate={go} onOpenPost={onOpenPost} />;
-    case 'compose':         return <ComposePage initialContent={composerInitial} />;
+    case 'compose':         return <ComposePage />;
     case 'analytics':       return <AnalyticsPage onOpenPost={onOpenPost} />;
     case 'reviews':         return <ReviewsPage role={role} />;
     case 'actions':         return <RecommendationsPage role={role} onNavigate={go} />;
