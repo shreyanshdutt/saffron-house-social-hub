@@ -275,6 +275,14 @@ closing an item, not follow-up work.**
     duplicate — six of the twelve — so it under-described the palette while
     appearing to document it. — closed in this commit
 
+21. **`ComposePage`'s `onPublished` prop was never passed by anything.** The
+    signature took it and the fake publish flow called it, but no caller in
+    `app.jsx` or anywhere else in `src/` ever supplied one — so the `&&` guard
+    was the whole of its behaviour and it had never fired. It read as a wired
+    callback into the rest of the app (refresh the calendar, bump the activity
+    feed) and there was nothing on the other end. Removed with the fake publish
+    flow that was its only caller. — closed in this commit
+
 #### Open
 
 None.

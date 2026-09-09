@@ -1,8 +1,26 @@
 // Compose Post page.
 
-function ComposePage({ onPublished }) {
+// Why nothing on this screen can be saved, scheduled or sent. Written for a
+// restaurant marketing manager: it says what is missing and what that means
+// for the post they just typed, not which endpoint is absent.
+//
+// TWO SEPARATE MISSING THINGS, and they are stated apart on purpose because
+// they are fixed by different people at different times. Connecting Instagram
+// is an owner sign-in; somewhere to send the post to is a build. Connecting a
+// channel tomorrow would still not make Publish work, and a panel that named
+// only the connection would promise otherwise.
+const NO_PUBLISHING_REASON =
+  'Nothing you write here is saved anywhere yet — close this screen or reload the page ' +
+  'and the post is gone, so copy anything you want to keep. Saving, scheduling and ' +
+  'publishing are switched off for two reasons: no channel is connected yet, and there ' +
+  'is nowhere for a post to be stored or sent to. Both are still being built.';
+
+// The short form, for the hover. Same two facts, one line.
+const NO_PUBLISHING_TIP =
+  'Off: no channel is connected, and there is nowhere yet to store or send a post.';
+
+function ComposePage() {
   const t = useT();
-  const toast = useToast();
   const { lang } = React.useContext(AppCtx);
 
   // Selection of platforms
@@ -31,10 +49,6 @@ function ComposePage({ onPublished }) {
   const [scheduleDate, setScheduleDate] = React.useState('2026-09-05');
   const [scheduleTime, setScheduleTime] = React.useState('10:00');
   const [timezone, setTimezone] = React.useState('Asia/Kolkata — IST (+05:30)');
-
-  // Publishing state
-  const [publishing, setPublishing] = React.useState(false);
-  const [published, setPublished] = React.useState(false);
 
   // Preview
   const [previewPlatform, setPreviewPlatform] = React.useState(selected[0] || 'ig');
@@ -68,19 +82,6 @@ function ComposePage({ onPublished }) {
       // simulate
       setMedia(prev => [...prev, { id: 'm' + Date.now(), kind: 'image', label: 'New upload.jpg', tone: 'sand' }]);
     }
-  };
-
-  // Publish flow
-  const doPublish = () => {
-    if (publishing || !selected.length) return;
-    setPublishing(true);
-    setTimeout(() => {
-      setPublishing(false);
-      setPublished(true);
-      toast.push({ title: t.compose.published.replace('{n}', selected.length), kind: 'success' });
-      setTimeout(() => setPublished(false), 1800);
-      onPublished && onPublished();
-    }, 1100);
   };
 
   return (
@@ -308,22 +309,41 @@ function ComposePage({ onPublished }) {
           </button>
         </Card>
 
-        {/* Action buttons */}
-        <div className="flex flex-wrap items-center justify-end gap-2 sticky bottom-0 bg-saf-surface/80 backdrop-blur-md py-3 -mx-6 px-6 -mb-6 mt-2 border-t border-saf-border">
-          <Button variant="ghost" leadingIcon="Save" onClick={() => toast.push({ title: t.compose.drafted })}>{t.compose.saveDraft}</Button>
-          <Button variant="secondary" leadingIcon="CalendarClock" onClick={() => toast.push({ title: t.compose.scheduled.replace('{when}', scheduleDate + ' ' + scheduleTime) })}>{t.compose.schedule}</Button>
-          <Button variant="primary" loading={publishing} onClick={doPublish}>
-            {published ? (
-              <span className="inline-flex items-center gap-2">
-                <svg className="check-svg" width="16" height="16" viewBox="0 0 16 16" fill="none">
-                  <path d="M3 8.5 6.5 12 13 5" stroke="white" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-                Published
+        {/* Action buttons.
+
+            ALL THREE ARE DISABLED, AND THE REASON IS BOTH ON HOVER AND IN THE
+            PANEL BESIDE THEM. They used to fire a toast and nothing else:
+            "Post published to 2 channels" over a post that went nowhere,
+            "Draft saved" over a draft that was never written down. Following
+            c0e54f1's ruling for the Settings connect buttons — a control that
+            cannot act is disabled and says why, because a greyed button the
+            user has to guess about is the same lie in a quieter voice.
+
+            The panel leads with the draft warning rather than the missing
+            connection, because that is the one that costs the user something:
+            somebody can spend ten minutes writing this post, and the words are
+            gone on reload. Everything else on this screen — writing, media,
+            tags, the character counts, the previews — still works. */}
+        <div className="sticky bottom-0 bg-saf-surface/80 backdrop-blur-md py-3 -mx-6 px-6 -mb-6 mt-2 border-t border-saf-border space-y-3">
+          <div className="flex items-start gap-2 p-3 rounded-xl bg-saf-card border border-saf-border">
+            <Icon name="Info" size={14} className="text-saf-muted mt-0.5 shrink-0" />
+            <p className="text-[12px] text-saf-muted leading-relaxed">{NO_PUBLISHING_REASON}</p>
+          </div>
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <Tooltip label={NO_PUBLISHING_TIP} side="top">
+              <span><Button variant="ghost" leadingIcon="Save" disabled>{t.compose.saveDraft}</Button></span>
+            </Tooltip>
+            <Tooltip label={NO_PUBLISHING_TIP} side="top">
+              <span><Button variant="secondary" leadingIcon="CalendarClock" disabled>{t.compose.schedule}</Button></span>
+            </Tooltip>
+            <Tooltip label={NO_PUBLISHING_TIP} side="top">
+              <span>
+                <Button variant="primary" disabled>
+                  <span className="inline-flex items-center gap-2"><Icon name="Send" size={16} />{t.compose.publish}</span>
+                </Button>
               </span>
-            ) : (
-              <span className="inline-flex items-center gap-2"><Icon name="Send" size={16} />{t.compose.publish}</span>
-            )}
-          </Button>
+            </Tooltip>
+          </div>
         </div>
       </div>
 

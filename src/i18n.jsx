@@ -73,9 +73,6 @@ const I18N = {
       saveDraft: 'Save as draft',
       schedule: 'Schedule post',
       publish: 'Publish now',
-      published: 'Post published to {n} channels',
-      drafted: 'Draft saved',
-      scheduled: 'Scheduled for {when}',
     },
     analytics: {
       title: 'Analytics overview',
