@@ -443,30 +443,58 @@ closing an item, not follow-up work.**
     class as entries 12, 13 and 18. — closed in this commit
 
 
+26. **The last eight false success claims, in `page-stubs.jsx`.** Verified
+    first: zero `localStorage`, zero `fetch`, no writer of any kind, and each
+    of the eight an inline toast with nothing else in the handler. All follow
+    `c0e54f1` — disabled, reason stated — since none had a local half worth
+    keeping the way drafting a reply did.
+
+    **Three screens, three reasons, written separately on purpose.** One
+    sentence pasted three times would be a lie by flattening: it would tell
+    someone the same thing is missing in all three places when each needs
+    different work. Brand Kit has nowhere to store an asset, a token or a copy
+    block. Users has no directory to write to and no mail path out of the app —
+    the `'Invitation sent'` case is the Escalate shape from `8ce1c20`, where
+    somebody waits for a message that was never sent.
+
+    **The two downloads were the worst and the Exports panel says why.**
+    `downloadCsv` (csv-util.jsx:30) builds a real Blob and a real object URL,
+    and it is genuinely called at `page-reviews.jsx`:209,
+    `page-recommendations.jsx`:114 and `page-listening-signals.jsx`:172/:182 —
+    checked, not assumed, because the panel makes a claim about the product.
+    Pressing Download really does produce a file everywhere else, so a user
+    who presses it here and gets nothing concludes the product is BROKEN. The
+    panel therefore states that this is unbuilt rather than broken, and names
+    where downloads are real. That clause is the whole difference between a
+    bug report and an accurate expectation.
+
+    Permission gates stay and are still demoable. `GatedButton` keeps its
+    `enabled` prop and always renders the disabled form, appending the role
+    sentence after the build reason; the `Assign role` ternary collapses the
+    same way, since neither branch could act. On Exports the per-card `allowed`
+    check is untouched and the locked branch now leads with the build reason
+    too. Three now-unused `useToast` handles went with the toasts.
+
+    **This closes the campaign.** Seven commits — `760ec7b`, `8ce1c20`,
+    `6a7a75c`, `a7d76c9`, `0d65504`, `f93a72b` and this one — across six files:
+    `page-compose.jsx`, `page-reviews.jsx`, `page-approvals.jsx`,
+    `page-messages.jsx`, `page-history.jsx` and `page-stubs.jsx`. **Twenty-three
+    false success claims** in total: 3 + 2 + 8 + 1 + 1 + 8. Two of those commits
+    fixed damage the campaign itself caused rather than claims — `6a7a75c`,
+    because keeping an unsent draft out of `replied` was what stopped it
+    clearing the SLA, and `a7d76c9`, because a drafted review then sat at the
+    head of the queue with no control on it.
+
+    A final sweep of all of `src/` for `toast.push`, success kinds and
+    past-tense action language returns no remaining false claim. Every
+    surviving toast is backed by a server call, a `localStorage` write or a
+    real file download, or states an absence or an error. — closed in this
+    commit
+
+
 #### Open
 
-1. **Eight false success claims remain, all in `page-stubs.jsx`** — counted by
-   grep, not carried over. **This headline said "Eleven" from `8ce1c20` until
-   `24` corrected it to ten, and the original number was never right**: it was
-   written against a list of 8 + 8 + 1 + 1 = 18 claims. The per-file counts
-   underneath were accurate throughout; only the total was wrong, which is the
-   failure mode a register is meant to prevent rather than cause. Found by the
-   sweep `760ec7b` was required to run, confirmed by reading each site, and NOT
-   fixed there or in `22` above because each is a separate screen with its own
-   decision about what — if anything — is honest to leave enabled (§ 4).
-   Recorded here rather than left in a chat log, because a known defect nobody
-   can find again is an unknown defect.
-
-   - **`page-stubs.jsx` — eight.** `'Asset uploaded'`:232, the delete at :249,
-     `'Color token added'`:268, `'Copy block added'`:286, `'Invitation
-     sent'`:347, `` `Role change recorded for ${u.name}` ``:393, and the two
-     download claims at :534 and :535. Zero `localStorage` and zero `fetch` in
-     the file. **The two downloads are the sharpest**: `page-reviews.jsx`:162
-     and the Listening exports really do build and download a CSV, so a user
-     has grounds to believe these do too, and no file ever arrives.
-
-   The `page-approvals.jsx` eight were closed in `24`; `page-messages.jsx`:48
-   and `page-history.jsx`:199 in `25`. This is the last of the sweep.
+None.
 
 ## 4. Scope discipline
 

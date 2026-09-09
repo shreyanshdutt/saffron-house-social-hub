@@ -203,8 +203,43 @@ function HealthKpi({ label, value, icon, tone }) {
 // itself is already gated at the menu level — so action buttons are
 // shown active here. Kept consistent with the rest of the build.)
 // =============================================================================
+// THREE SCREENS IN THIS FILE CANNOT ACT, AND THEY CANNOT ACT FOR THREE
+// DIFFERENT REASONS. One sentence pasted three times would be a lie by
+// flattening: it would tell someone the same thing is missing in all three
+// places, and each is fixed by different work. Same ruling and voice as
+// c0e54f1 / 760ec7b / 0d65504 / f93a72b; different content.
+
+const NO_BRAND_STORE_REASON =
+  'Uploading, deleting and adding are switched off. There is nowhere to keep a brand asset, ' +
+  'a colour token or a copy block — nothing stores them — so anything you added would be gone ' +
+  'the moment you left the page, and anything you deleted would come back. The kit below is ' +
+  'the current brand and is safe to read, copy and hand to whoever is writing. It is still ' +
+  'being built.';
+const NO_BRAND_STORE_TIP = 'Off: there is nowhere to store a brand asset yet.';
+
+const NO_DIRECTORY_REASON =
+  'Inviting people and changing roles are switched off. There is no user directory to write ' +
+  'to and no mail path out of this app, so nobody would be created and no invitation would ' +
+  'be emailed — and somebody could be left waiting for a message that was never sent. The ' +
+  'team and roles below are the demo\u2019s, and reading them is honest. It is still being built.';
+const NO_DIRECTORY_TIP = 'Off: there is no user directory to write to yet.';
+
+// The clause about downloads elsewhere is LOAD-BEARING and is checked, not
+// assumed: `downloadCsv` at csv-util.jsx:30 builds a real Blob and a real
+// object URL, and it is genuinely called at page-reviews.jsx:209,
+// page-recommendations.jsx:114 (the Actions screen) and
+// page-listening-signals.jsx:172 and :182. Because pressing Download really
+// does produce a file everywhere else, a user who presses it here and gets
+// nothing will reasonably conclude the product is BROKEN. Saying which it is
+// costs one sentence.
+const NO_EXPORT_BUILDER_REASON =
+  'These three exports are switched off: the report builders behind them have not been ' +
+  'written, so pressing CSV or PDF would produce no file. Downloads elsewhere in the product ' +
+  'are real — Reviews, Actions and Social Listening each build a file and really download it ' +
+  '— so this is unbuilt rather than broken. It is still being built.';
+const NO_EXPORT_BUILDER_TIP = 'Off: this report builder has not been written yet.';
+
 function BrandKitPage() {
-  const toast = useToast();
   const [tab, setTab] = React.useState('logos');
   const colors = [
     { name: 'Primary',  hex: '#B4451F' },
@@ -229,9 +264,16 @@ function BrandKitPage() {
         </div>
         <div className="flex items-center gap-2">
           <Button variant="secondary" leadingIcon="Download">Export pack</Button>
-          <Button variant="primary"   leadingIcon="Upload" onClick={() => toast.push({ title: 'Asset uploaded' })}>Upload asset</Button>
+          <Tooltip label={NO_BRAND_STORE_TIP} side="top">
+            <span><Button variant="primary" leadingIcon="Upload" disabled>Upload asset</Button></span>
+          </Tooltip>
         </div>
       </div>
+      <div className="flex items-start gap-2 p-3 rounded-xl bg-saf-surface border border-saf-border">
+        <Icon name="Info" size={14} className="text-saf-muted mt-0.5 shrink-0" />
+        <p className="text-[12px] text-saf-muted leading-relaxed">{NO_BRAND_STORE_REASON}</p>
+      </div>
+
       <Tabs value={tab} onChange={setTab} tabs={[
         { id: 'logos', label: 'Logos & assets' },
         { id: 'palette', label: 'Colour palette' },
@@ -246,7 +288,9 @@ function BrandKitPage() {
                 <div className="text-[13px] font-medium text-saf-text">{label}</div>
                 <div className="flex items-center gap-1">
                   <button className="w-8 h-8 rounded-lg text-saf-muted hover:bg-saf-light grid place-items-center" aria-label="Download"><Icon name="Download" size={14} /></button>
-                  <button className="w-8 h-8 rounded-lg text-saf-muted hover:bg-rose-50 hover:text-saf-danger grid place-items-center" aria-label="Delete" onClick={() => toast.push({ title: 'Asset removed' })}><Icon name="Trash2" size={14} /></button>
+                  <Tooltip label={NO_BRAND_STORE_TIP} side="top">
+                    <button className="w-8 h-8 rounded-lg text-saf-muted grid place-items-center opacity-50 cursor-not-allowed" aria-label="Delete" disabled><Icon name="Trash2" size={14} /></button>
+                  </Tooltip>
                 </div>
               </div>
             </Card>
@@ -265,7 +309,9 @@ function BrandKitPage() {
             ))}
           </div>
           <div className="mt-5 pt-5 border-t border-saf-border flex items-center justify-end">
-            <Button size="sm" variant="primary" leadingIcon="Plus" onClick={() => toast.push({ title: 'Color token added' })}>Add token</Button>
+            <Tooltip label={NO_BRAND_STORE_TIP} side="top">
+              <span><Button size="sm" variant="primary" leadingIcon="Plus" disabled>Add token</Button></span>
+            </Tooltip>
           </div>
         </Card>
       )}
@@ -283,7 +329,9 @@ function BrandKitPage() {
             ))}
           </div>
           <div className="p-3 border-t border-saf-border flex justify-end">
-            <Button size="sm" variant="primary" leadingIcon="Plus" onClick={() => toast.push({ title: 'Copy block added' })}>Add copy block</Button>
+            <Tooltip label={NO_BRAND_STORE_TIP} side="top">
+              <span><Button size="sm" variant="primary" leadingIcon="Plus" disabled>Add copy block</Button></span>
+            </Tooltip>
           </div>
         </Card>
       )}
@@ -313,14 +361,16 @@ const ROLE_TONE = {
 };
 
 function UsersPage({ role }) {
-  const toast = useToast();
   const canManage = hasPerm(role, 'user.manage');
   const canAssignRole = hasPerm(role, 'role.manage');
 
-  function GatedButton({ enabled, label, leadingIcon, variant = 'primary', tooltip, onClick }) {
-    if (enabled) return <Button variant={variant} leadingIcon={leadingIcon} onClick={onClick}>{label}</Button>;
+  // Always the disabled form. `enabled` stays because the permission gate is
+  // real and demoable; it now only chooses whether the role sentence is
+  // appended. Build reason first — being granted `user.manage` would still
+  // create nobody — the precedence channels.js and 8ce1c20 already use.
+  function GatedButton({ enabled, label, leadingIcon, variant = 'primary', permissionReason }) {
     return (
-      <Tooltip label={tooltip} side="top">
+      <Tooltip label={enabled ? NO_DIRECTORY_TIP : `${NO_DIRECTORY_TIP} ${permissionReason}`} side="top">
         <span className={`inline-flex items-center gap-2 h-10 px-4 rounded-lg font-medium text-sm select-none whitespace-nowrap opacity-60 cursor-not-allowed
           ${variant === 'primary' ? 'bg-saf-primary text-white' : 'bg-white text-saf-text border border-saf-border'}`}
           aria-disabled="true">
@@ -343,10 +393,14 @@ function UsersPage({ role }) {
             label="Invite user"
             leadingIcon="UserPlus"
             variant="primary"
-            tooltip="Inviting users requires the Admin role"
-            onClick={() => toast.push({ title: 'Invitation sent' })}
+            permissionReason="Inviting users requires the Admin role"
           />
         </div>
+      </div>
+
+      <div className="flex items-start gap-2 p-3 rounded-xl bg-saf-surface border border-saf-border">
+        <Icon name="Info" size={14} className="text-saf-muted mt-0.5 shrink-0" />
+        <p className="text-[12px] text-saf-muted leading-relaxed">{NO_DIRECTORY_REASON}</p>
       </div>
 
       <Card padding="p-0">
@@ -389,15 +443,14 @@ function UsersPage({ role }) {
                   <td className="px-3 py-3 text-saf-muted">{u.last}</td>
                   <td className="px-5 py-3 text-end">
                     <div className="inline-flex items-center gap-1">
-                      {canAssignRole ? (
-                        <Button variant="ghost" size="sm" leadingIcon="Shield" onClick={() => toast.push({ title: `Role change recorded for ${u.name}` })}>Assign role</Button>
-                      ) : (
-                        <Tooltip label="Assigning roles requires the Admin role" side="top">
-                          <span className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-[13px] opacity-60 cursor-not-allowed text-saf-muted" aria-disabled="true">
-                            <Icon name="Shield" size={14} />Assign role
-                          </span>
-                        </Tooltip>
-                      )}
+                      {/* No longer a ternary: neither branch could act, so both
+                          collapse to the disabled form and `canAssignRole` only
+                          decides whether the role sentence is appended. */}
+                      <Tooltip label={canAssignRole ? NO_DIRECTORY_TIP : `${NO_DIRECTORY_TIP} Assigning roles requires the Admin role`} side="top">
+                        <span className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-[13px] opacity-60 cursor-not-allowed text-saf-muted" aria-disabled="true">
+                          <Icon name="Shield" size={14} />Assign role
+                        </span>
+                      </Tooltip>
                       <button className="w-8 h-8 rounded-lg text-saf-muted hover:bg-saf-light grid place-items-center" aria-label="More"><Icon name="MoreVertical" size={16} /></button>
                     </div>
                   </td>
@@ -508,7 +561,6 @@ function AuditPage() {
 // can export Approvals; Manager+Admin can export SLA compliance.
 // =============================================================================
 function ExportsPage({ role }) {
-  const toast = useToast();
   const cards = [
     { id: 'audit',     title: 'Audit log',        desc: 'Hash-chained export of every state change. CSV/PDF, last 30 days.', icon: 'ShieldCheck', perm: 'exports.audit',     tone: 'bg-rose-50 text-rose-700' },
     { id: 'approvals', title: 'Approvals',        desc: 'Every submit / review / approve / reject decision, with reasons.', icon: 'CheckCircle2', perm: 'exports.approvals', tone: 'bg-emerald-50 text-emerald-700' },
@@ -520,6 +572,11 @@ function ExportsPage({ role }) {
         <h1 className="text-2xl font-bold text-saf-text">Exports</h1>
         <p className="text-sm text-saf-muted mt-1">Download data the way your team needs it. Each export is scoped by role.</p>
       </div>
+      <div className="flex items-start gap-2 p-3 rounded-xl bg-saf-surface border border-saf-border">
+        <Icon name="Info" size={14} className="text-saf-muted mt-0.5 shrink-0" />
+        <p className="text-[12px] text-saf-muted leading-relaxed">{NO_EXPORT_BUILDER_REASON}</p>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {cards.map(c => {
           const allowed = hasPerm(role, c.perm);
@@ -531,11 +588,15 @@ function ExportsPage({ role }) {
               <div className="mt-4 flex items-center gap-2">
                 {allowed ? (
                   <>
-                    <Button size="sm" variant="primary"   leadingIcon="Download" onClick={() => toast.push({ title: `${c.title} CSV downloaded` })}>CSV</Button>
-                    <Button size="sm" variant="secondary" leadingIcon="FileText" onClick={() => toast.push({ title: `${c.title} PDF downloaded` })}>PDF</Button>
+                    <Tooltip label={NO_EXPORT_BUILDER_TIP} side="top">
+                      <span><Button size="sm" variant="primary" leadingIcon="Download" disabled>CSV</Button></span>
+                    </Tooltip>
+                    <Tooltip label={NO_EXPORT_BUILDER_TIP} side="top">
+                      <span><Button size="sm" variant="secondary" leadingIcon="FileText" disabled>PDF</Button></span>
+                    </Tooltip>
                   </>
                 ) : (
-                  <Tooltip label={`Restricted: this export is scoped to a different role.`} side="top">
+                  <Tooltip label={`${NO_EXPORT_BUILDER_TIP} It is also scoped to a different role.`} side="top">
                     <span className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-[12px] bg-saf-surface text-saf-muted border border-saf-border opacity-70 cursor-not-allowed" aria-disabled="true">
                       <Icon name="Lock" size={13} />Not available for your role
                     </span>
