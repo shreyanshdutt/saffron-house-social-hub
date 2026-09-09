@@ -995,3 +995,88 @@ Work touching live Google Places data is unblocked from this date.
 - Never call an API you know will return nothing. The existing rule — skip
   Business Discovery on personal and private accounts rather than spending
   quota to be told no — generalises.
+
+## 11. Personal data (owner decision 2026-09-09)
+
+Through commit `b4b8f24` **no table in this product holds a person.** Eleven
+tables, and the only columns naming anybody are `posts.author` and
+`guest_texts.author` — public display names attached to text their writer
+published publicly. There is no phone number, no email address and no contact
+record anywhere in the schema.
+
+The customer dataset changes that, so the rules go in before the table does
+rather than after it has rows.
+
+**Why it exists: cost, not marketing.** WhatsApp marketing messages are
+₹0.8631 each and are roughly 95% of this product's running bill. A broadcast
+to 6,400 contacts is about ₹5,500 before GST; the same offer sent to the 40
+people tagged as kathal galouti regulars is about ₹34. Segmentation turns the
+single largest running cost into a rounding error. Any feature justified here
+by "better targeting" and not by that arithmetic is scope creep.
+
+### The two provenances are different facts and must never merge
+
+- **A staff tag** is one person's judgement, entered by hand: *Priya marked
+  this customer a biryani regular on 3 September.*
+- **A dish mention** is a guest's own words in `guest_texts`, matched by
+  `dish-matcher.js`: *"the galouti is as good as everyone says."*
+
+These have different reliability and different origins, and a screen that
+renders both as "favourite dish" is inventing a fact. Every tag carries who
+entered it and when; every mention carries the sentence it came from. The UI
+labels which is which, in the same way the Menu screen already quotes the
+guest rather than scoring them.
+
+**They also cannot be joined.** An Instagram handle is not a phone number.
+There is no honest automatic link between a maintained customer row and a
+social mention, and no commit may create one by inference. If the two are
+ever to be connected it is because a human connected them, and that act is
+recorded as its own fact with its own provenance.
+
+### Owner decisions
+
+**1 — The product stores no contact details.** No phone number, no email
+address, no postal address, in any table, ever. This is not a default to be
+relaxed by a later feature; a change here is an owner decision recorded in
+this section, not a schema migration.
+
+**2 — Two row sources, and reachability follows from the source.**
+
+- `imported` — created from the client's WhatsApp contact list. Carries a
+  **provider-issued contact reference**, never a phone number. Reachable.
+- `staff` — created by hand for someone not in that list. Carries a display
+  label the restaurant chooses and nothing else. **Not reachable**, and the
+  product states that rather than leaving it to be assumed.
+
+Reachability is **derived from whether a contact reference is present**, the
+way `summarisePost()` derives an outcome. It is not a stored column, because
+a stored one can disagree with the row it describes.
+
+**3 — A segment shows two numbers, never one.** "40 tagged · 31 reachable."
+A single figure beside a broadcast button tells the restaurant it can reach
+nine people it cannot, and it will find that out by paying for it.
+
+### GATE — BLOCKED, pending the client's WhatsApp provider
+
+The identifier in decision 2 may not exist. On Meta's **Cloud API the contact
+identifier IS the phone number** — `wa_id` is E.164, and there is no opaque
+handle to store instead. Business Solution Providers issue their own internal
+contact IDs, and against one of those decision 1 and decision 2 hold as
+written. Against Cloud API direct they cannot both hold.
+
+Until the client names their provider and that provider is confirmed to issue
+a non-phone contact identifier that it also accepts as a send target:
+
+- **No commit may import a contact, or populate `contact_ref` with a real
+  value.** The import path is a stub with a named reason, the way
+  `publish-adapters.js` stubs the five publish channels.
+- A hash of a phone number is not a way around this. It satisfies decision 1
+  on paper and breaks the send path in fact, because no provider accepts a
+  hash as a recipient — so it would buy a table that cannot do the one thing
+  it exists to do.
+- Staff-created rows are unaffected and may be built and used, because they
+  never had a contact reference to begin with.
+
+Sample rows carry `is_sample = 1` like every other fabricated row here, and a
+sample contact reference carries the `sample:` prefix so it can never be
+mistaken for a real one.
