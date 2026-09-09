@@ -223,7 +223,29 @@ closing an item, not follow-up work.**
 
 #### Open
 
-None.
+18. **`REVIEW_CHANNELS` and `INBOX_CHANNELS` are dead exports.** Both are
+    derived from `caps` in `mock.jsx` and assigned onto `window`, and neither
+    has a single consumer anywhere in `src/` — the only occurrences are the
+    definition and the export line. `POSTABLE`, derived the same way, is alive
+    and has exactly one real consumer (`page-compose.jsx:106`), which is what
+    makes the other two look load-bearing at a glance. Same class as items 12
+    and 13: a symbol that reads as wired up and is not.
+
+    **Confirmed three times, and the third pass matters.** One of the earlier
+    checks was a shell loop that silently reported `POSTABLE` as unused too,
+    which is false. The reliable check is `git grep -n "\bINBOX_CHANNELS\b"
+    -- src/`; anything that pipes filenames through `grep -l` on stdin will
+    lie. The next person will run this grep, so the trap is recorded with the
+    finding rather than left to be rediscovered.
+
+    **Open, not closed, deliberately.** Deleting them is a change to the caps
+    model's public surface: they exist because `caps` is the enforcement
+    mechanism (`CLAUDE.md` § 3) and a future screen reading "which channels
+    take reviews" would reach for exactly these names. Whether the answer is
+    to delete them or to use them is a decision for whichever commit next
+    touches that model — not a drive-by tidy in a docs commit (§ 4). Recorded
+    here so the next such commit inherits the question instead of rediscovering
+    it.
 
 ## 4. Scope discipline
 
